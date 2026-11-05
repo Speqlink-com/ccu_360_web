@@ -48,3 +48,6 @@ next-env.d.ts
 /.next-preview/
 
 /.next-demo/
+
+# Private per-build session key shared by hosted demo functions
+/lib/server/.demo-session-key

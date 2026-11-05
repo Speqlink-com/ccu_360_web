@@ -7,6 +7,7 @@ import {
 } from "node:crypto";
 import { demoAccounts } from "./accounts";
 import { seed } from "./seed";
+import { issueDemoSession, verifyDemoSession } from "./session-token";
 import {
   admissionInputSchema,
   employeeInputSchema,
@@ -41,7 +42,8 @@ const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 const passwordHash = (password: string, id: string) =>
   scryptSync(password, id, 32);
-export function createControlPlane() {
+export function createControlPlane(options: { signingKey?: string } = {}) {
+  const signingKey = options.signingKey ?? randomBytes(32).toString("hex");
   const facilities: Facility[] = [
     {
       id: "fac-evergreen",
@@ -94,7 +96,7 @@ export function createControlPlane() {
   cedar.consultations = [];
   cedar.capacity = { ICU: 6, HDU: 4 };
   workspaces.set("fac-cedar", cedar);
-  const sessions = new Map<string, { userId: string; expiresAt: number }>();
+  const revokedSessions = new Map<string, number>();
   const attempts = new Map<string, { count: number; resetAt: number }>();
   const activity: Directory["activity"] = [
     {
@@ -208,11 +210,9 @@ export function createControlPlane() {
       }
       const user = current(found);
       attempts.delete(key);
-      const token = randomBytes(32).toString("base64url");
-      sessions.set(hash(token), {
-        userId: user.id,
-        expiresAt: now + 8 * 60 * 60_000,
-      });
+      for (const [id, expiry] of revokedSessions)
+        if (expiry <= now) revokedSessions.delete(id);
+      const token = issueDemoSession(user.id, signingKey, now);
       return {
         token,
         session: {
@@ -225,11 +225,8 @@ export function createControlPlane() {
     },
     session(token: string | undefined, now = Date.now()) {
       if (!token) return null;
-      const record = sessions.get(hash(token));
-      if (!record || record.expiresAt <= now) {
-        sessions.delete(hash(token));
-        return null;
-      }
+      const record = verifyDemoSession(token, signingKey, now);
+      if (!record || revokedSessions.has(hash(token))) return null;
       const found = users.find((u) => u.id === record.userId);
       if (!found) return null;
       try {
@@ -241,12 +238,12 @@ export function createControlPlane() {
           ),
         };
       } catch {
-        sessions.delete(hash(token));
         return null;
       }
     },
     logout(token: string | undefined) {
-      if (token) sessions.delete(hash(token));
+      const claims = verifyDemoSession(token, signingKey);
+      if (token && claims) revokedSessions.set(hash(token), claims.expiresAt);
     },
     directory(user: User) {
       const actor = current(user),

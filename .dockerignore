@@ -8,3 +8,5 @@ node_modules
 *.tsbuildinfo
 
 .next-demo
+
+lib/server/.demo-session-key

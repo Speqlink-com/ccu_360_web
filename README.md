@@ -74,3 +74,11 @@ docker run --rm -p 3000:3000 ccu360-web
 ```
 
 See `docs/ARCHITECTURE.md`, `docs/TENANCY_AND_ACCESS.md` and `docs/ICON_ASSETS.md`.
+
+## Vercel demonstration deployment
+
+`vercel.json` explicitly builds the hosted demonstration with `NEXT_PUBLIC_DEMO_MODE=true`, so the eight account fixtures work on the Vercel URL. Normal local/Docker production builds still default to demo mode off.
+
+The build prepares a random private signing key at `lib/server/.demo-session-key`. Next traces it into all server functions; it is ignored by Git and excluded from client assets. Demo cookies carry signed, expiring subject IDs, so a seeded account remains signed in when Vercel serves the next request in a different function instance. A redeployment rotates the generated key. Optionally configure a stable server-only `DEMO_SESSION_SECRET` of at least 32 characters to retain sessions across deployments.
+
+Facility/employee/patient mutations, access revocations and rate limits still live in each function’s temporary memory. They are not durable or synchronized across Vercel instances. Use the seeded accounts to review the hosted demonstration; shared production identity and clinical storage require the backend/database integration.

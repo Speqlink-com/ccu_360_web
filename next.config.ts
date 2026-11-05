@@ -3,8 +3,13 @@ const nextConfig: NextConfig = {
   output: "standalone",
   distDir: process.env.CCU360_BUILD_DIR ?? ".next",
   poweredByHeader: false,
+  outputFileTracingIncludes: {
+    "/**": ["./lib/server/.demo-session-key"],
+  },
   turbopack: {},
-  experimental: process.env.CCU360_BUILD_DIR ? { cpus: 2, turbopackFileSystemCacheForBuild: false } : {},
+  experimental: process.env.CCU360_BUILD_DIR
+    ? { cpus: 2, turbopackFileSystemCacheForBuild: false }
+    : {},
   webpack(config, { dev }) {
     if (dev && process.env.CCU360_BUILD_DIR) config.cache = false;
     return config;

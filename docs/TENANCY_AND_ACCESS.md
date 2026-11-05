@@ -13,7 +13,7 @@ CCU360 has two administration levels. Ayot Health Solutions (AHS) operates the p
 
 ## Session and API boundary
 
-Demo credentials live in a server-imported fixture. Password comparisons use scrypt digests and timing-safe comparison. An opaque random token is placed in an HttpOnly, SameSite=Strict cookie; only its hash is stored in the server session map. Demo sessions expire after eight hours. Logout revokes the session. Suspended users/facilities lose access when their sessions are revalidated. Repeated invalid credentials trigger a demo limiter after five failures for an account within fifteen minutes.
+Demo credentials live in a server-imported fixture. Password comparisons use scrypt digests and timing-safe comparison. A signed, expiring user ID and random nonce are placed in an HttpOnly, SameSite=Strict cookie. Server functions share a private per-build signing artifact, allowing seeded accounts to remain authenticated across Vercel cold starts. No role or facility supplied by the client is trusted; identity is resolved from the server fixture. Demo sessions expire after eight hours. Logout clears the browser cookie and records revocation in the current process; shared revocation requires durable storage. Suspended users/facilities lose access when their sessions are revalidated. Repeated invalid credentials trigger a demo limiter after five failures for an account within fifteen minutes.
 
 Mutation routes verify browser Origin against the actual request Host and protocol. They do not trust forwarded-host headers. All demo responses are private/no-store. DTOs strip password hashes and fixture passwords. Newly provisioned accounts return a generated demo password once in the creation response; directory and session responses never return passwords.
 
@@ -37,9 +37,9 @@ Clinical roles can read the facility’s patient records. Doctors can coordinate
 
 ## Production boundary
 
-Hardcoded accounts and all `/api/demo/*` endpoints are disabled unless `NEXT_PUBLIC_DEMO_MODE=true`. `.env.development` enables the local demonstration; ordinary production builds keep it disabled. The default production dashboard remains in its setup state.
+Hardcoded accounts and all `/api/demo/*` endpoints are disabled unless `NEXT_PUBLIC_DEMO_MODE=true`. `.env.development` enables the local demonstration; ordinary local/Docker production builds keep it disabled. The requested Vercel demonstration explicitly enables it with the checked-in `vercel.json` build command. The default production dashboard remains in its setup state.
 
-The demonstration stores facilities, users, sessions, audit-like activity and synthetic clinical records in a single-process memory store. State resets on server restart. This is a navigable implementation of the tenant model, not a durable production identity service or clinical backend. It is unsuitable for real patient data, multi-replica deployment, or clinical audit retention.
+The demonstration stores facilities, users, revocations, audit-like activity and synthetic clinical records in a single-process memory store. Signed seeded-account sessions are portable across instances, while mutations and rate limits are not shared across instances. State resets on server restart. This is a navigable implementation of the tenant model, not a durable production identity service or clinical backend. It is unsuitable for real patient data, multi-replica deployment, or clinical audit retention.
 
 Production work still requires the approved identity provider, durable tenant/membership tables, transaction-bound clinical and access audit, database-level tenant isolation, distributed session/rate-limit storage, invitation/password lifecycle, institution-approved role policy, TLS/cookie deployment configuration, and the FastAPI contracts in the supplied backend specification. Do not enable hardcoded demonstration accounts as a production authentication method.
 
