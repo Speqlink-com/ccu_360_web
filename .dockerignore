@@ -1,0 +1,10 @@
+node_modules
+.next
+.next-preview
+.git
+.env*
+!.env.example
+*.log
+*.tsbuildinfo
+
+.next-demo
