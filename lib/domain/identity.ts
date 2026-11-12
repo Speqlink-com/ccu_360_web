@@ -5,6 +5,8 @@ export const roleSchema = z.enum([
   "doctor",
   "nurse",
   "allied_health",
+  "receptionist",
+  "auditor",
 ]);
 export type Role = z.infer<typeof roleSchema>;
 export const roleLabels: Record<Role, string> = {
@@ -13,6 +15,8 @@ export const roleLabels: Record<Role, string> = {
   doctor: "Doctor",
   nurse: "Nurse",
   allied_health: "Allied health professional",
+  receptionist: "Reception / registration",
+  auditor: "Clinical auditor",
 };
 export const userSchema = z.object({
   id: z.string(),

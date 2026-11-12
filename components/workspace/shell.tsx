@@ -3,17 +3,25 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, type ReactNode } from "react";
 import { Brand } from "@/components/ui/brand";
-import { Icon, type IconName } from "@/components/ui/icon";
+import { Icon } from "@/components/ui/icon";
 import { useWorkspaceUI } from "@/providers/app-provider";
 import { isDemo } from "@/lib/config";
-import { navigationFor } from "@/lib/navigation";
+import { navigationFor, productionNavigationFor } from "@/lib/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
+import { apiRequest } from "@/lib/api/client";
+import { finishSignOut } from "@/features/identity/queries";
 import { useSession } from "@/providers/session-provider";
 import { roleLabels } from "@/lib/domain/identity";
 import { useState } from "react";
 export function WorkspaceShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const session = useSession();
-  const links = navigationFor(session?.user.role);
+  const links = isDemo
+    ? navigationFor(session?.user.role)
+    : productionNavigationFor(session?.user.role);
+  const client = useQueryClient();
+  const [signOutError, setSignOutError] = useState("");
   const clinical =
     session?.user.role !== "ahs_admin" &&
     session?.user.role !== "facility_admin";
@@ -22,6 +30,14 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   async function signOut() {
     setLeaving(true);
     try {
+      if (!isDemo) {
+        await apiRequest("/api/v1/auth/logout", z.null(), {
+          method: "POST",
+          body: {},
+        });
+        await finishSignOut(client);
+        return;
+      }
       const response = await fetch("/api/demo/session", {
         method: "DELETE",
         credentials: "same-origin",
@@ -29,6 +45,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
       if (!response.ok) throw new Error("Sign out failed");
       window.location.assign("/");
     } catch {
+      setSignOutError("Sign out could not complete. Please try again.");
       setLeaving(false);
     }
   }
@@ -177,7 +194,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
             <Icon name="collapse" />
             <span className="nav-label">Collapse sidebar</span>
           </button>
-          {isDemo ? (
+          {
             <button
               type="button"
               className="nav-link exit-link"
@@ -190,16 +207,8 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                 {leaving ? "Signing out…" : "Sign out"}
               </span>
             </button>
-          ) : (
-            <Link
-              href="/"
-              className="nav-link exit-link"
-              aria-label="Back to sign in"
-            >
-              <Icon name="logout" />
-              <span className="nav-label">Back to sign in</span>
-            </Link>
-          )}
+          }
+          {signOutError && <p role="alert">{signOutError}</p>}
         </div>
       </aside>
       <div className="workspace-body" inert={mobile}>
@@ -222,7 +231,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                   : "Facility workspace"}
             </span>
             <span className="topbar-separator">/</span>
-            {clinical ? (
+            {clinical && isDemo ? (
               <label className="unit-switcher">
                 <Icon name="bed" size={16} />
                 <span className="sr-only">Filter by unit</span>
@@ -244,7 +253,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           <div className="topbar-right">
             <span className="session-label">
               <i />
-              {isDemo ? "Demo environment" : "Setup required"}
+              {isDemo ? "Demo environment" : "Secure workspace"}
             </span>
             <div className="profile">
               <span className="avatar">
@@ -254,7 +263,9 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                 <strong>{session?.user.name ?? "No active session"}</strong>
                 <small>
                   {session
-                    ? roleLabels[session.user.role]
+                    ? platform || session.facility
+                      ? roleLabels[session.user.role]
+                      : "Choose a facility"
                     : "Institution access"}
                 </small>
               </span>
@@ -279,8 +290,10 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           </span>
           <span>
             {session?.facility
-              ? `${session.facility.name} · ${session.facility.code}`
-              : "AHS · Platform administration"}
+              ? `${session.facility.name}${session.facility.code ? " · " + session.facility.code : ""}`
+              : platform
+                ? "AHS · Platform administration"
+                : "Choose your facility"}
           </span>
         </footer>
       </div>

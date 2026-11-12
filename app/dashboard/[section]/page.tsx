@@ -7,6 +7,8 @@ import {
 } from "@/features/administration/administration-page";
 import { currentDemoSession } from "@/lib/server/demo";
 import { allowedSection } from "@/lib/navigation";
+import { isDemo } from "@/lib/config";
+import { LivePage } from "@/features/live/live-page";
 const clinicalSections = [
   "patients",
   "actions",
@@ -26,6 +28,22 @@ export default async function Page({
   params: Promise<{ section: string }>;
 }) {
   const { section } = await params;
+  if (!isDemo) {
+    if (
+      ![
+        "facilities",
+        "administrators",
+        "employees",
+        "workforce",
+        "templates",
+        "patients",
+        "audit",
+        "security",
+      ].includes(section)
+    )
+      notFound();
+    return <LivePage section={section} />;
+  }
   if (![...clinicalSections, ...adminSections].includes(section as never))
     notFound();
   const session = await currentDemoSession();

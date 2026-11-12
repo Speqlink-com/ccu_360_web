@@ -39,8 +39,9 @@ try {
   for (const path of ["/", "/dashboard", "/dashboard/actions"]) {
     const response = await fetch(base + path, {
       signal: AbortSignal.timeout(5000),
+      redirect: "manual",
     });
-    assert.equal(response.status, 200);
+    assert.equal(response.status, path.startsWith("/dashboard") ? 307 : 200);
     const html = await response.text();
     assert.ok(
       !html.includes("Explore the demo workspace"),
@@ -51,9 +52,10 @@ try {
       "Production must not render synthetic patient records",
     );
     if (path.startsWith("/dashboard"))
-      assert.ok(
-        html.includes("Your clinical workspace is being prepared."),
-        "Unconfigured clinical routes must fail closed",
+      assert.equal(
+        new URL(response.headers.get("location"), base).pathname,
+        "/",
+        "Unauthenticated clinical routes redirect to sign-in",
       );
     assert.equal(response.headers.get("x-frame-options"), "DENY");
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
@@ -70,11 +72,38 @@ try {
     }
     console.log(`PASS ${path}: production boundary and security headers`);
   }
-  for (const resource of ['session','directory','workspace','facilities','employees']) {
-    const response = await fetch(base + '/api/demo/' + resource);
-    assert.equal(response.status, 404, 'Demo endpoints must be disabled in production');
+  for (const resource of [
+    "session",
+    "directory",
+    "workspace",
+    "facilities",
+    "employees",
+  ]) {
+    const response = await fetch(base + "/api/demo/" + resource);
+    assert.equal(
+      response.status,
+      404,
+      "Demo endpoints must be disabled in production",
+    );
   }
-  console.log('PASS demonstration accounts/endpoints are disabled in production');
+  console.log(
+    "PASS demonstration accounts/endpoints are disabled in production",
+  );
+  const session = await fetch(base + "/api/v1/auth/me");
+  assert.equal(session.status, 401);
+  assert.match(session.headers.get("cache-control"), /no-store/);
+  const csrf = await fetch(base + "/api/v1/auth/login", {
+    method: "POST",
+    headers: {
+      Origin: "https://untrusted.example",
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+  });
+  assert.equal(csrf.status, 403);
+  console.log(
+    "PASS production identity boundaries: HttpOnly session required and cross-origin mutations rejected",
+  );
   const logo = await fetch(base + "/ccu360-logo.png");
   assert.equal(logo.status, 200);
   assert.ok(logo.headers.get("content-type")?.startsWith("image/png"));

@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
-import { apiProxyOrigin, verifyProductionMode } from "./lib/deployment";
+import { verifyProductionMode } from "./lib/deployment";
 
 verifyProductionMode(process.env.VERCEL_ENV, process.env.NEXT_PUBLIC_DEMO_MODE);
-const apiOrigin = apiProxyOrigin(process.env.API_PROXY_TARGET);
 const nextConfig: NextConfig = {
   output: "standalone",
   distDir: process.env.CCU360_BUILD_DIR ?? ".next",
@@ -20,11 +19,6 @@ const nextConfig: NextConfig = {
   },
   // No shared server caching of clinical data. The phase-one UI uses synthetic client state.
   cacheComponents: false,
-  async rewrites() {
-    return apiOrigin
-      ? [{ source: "/api/v1/:path*", destination: `${apiOrigin}/api/v1/:path*` }]
-      : [];
-  },
   async headers() {
     return [
       {

@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useStore } from "zustand";
+import { createIdentityUI, type IdentityUI } from "@/store/identity-ui";
 import {
   createWorkspaceStore,
   type WorkspaceUI,
@@ -9,10 +10,12 @@ import {
 
 const ServicesContext = createContext<null | {
   ui: ReturnType<typeof createWorkspaceStore>;
+  identity: ReturnType<typeof createIdentityUI>;
 }>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [services] = useState(() => ({
     ui: createWorkspaceStore(),
+    identity: createIdentityUI(),
   }));
   const [client] = useState(
     () =>
@@ -24,7 +27,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             retry: false,
             refetchOnWindowFocus: true,
           },
-          mutations: { retry: false },
+          mutations: { retry: false, gcTime: 0 },
         },
       }),
   );
@@ -38,6 +41,9 @@ export function useServices() {
   const value = useContext(ServicesContext);
   if (!value) throw new Error("AppProvider is required");
   return value;
+}
+export function useIdentityUI<T>(selector: (state: IdentityUI) => T) {
+  return useStore(useServices().identity, selector);
 }
 export function useWorkspaceUI<T>(selector: (state: WorkspaceUI) => T) {
   return useStore(useServices().ui, selector);

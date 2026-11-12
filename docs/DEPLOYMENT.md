@@ -1,16 +1,18 @@
-# Web production deployment
+# CCU360 web production
 
-Connect this repository to the existing Vercel project. Select Node 24.x, production branch `main`, and add `ccu360.health` as the production domain. Use the exact DNS values Vercel displays in Cloudflare, with the web record DNS-only during verification. Vercel manages the web certificate. `vercel.json` uses `npm ci` and `npm run build`; it no longer forces demo mode.
-
-Bulk import these production values in Vercel:
+Vercel builds this repository's `main`, using Node.js 24.x, `npm ci` and `npm run build`. Set the production domain to **ccu360.health**. Bulk-import:
 
 ```dotenv
 NEXT_PUBLIC_DEMO_MODE=false
 API_PROXY_TARGET=https://api.ccu360.health
 ```
 
-The proxy target is allowlisted and server-side. Backend credentials never belong in the web project. Production builds reject demo mode. Main-branch pushes trigger Vercel's native Git deployment; the GitHub web workflow runs lint, type checking, tests, build and production smoke checks. Require that check before merging if using protected main.
+The API target is server-only. Production uses a fixed-origin backend-for-frontend with HttpOnly/Secure host-only access, refresh and restricted MFA cookies. No backend credentials, JWT signing secret, patient information or tokens belong in public environment variables or browser storage. Exact-origin protection applies to every mutation. Error bodies are sanitized. Clinical and identity data are private and uncached.
 
-The real authentication/session UI and patient-journey workbench integration remain pending. The transport rewrite does not translate the existing demo data models or create authenticated sessions.
+TanStack Query owns runtime-validated server data and queries are scoped to both user and selected facility. Zustand owns transient interface state. Sign-out, sign-in and tenant changes cancel requests, clear query data, notify other tabs and reload the document. Refresh uses browser Web Locks and single-flight rotation.
 
-The full backend/runner/TLS setup and your step-by-step VPS actions are in the companion backend repository's [deployment guide](https://github.com/Speqlink-com/ccu_360_infra/blob/main/docs/DEPLOYMENT.md).
+See the companion backend [integration/testing guide](../../ccu_360_infra/docs/WEB_INTEGRATION.md) and [VPS deployment guide](../../ccu_360_infra/docs/DEPLOYMENT.md) for initial-administrator provisioning, real email invitations and the AHS → facility administrator → employee → patient journey testing path.
+
+Checks: `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`, `npm run smoke:production`. Local real-browser/FastAPI verification: `npm run smoke:identity` (see companion guide for disposable PostgreSQL and Playwright prerequisites). Test artifacts and per-run build directories remain ignored. Production never enables the demo accounts.
+
+Verified for this integration: **30 web tests**, strict type checking, lint (no errors), production build/smoke, and a real Chromium/FastAPI workflow covering initial-admin MFA, provider/admin invitations, employee onboarding, patient registration/admission, clinical drafts/attestation/comments, team actions, shared observations, ledger integrity, concurrent refresh and cross-tab logout. The companion backend suite passed 140 tests and the production Docker/TLS/auth smoke. Screenshots were reviewed at desktop and mobile sizes using synthetic records only.
