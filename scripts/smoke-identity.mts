@@ -7,7 +7,8 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { setTimeout } from "node:timers/promises";
-import { chromium, type Page } from "@playwright/test";
+import { chromium, expect, type Page } from "@playwright/test";
+import { checkWorksiteCommunication } from "./worksite-communication-check.mjs";
 
 const root = process.cwd(),
   backend =
@@ -147,6 +148,8 @@ try {
     webPort = await port();
   const api = `http://127.0.0.1:${apiPort}`,
     base = `http://127.0.0.1:${webPort}`;
+  env.FRONTEND_URL = base;
+  env.CORS_ORIGINS = JSON.stringify([base]);
   start(
     python,
     [
@@ -188,7 +191,7 @@ try {
   );
   await ready(base);
   console.log("Isolated web ready");
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, channel: "chromium" });
   const ownerContext = await browser.newContext();
   const owner = await ownerContext.newPage();
   activePage = owner;
@@ -380,6 +383,16 @@ try {
     .getByRole("button", { name: "Record action update", exact: true })
     .click();
   await recordedAction.getByText("completed", { exact: true }).waitFor();
+  // Task rows can finish refetching before the encounter projection does.
+  // Review its committed version before submitting the next clinical mutation.
+  const currentCaseId = new URL(clinical.url()).pathname.split("/").at(-1)!;
+  const currentVersion = await clinical.evaluate(async (id) => {
+    const response = await fetch(`/api/v1/journey/encounters/${id}`);
+    if (!response.ok) throw new Error("Could not review the current journey");
+    return (await response.json()).encounter.version as number;
+  }, currentCaseId);
+  await clinical.getByRole("button", {name:"Refresh journey",exact:true}).click();
+  await expect(clinical.locator(".journey-version")).toContainText(`Ledger version ${currentVersion} ·`);
   await clinical.getByRole("tab", { name: "Shared observations" }).click();
   const observationForm = panel(clinical, "Record an observation");
   await observationForm
@@ -443,6 +456,8 @@ try {
   console.log(
     "PASS concurrent cross-tab refresh, role boundary, cross-tab logout and no browser-storage credentials/PHI",
   );
+  activePage = invited;
+  await checkWorksiteCommunication({browser, admin: invited, base, invitation: () => fixture("invitation", "employee-e2e@example.org"), password: invitedPassword});
   await owner.screenshot({
     path: "/tmp/ccu360-web-identity-desktop.png",
     fullPage: true,

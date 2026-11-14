@@ -584,6 +584,9 @@ export function EncounterPage({ id }: { id: string }) {
         actions={
           <>
             <Status value={data.encounter.status} />
+            <Link className="btn btn-secondary" href={`/dashboard/connect?encounter=${id}`}>
+              Discuss with care team
+            </Link>
             <button
               className="btn btn-secondary"
               onClick={() => detail.refetch()}

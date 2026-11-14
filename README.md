@@ -2,6 +2,8 @@
 
 Multi-facility critical-care frontend with AHS platform administration, facility administration and clinical role workspaces. Built with Next.js, React, TypeScript, Tailwind CSS, self-hosted Inter, Zustand, TanStack Query and Zod.
 
+Production uses real identity and patient-journey APIs. Facility location controls and realtime Connect 360 are documented in [WORKSITE_AND_CONNECT.md](docs/WORKSITE_AND_CONNECT.md). Demo credentials below are only for explicit local demo builds.
+
 ## Development
 
 ```sh
@@ -15,7 +17,7 @@ Open `http://localhost:3000`. If another development server is running, use the 
 npm run dev:preview
 ```
 
-Open `http://127.0.0.1:3106`. Use a demo account below. Facilities, employee accounts and clinical changes are scoped on the server and reset when that demo process restarts.
+Open `http://127.0.0.1:3106`. Ordinary development now uses the live backend gateway. Use an actual invited account and the approved API origin. For synthetic accounts below, use an explicit demo build; its records reset when that demo process restarts.
 
 For a compiled local demo without development recompilation:
 
@@ -66,7 +68,7 @@ npm run build
 npm start
 ```
 
-Production defaults to `NEXT_PUBLIC_DEMO_MODE=false`. All demo API endpoints return 404. The live institution identity service, durable tenancy and clinical backend are not yet integrated, so production shows a setup state. Environment variables beginning `NEXT_PUBLIC_` are compiled at build time.
+Production defaults to `NEXT_PUBLIC_DEMO_MODE=false`. All demo API endpoints return 404. Live identity, tenancy, patient journeys, employee location and communication use the deployed FastAPI service through an authenticated server gateway. Environment variables beginning `NEXT_PUBLIC_` are compiled at build time.
 
 ```sh
 docker build -t ccu360-web .
@@ -75,9 +77,9 @@ docker run --rm -p 3000:3000 ccu360-web
 
 See `docs/ARCHITECTURE.md`, `docs/TENANCY_AND_ACCESS.md` and `docs/ICON_ASSETS.md`.
 
-## Vercel demonstration deployment
+## Local demonstration deployment
 
-`vercel.json` explicitly builds the hosted demonstration with `NEXT_PUBLIC_DEMO_MODE=true`, so the eight account fixtures work on the Vercel URL. Normal local/Docker production builds still default to demo mode off.
+Vercel production keeps `NEXT_PUBLIC_DEMO_MODE=false`. Use the explicit local demo scripts to review synthetic account fixtures; production rejects attempts to enable demo mode.
 
 The build prepares a random private signing key at `lib/server/.demo-session-key`. Next traces it into all server functions; it is ignored by Git and excluded from client assets. Demo cookies carry signed, expiring subject IDs, so a seeded account remains signed in when Vercel serves the next request in a different function instance. A redeployment rotates the generated key. Optionally configure a stable server-only `DEMO_SESSION_SECRET` of at least 32 characters to retain sessions across deployments.
 

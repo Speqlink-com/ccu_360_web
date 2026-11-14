@@ -32,6 +32,16 @@ const PatientsPage = dynamic(() =>
 const EncounterPage = dynamic(() =>
   import("./encounter-page").then((module) => module.EncounterPage),
 );
+const ConnectPage = dynamic(() =>
+  import("@/features/communication/connect-page").then(
+    (module) => module.ConnectPage,
+  ),
+);
+const WorksiteSettingsPage = dynamic(() =>
+  import("@/features/worksite/settings-page").then(
+    (module) => module.WorksiteSettingsPage,
+  ),
+);
 
 function Home() {
   const user = useIdentity().data!;
@@ -188,6 +198,7 @@ export function LivePage({
       item.provider_status === "active",
   );
   if (!member) return <FacilityPicker user={user} />;
+  if (section === "connect") return <ConnectPage />;
   if (section === "home" && !encounterId) return <Home />;
   if (member.role === "provider_admin") {
     if (encounterId) return <Denied />;
@@ -195,6 +206,7 @@ export function LivePage({
     if (section === "workforce") return <WorkforcePage />;
     if (section === "templates") return <TemplatesPage />;
     if (section === "audit") return <AuditPage />;
+    if (section === "worksite") return <WorksiteSettingsPage />;
     return <Denied />;
   }
   if (encounterId)

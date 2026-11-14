@@ -36,7 +36,7 @@ try {
     await setTimeout(250);
   }
   assert.ok(ready, "Production server did not become ready");
-  for (const path of ["/", "/dashboard", "/dashboard/actions"]) {
+  for (const path of ["/", "/dashboard", "/dashboard/actions", "/dashboard/connect", "/dashboard/worksite"]) {
     const response = await fetch(base + path, {
       signal: AbortSignal.timeout(5000),
       redirect: "manual",
@@ -61,6 +61,7 @@ try {
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
     assert.equal(response.headers.get("referrer-policy"), "no-referrer");
     assert.equal(response.headers.get("x-powered-by"), null);
+    assert.match(response.headers.get("permissions-policy") ?? "", /geolocation=\(self\)/);
     if (path === "/") {
       const stylesheet = html.match(/href="([^"]+\.css(?:\?[^"]*)?)"/);
       assert.ok(stylesheet, "A production stylesheet must be present");

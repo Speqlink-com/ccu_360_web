@@ -115,6 +115,17 @@ export function productionNavigationFor(role?: Role): NavigationItem[] {
         icon: "handover",
       },
       { href: "/dashboard/audit", title: "Access audit", icon: "shield" },
+      {
+        href: "/dashboard/worksite",
+        title: "Facility access",
+        icon: "facilities",
+      },
+      {
+        href: "/dashboard/connect",
+        title: "Connect 360",
+        icon: "connect",
+        group: "COMMUNICATION",
+      },
       security,
     ];
   return [
@@ -123,6 +134,12 @@ export function productionNavigationFor(role?: Role): NavigationItem[] {
       href: "/dashboard/patients",
       title: "Patient journeys",
       icon: "patients",
+    },
+    {
+      href: "/dashboard/connect",
+      title: "Connect 360",
+      icon: "connect",
+      group: "COMMUNICATION",
     },
     security,
   ];

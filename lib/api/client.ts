@@ -11,6 +11,37 @@ export class ApiError extends Error {
   }
 }
 const descriptions: Record<string, string> = {
+  worksite_location_required:
+    "Verify your location at the facility to continue.",
+  outside_facility_geofence:
+    "Your location is outside the facility boundary. Move inside and try again.",
+  more_accurate_location_required:
+    "A more accurate location is needed. Enable precise location and try again.",
+  fresh_location_required:
+    "That location reading is too old. Please check again.",
+  location_challenge_invalid_or_expired:
+    "The location check expired. Please try again.",
+  worksite_configuration_changed:
+    "Your facility’s access settings changed. Reload them and try again.",
+  cannot_remove_last_enabled_geofence:
+    "Add another active site or disable enforcement before deactivating this site.",
+  specific_public_facility_network_required:
+    "Enter a specific public WAN range, such as your facility’s public IP followed by /32.",
+  invalid_network_forwarding_proof:
+    "The connection could not be verified. Contact your administrator.",
+  active_authorized_participants_required:
+    "Choose active colleagues who are authorized for this discussion.",
+  conversation_not_found: "This conversation is no longer available to you.",
+  message_revision_changed:
+    "The message changed. Review its latest version before trying again.",
+  message_edit_not_permitted:
+    "You can only edit your own messages within the editing window.",
+  last_conversation_owner_required:
+    "Promote another active owner before removing the last owner.",
+  active_conversation_owner_exists:
+    "This group still has an active owner. Ask them to manage the group.",
+  websocket_origin_not_allowed:
+    "Realtime messaging is unavailable on this web address. Use your approved facility portal.",
   invalid_credentials:
     "The email or password is incorrect, or this account is unavailable.",
   invalid_mfa_code:
@@ -100,6 +131,7 @@ async function rotate() {
         "Your session has expired. Sign in again.",
       );
     }
+    window.dispatchEvent(new Event("ccu360-session-rotated"));
   };
   if (!rotation)
     rotation = (
@@ -162,6 +194,11 @@ export async function apiRequest<T>(
     } catch {
       /* Never log responses. */
     }
+    if (
+      error.error === "worksite_location_required" &&
+      typeof window !== "undefined"
+    )
+      window.dispatchEvent(new Event("ccu360-location-required"));
     throw new ApiError(
       response.status,
       response.status === 429

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { authCookieNames } from "./auth-cookies";
 import { sessionTokens } from "../api/identity-contract";
+import { signedNetworkHeaders } from "./network-observation";
 
 const uuid = "[0-9a-fA-F-]{36}";
 const readRoutes = [
@@ -35,6 +36,7 @@ const writeRoutes = [
   ),
 ];
 export function allowedGatewayPath(path: string, method: string) {
+  if (featureGatewayPath(path, method)) return true;
   return (
     !path.includes("..") &&
     !path.includes("%") &&
@@ -45,6 +47,58 @@ export function allowedGatewayPath(path: string, method: string) {
         : []
     ).some((pattern) => pattern.test(path))
   );
+}
+// Keep new feature methods explicit: a readable resource is not implicitly writable.
+export function featureGatewayPath(path: string, method: string) {
+  const routes: Record<string, RegExp[]> = {
+    GET: [
+      /^worksite\/(status|policy|sites|networks)$/,
+      /^communication\/(colleagues|conversations|events)$/,
+      new RegExp(
+        `^communication/conversations/${uuid}(/members|/messages(/${uuid}/revisions)?)?$`,
+      ),
+    ],
+    POST: [
+      /^worksite\/(sites|networks|location\/(challenges|attestations))$/,
+      /^communication\/(conversations|realtime\/tickets)$/,
+      new RegExp(
+        `^communication/conversations/${uuid}/(messages|claim-ownership|messages/${uuid}/redact)$`,
+      ),
+    ],
+    PUT: [
+      /^worksite\/policy$/,
+      new RegExp(`^worksite/sites/${uuid}$`),
+      new RegExp(
+        `^communication/conversations/${uuid}/(members|read-receipt)$`,
+      ),
+    ],
+    PATCH: [
+      new RegExp(`^worksite/networks/${uuid}$`),
+      new RegExp(`^communication/conversations/${uuid}/messages/${uuid}$`),
+    ],
+  };
+  return (
+    !path.includes("%") &&
+    (routes[method] ?? []).some((pattern) => pattern.test(path))
+  );
+}
+export function validGatewayQuery(path: string, query: URLSearchParams) {
+  const allowed = new Set(["offset", "limit"]);
+  if (path === "communication/events") allowed.add("after_sequence");
+  if (new RegExp(`^communication/conversations/${uuid}/messages$`).test(path))
+    allowed.add("before_sequence");
+  return [...query.keys()].every((key) => {
+    const value = query.get(key)!;
+    const maximum = key.endsWith("sequence")
+      ? Number.MAX_SAFE_INTEGER
+      : 99_999_999;
+    return (
+      allowed.has(key) &&
+      query.getAll(key).length === 1 &&
+      /^\d{1,16}$/.test(value) &&
+      Number(value) <= maximum
+    );
+  });
 }
 export function mutationOriginAllowed(request: Request) {
   const origin = request.headers.get("origin");
@@ -198,11 +252,7 @@ export async function identityGateway(
   ].includes(path);
   if (!publicPath && !access) return error(401, "authentication_required");
   const query = new URL(request.url).searchParams;
-  if (
-    [...query.keys()].some((key) => !["offset", "limit"].includes(key)) ||
-    [...query.values()].some((value) => !/^\d{1,8}$/.test(value))
-  )
-    return error(400, "invalid_pagination");
+  if (!validGatewayQuery(path, query)) return error(400, "invalid_pagination");
   let upstream: Response;
   try {
     upstream = await fetcher(
@@ -226,6 +276,11 @@ export async function identityGateway(
           ...(access && !publicPath
             ? { Authorization: `Bearer ${access}` }
             : {}),
+          // Ticket origin must match the actual browser, never the API/BFF origin.
+          ...(path === "communication/realtime/tickets"
+            ? { Origin: request.headers.get("origin")! }
+            : {}),
+          ...signedNetworkHeaders(request, path, body),
         },
       },
     );
@@ -237,10 +292,10 @@ export async function identityGateway(
     try {
       const data = await upstream.json();
       if (
-        typeof data.detail === "string" &&
-        /^[a-z][a-z0-9_]{0,100}$/.test(data.detail)
+        typeof (data.title ?? data.detail) === "string" &&
+        /^[a-z][a-z0-9_]{0,100}$/.test(data.title ?? data.detail)
       )
-        code = data.detail;
+        code = data.title ?? data.detail;
     } catch {
       /* No upstream body is logged. */
     }

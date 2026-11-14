@@ -4,6 +4,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useStore } from "zustand";
 import { createIdentityUI, type IdentityUI } from "@/store/identity-ui";
 import {
+  createCommunicationUI,
+  type CommunicationUI,
+} from "@/store/communication-ui";
+import {
   createWorkspaceStore,
   type WorkspaceUI,
 } from "@/store/workspace-store";
@@ -11,11 +15,13 @@ import {
 const ServicesContext = createContext<null | {
   ui: ReturnType<typeof createWorkspaceStore>;
   identity: ReturnType<typeof createIdentityUI>;
+  communication: ReturnType<typeof createCommunicationUI>;
 }>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [services] = useState(() => ({
     ui: createWorkspaceStore(),
     identity: createIdentityUI(),
+    communication: createCommunicationUI(),
   }));
   const [client] = useState(
     () =>
@@ -47,4 +53,7 @@ export function useIdentityUI<T>(selector: (state: IdentityUI) => T) {
 }
 export function useWorkspaceUI<T>(selector: (state: WorkspaceUI) => T) {
   return useStore(useServices().ui, selector);
+}
+export function useCommunicationUI<T>(selector: (state: CommunicationUI) => T) {
+  return useStore(useServices().communication, selector);
 }

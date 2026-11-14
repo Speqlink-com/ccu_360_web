@@ -39,6 +39,8 @@ export default async function Page({
         "patients",
         "audit",
         "security",
+        "connect",
+        "worksite",
       ].includes(section)
     )
       notFound();

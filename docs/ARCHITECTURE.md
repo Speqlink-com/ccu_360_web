@@ -1,41 +1,40 @@
 # CCU360 web architecture
 
-CCU360 uses Next.js App Router, React, TypeScript, Tailwind CSS 4, self-hosted Inter Variable, Zustand, TanStack Query and Zod. The web foundation now includes a navigable multi-facility demonstration with AHS administration, facility administration and clinical role workspaces.
+Next.js App Router, React, TypeScript, Tailwind CSS 4, self-hosted Inter Variable, Zustand, TanStack Query and Zod form the web application. Production connects real identity, patient journeys, worksite access and communication to the FastAPI backend. Synthetic demonstrations require an explicit local demo build and are disabled in production.
 
-## Design
-
-The sign-in composition follows PL/client. Dashboard navigation and typography draw from BizLead. The supplied logo informs navy `#082B4D`, teal `#008F87` and green supporting colours. The workspace uses the full viewport width, with a collapsible desktop sidebar and mobile drawer. Dashboard body text is 15px, primary navigation and table content are 13–15px, and headings are 27–32px. Supplied PNG/WebP icons render with their original colours.
-
-## Boundaries
+## Ownership
 
 | Directory | Responsibility |
 | --- | --- |
-| `app/` | Server routes, session-aware layout, role gating, API handlers, errors/loading |
-| `features/administration/` | AHS/facility dashboards, directories, roles, units, tenant-scoped queries |
-| `features/workspace/` | Clinical overview, patient state, actions, round/handover preparation |
-| `lib/domain/` | Response/input schemas, role capability helpers and action transition invariants |
-| `lib/demo/` | Server-used synthetic accounts/control plane, initial clinical fixtures, isolated test repository |
-| `lib/server/` | Server-only demo session resolution, API guards, Origin checks, safe responses |
-| `lib/api/` | Client DTO validation, request/error handling, future same-origin API boundary |
-| `providers/` | Per-browser QueryClient, server-provided session context and UI store |
-| `store/` | Unit filter and sidebar selections only |
-| `components/` | Accessible dialogs, supplied icon registry, forms, brand and shell |
-| `scripts/` | Standalone launcher, demo HTTP checks and production smoke checks |
+| `app/` | Routes/layouts, same-origin API handler, global brand styles and collaboration styles |
+| `features/identity/` | Identity query, rotating-session integration and identity transitions |
+| `features/live/` | Live AHS/provider administration, workforce, forms, patient journeys and account security |
+| `features/worksite/` | Validated worksite contracts, shared employee access boundary and provider configuration |
+| `features/communication/` | Validated messaging contracts, scoped queries/history, realtime lifecycle, conversations and participants |
+| `lib/server/` | Authenticated gateway, HttpOnly cookie handling, approved routes, origin checks and optional signed network observations |
+| `lib/api/` | Runtime-validated HTTP transport, safe error descriptions, single-flight refresh and identity events |
+| `providers/` | Per-application QueryClient, session context and isolated UI-store instances |
+| `store/` | Transient sidebar, identity selection and communication connection/cursor/selection state; no persistence |
+| `components/` | Shared accessible dialogs, supplied PNG/WebP icon registry, forms, brand and workspace shell |
+| `lib/demo/`, `features/workspace/`, `features/administration/` | Explicit local synthetic demonstration only |
+| `scripts/`, `tests/` | Contract tests, production smoke and disposable-backend browser verification |
 
-The server resolves facility membership for every demo operation. Query keys contain facility and user identifiers. Administrative roles see organizational data/aggregates; clinical roles access patient records. Source observations remain shared across clinical, round and handover views. Draft commentary stays separate. Missing, stale, unverified and conflicting states remain visible. Action transitions validate expected versions and retain actor/time/history.
+## Data and authority
 
-See `TENANCY_AND_ACCESS.md` for the exact implemented role model, endpoint contracts, session handling and production boundary.
+TanStack Query owns server records. Keys identify both the user and selected provider. Communication history has bounded cursor pagination. Every response is validated with Zod before use. Zustand stores only transient UI/metadata state; message content, credentials and patient information never enter persisted browser storage. Identity transitions cancel requests, clear caches, notify other tabs and reload the document to discard the previous server-rendered tree.
 
-## Deployment
+Access and refresh credentials remain in server-set HttpOnly/Secure host-only cookies. Browser mutations use an origin-checked same-origin gateway; it forwards only explicitly allowed API paths/methods to a fixed approved backend. Refresh uses single-flight rotation and browser Web Locks. The gateway never forwards arbitrary caller credentials or network-proof headers. The backend remains the authority for membership, MFA, geofencing, patient coverage, participant access and audits.
 
-Production builds use Next standalone output. `npm start` copies build-matched static/public assets into the standalone directory and launches its server with a bounded graceful shutdown. The multistage Dockerfile runs under an unprivileged account. Security headers disable framing, MIME sniffing, referrer transmission and unused device capabilities.
+Worksite policies are opt-in per provider. Employee presence uses short-lived server grants and fresh browser samples; administrators remain exempt and personal internet is permitted. Protected workspaces are removed and their queries cleared when location access is lost, while account-security recovery remains available. See [WORKSITE_AND_CONNECT.md](WORKSITE_AND_CONNECT.md).
 
-`NEXT_PUBLIC_DEMO_MODE` is compiled into the application. It defaults off in production. Do not enable the demonstration for clinical deployment. A nonce-based CSP, institution identity integration, tenant-aware durable backend, transactional audit, TLS/HSTS, production CSRF/session policy and operational validation remain integration work.
+Realtime connections use a one-use origin/session-bound ticket delivered in the first socket frame, not a URL credential. One socket per active facility tab receives metadata, then invalidates HTTP resources. Recipient cursors survive reconnection in memory, with bounded processing, replay, backoff and polling fallback. Removed participants lose cached conversation data. Patient-linked access is also rechecked by periodic HTTP refresh. Read receipts do not replace clinical attestations.
 
-`npm run dev:preview` uses `.next-preview` on port 3106 and polling. Its filesystem webpack cache is disabled to limit disk usage. It can coexist with a normal development server on port 3000. `.next-preview` is ignored by Git and Docker. A compiled local-only demonstration is available with `npm run demo:build` and `npm run demo:start`, using `.next-demo` on the same port. These explicit custom builds use two workers and skip the persistent build cache. The ordinary production build keeps demo accounts disabled.
+## Presentation
 
-## Verification and remaining scope
+The supplied logo informs the navy/teal palette. Dashboards use the full viewport, with a collapsible sidebar and mobile drawer. Inter is self-hosted. Supplied PNG/WebP icon artwork retains its original colours. Message text is rendered as text rather than HTML. New facility-access and communication styles live in `app/collaboration.css`, imported after the shared brand stylesheet from the root layout.
 
-TypeScript, unit checks, production build, production smoke checks and local demo HTTP checks cover the implemented boundaries. Visual review includes AHS, facility and clinical workspaces plus mobile layouts. Runtime dependency auditing previously reported no known runtime vulnerabilities; the existing moderate development lint-tool findings are not addressed by downgrading framework tooling.
+## Delivery and verification
 
-No database migrations or FastAPI API changes are included. No external invitations, email, clinical notifications or real referrals are sent. Permanent identity, persisted tenant data, clinical validation and production deployment remain subsequent work under the backend implementation blueprint.
+Vercel publishes main at `https://ccu360.health`; the API is `https://api.ccu360.health`. Production uses standalone-compatible Next output and disables demo routes/accounts. Camera/microphone are disabled; geolocation is allowed only for the same origin. No shared server cache stores clinical records.
+
+Unit/contract tests, strict type checks, lint, production build/smoke and real-browser integration cover the implemented boundaries. Browser verification creates a uniquely named disposable local `_test` database, disables email, and removes only its owned fixture resources. Production account testing and clinical operations are separate from those synthetic checks. Backend backups, retention, monitoring and deployment controls remain the backend/operator's responsibility.
