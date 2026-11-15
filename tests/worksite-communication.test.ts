@@ -9,10 +9,49 @@ import {
 } from "../lib/server/identity-gateway";
 import { signedNetworkHeaders } from "../lib/server/network-observation";
 import { authCookieNames } from "../lib/server/auth-cookies";
-import { hasLocationAccess } from "../features/worksite/contract";
+import {
+  hasLocationAccess,
+  connectionNotice,
+  worksiteStatus,
+} from "../features/worksite/contract";
 import { safeSocketUrl } from "../features/communication/contract";
 import { createCommunicationUI } from "../store/communication-ui";
 const id = "11111111-1111-4111-8111-111111111111";
+test("unverified network information never replaces the server location decision", () => {
+  const status = worksiteStatus.parse({
+    exempt: false,
+    required: true,
+    allowed: false,
+    network: {
+      source: "unverified_gateway",
+      trusted_network: null,
+      verification: "unverified",
+      reason: "signature_mismatch",
+      support_reference: id,
+    },
+  });
+  assert.equal(hasLocationAccess(status, Date.now()), false);
+  assert.match(connectionNotice(status.network)!, /still verify your location/);
+  assert.equal(
+    hasLocationAccess(
+      {
+        ...status,
+        allowed: true,
+        expires_at: new Date(Date.now() + 30_000).toISOString(),
+      },
+      Date.now(),
+    ),
+    true,
+  );
+  assert.equal(status.network?.trusted_network, null);
+  assert.match(
+    connectionNotice({
+      source: "signed_web_gateway",
+      trusted_network: { id, name: "Synthetic WAN" },
+    })!,
+    /Synthetic WAN/,
+  );
+});
 test("feature gateway permits exact HTTP contracts and rejects method escalation", () => {
   for (const [method, path] of [
     ["GET", "worksite/status"],

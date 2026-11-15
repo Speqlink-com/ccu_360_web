@@ -17,8 +17,11 @@ import { Badge } from "@/components/ui/primitives";
 import { Dialog } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
 import { network, policy, site, type Site } from "./contract";
+import { ConnectionNotice } from "./connection-notice";
+import { useFacilityAccess } from "./access-provider";
 
 export function WorksiteSettingsPage() {
+  const access = useFacilityAccess();
   const user = useIdentity().data!;
   const scope = user.organization_id;
   const settings = useLiveQuery(scope, "worksite/policy", policy);
@@ -33,6 +36,7 @@ export function WorksiteSettingsPage() {
   const [policySaved, setPolicySaved] = useState(false);
   return (
     <>
+      <ConnectionNotice network={access.status?.network} administrator/>
       <Heading
         title="Facility access"
         detail="Keep employee work at the right place, with the freedom to use any internet connection."

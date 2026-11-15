@@ -140,6 +140,10 @@ try {
   fixture("prepare");
   console.log("Fixture ready");
   const env = JSON.parse(readFileSync(contextFile, "utf8"));
+  const networkMismatch = process.env.CCU360_TEST_NETWORK_MISMATCH === "1";
+  if (networkMismatch)
+    env.WORKSITE_PROXY_SECRET =
+      "synthetic-api-network-key-for-mismatch-regression";
   assert.match(
     new URL(env.DATABASE_URL).pathname,
     /ccu360_web_[a-f0-9]{12}_test$/,
@@ -184,6 +188,13 @@ try {
       NODE_ENV: "development",
       NEXT_PUBLIC_DEMO_MODE: "false",
       API_PROXY_TARGET: api,
+      ...(networkMismatch
+        ? {
+            VERCEL: "1",
+            WORKSITE_PROXY_SECRET:
+              "synthetic-web-network-key-deliberately-different",
+          }
+        : {}),
       CCU360_BUILD_DIR: buildDir,
       NEXT_TELEMETRY_DISABLED: "1",
       WATCHPACK_POLLING: "true",
@@ -281,183 +292,204 @@ try {
   console.log(
     "PASS provider invitation acceptance, mandatory MFA, tenant selection, employee invitation and department creation",
   );
-  const clinicalContext = await browser.newContext();
-  const clinical = await clinicalContext.newPage();
-  activePage = clinical;
-  clinical.setDefaultTimeout(30_000);
-  await signIn(clinical, base, "clinician-e2e@example.org", clinicianPassword);
-  await chooseFacility(clinical);
-  await clinical.goto(base + "/dashboard/patients");
-  const registry = panel(clinical, "Find or register a patient");
-  await registry
-    .getByRole("button", { name: "Register a new patient" })
-    .click();
-  const registration = registry.locator("form").last();
-  await registration
-    .getByLabel("Patient identifier / MRN")
-    .fill("SYNTHETIC-E2E-001");
-  await registration
-    .getByLabel("Patient name")
-    .fill("Synthetic Browser Patient");
-  await registration
-    .getByRole("button", { name: "Register patient", exact: true })
-    .click();
-  await registry
-    .getByText("Synthetic Browser Patient", { exact: true })
-    .waitFor();
-  const admission = panel(clinical, "Open a patient journey");
-  await admission
-    .getByLabel("Journey form", { exact: true })
-    .selectOption({ index: 1 });
-  await admission.getByLabel("Unit", { exact: true }).fill("ICU");
-  await admission.getByLabel("Bed (optional)", { exact: true }).fill("B01");
-  await admission
-    .getByLabel("Admission date & time (local time)")
-    .fill("2026-11-12T14:00");
-  await admission.getByLabel("Medical on-duty team", { exact: true }).check();
-  await admission
-    .getByRole("button", { name: "Open journey", exact: true })
-    .click();
-  await clinical
-    .getByRole("heading", { name: "Synthetic Browser Patient", exact: true })
-    .waitFor();
-  await clinical
-    .getByLabel(/Professional note/)
-    .fill("Synthetic browser clinical note for integration verification.");
-  await clinical
-    .getByRole("button", { name: "Save draft note", exact: true })
-    .click();
-  const note = clinical.locator("article.record-card").filter({
-    hasText: "Synthetic browser clinical note for integration verification.",
-  });
-  await note.waitFor();
-  await note.getByText("Attest this draft", { exact: true }).click();
-  await note.getByLabel("Re-enter your password").fill(clinicianPassword);
-  await note.getByRole("checkbox").check();
-  await note
-    .getByRole("button", { name: "Attest clinical note", exact: true })
-    .click();
-  await clinical
-    .locator("article.record-card")
-    .filter({ hasText: "attested" })
-    .waitFor();
-  await clinical
-    .getByRole("button", {
-      name: "I have reviewed the latest version",
-      exact: true,
-    })
-    .click();
-  await clinical.getByLabel("Documentation type").selectOption("comment");
-  await clinical
-    .getByLabel("Comment", { exact: true })
-    .fill("Synthetic professional comment with attribution.");
-  await clinical
-    .getByRole("button", { name: "Post comment", exact: true })
-    .click();
-  await clinical
-    .getByText("Synthetic professional comment with attribution.", {
-      exact: true,
-    })
-    .waitFor();
-  await clinical.getByRole("tab", { name: "Team actions" }).click();
-  const action = panel(clinical, "Create a team action");
-  await action
-    .getByLabel("Action", { exact: true })
-    .fill("Synthetic browser follow-up action");
-  await action
-    .getByLabel("Responsible team", { exact: true })
-    .selectOption({ index: 1 });
-  await action
-    .getByRole("button", { name: "Create action", exact: true })
-    .click();
-  const recordedAction = clinical
-    .locator("article.record-card")
-    .filter({ hasText: "Synthetic browser follow-up action" });
-  await recordedAction
-    .getByLabel("Next status", { exact: true })
-    .selectOption("completed");
-  await recordedAction
-    .getByLabel("Update / reason", { exact: true })
-    .fill("Synthetic action completed for verification");
-  await recordedAction
-    .getByRole("button", { name: "Record action update", exact: true })
-    .click();
-  await recordedAction.getByText("completed", { exact: true }).waitFor();
-  // Task rows can finish refetching before the encounter projection does.
-  // Review its committed version before submitting the next clinical mutation.
-  const currentCaseId = new URL(clinical.url()).pathname.split("/").at(-1)!;
-  const currentVersion = await clinical.evaluate(async (id) => {
-    const response = await fetch(`/api/v1/journey/encounters/${id}`);
-    if (!response.ok) throw new Error("Could not review the current journey");
-    return (await response.json()).encounter.version as number;
-  }, currentCaseId);
-  await clinical.getByRole("button", {name:"Refresh journey",exact:true}).click();
-  await expect(clinical.locator(".journey-version")).toContainText(`Ledger version ${currentVersion} ·`);
-  await clinical.getByRole("tab", { name: "Shared observations" }).click();
-  const observationForm = panel(clinical, "Record an observation");
-  await observationForm
-    .getByLabel("Observation name / code", { exact: true })
-    .fill("SpO2");
-  await observationForm
-    .getByLabel("Measured value", { exact: true })
-    .fill("98");
-  await observationForm
-    .getByLabel("Unit (optional)", { exact: true })
-    .fill("%");
-  await observationForm
-    .getByLabel("Acting team role", { exact: true })
-    .selectOption({ index: 1 });
-  await observationForm
-    .getByRole("button", { name: "Record observation", exact: true })
-    .click();
-  await clinical.getByText("SpO2: 98 %", { exact: true }).waitFor();
-  await clinical.getByRole("tab", { name: "Audit & evidence" }).click();
-  await clinical
-    .getByRole("button", { name: "Verify ledger integrity" })
-    .click();
-  await clinical.getByText(/Integrity verified/).waitFor();
-  await clinical.screenshot({
-    path: "/tmp/ccu360-web-clinical-desktop.png",
-    fullPage: true,
-  });
-  console.log(
-    "PASS real patient registration, assigned journey, draft note, password attestation, comment and ledger integrity",
-  );
-  await clinicalContext.clearCookies({ name: "ccu-access" });
-  const secondTab = await clinicalContext.newPage();
-  secondTab.setDefaultTimeout(30_000);
-  await Promise.all([
-    clinical.goto(base + "/dashboard"),
-    secondTab.goto(base + "/dashboard"),
-  ]);
-  await Promise.all([
-    clinical.getByRole("heading", { name: /^Welcome,/ }).waitFor(),
-    secondTab.getByRole("heading", { name: /^Welcome,/ }).waitFor(),
-  ]);
-  assert.ok(
-    (await clinicalContext.cookies()).some(
-      (cookie) => cookie.name === "ccu-access",
-    ),
-  );
-  await clinical.goto(base + "/dashboard/facilities");
-  await clinical
-    .getByRole("heading", { name: "This area requires a different role." })
-    .waitFor();
-  await clinical.getByRole("button", { name: "Sign out", exact: true }).click();
-  await clinical.getByRole("heading", { name: "Welcome back." }).waitFor();
-  await secondTab.getByRole("heading", { name: "Welcome back." }).waitFor();
-  assert.equal(
-    await clinical.evaluate(
-      () =>
-        Object.keys(localStorage).length + Object.keys(sessionStorage).length,
-    ),
-    0,
-  );
-  console.log(
-    "PASS concurrent cross-tab refresh, role boundary, cross-tab logout and no browser-storage credentials/PHI",
-  );
+  // Focused network regression keeps the separate clinical-mutation scenario optional.
+  if (!networkMismatch) {
+    const clinicalContext = await browser.newContext();
+    const clinical = await clinicalContext.newPage();
+    activePage = clinical;
+    clinical.setDefaultTimeout(30_000);
+    await signIn(
+      clinical,
+      base,
+      "clinician-e2e@example.org",
+      clinicianPassword,
+    );
+    await chooseFacility(clinical);
+    await clinical.goto(base + "/dashboard/patients");
+    const registry = panel(clinical, "Find or register a patient");
+    await registry
+      .getByRole("button", { name: "Register a new patient" })
+      .click();
+    const registration = registry.locator("form").last();
+    await registration
+      .getByLabel("Patient identifier / MRN")
+      .fill("SYNTHETIC-E2E-001");
+    await registration
+      .getByLabel("Patient name")
+      .fill("Synthetic Browser Patient");
+    await registration
+      .getByRole("button", { name: "Register patient", exact: true })
+      .click();
+    await registry
+      .getByText("Synthetic Browser Patient", { exact: true })
+      .waitFor();
+    const admission = panel(clinical, "Open a patient journey");
+    await admission
+      .getByLabel("Journey form", { exact: true })
+      .selectOption({ index: 1 });
+    await admission.getByLabel("Unit", { exact: true }).fill("ICU");
+    await admission.getByLabel("Bed (optional)", { exact: true }).fill("B01");
+    await admission
+      .getByLabel("Admission date & time (local time)")
+      .fill("2026-11-12T14:00");
+    await admission.getByLabel("Medical on-duty team", { exact: true }).check();
+    await admission
+      .getByRole("button", { name: "Open journey", exact: true })
+      .click();
+    await clinical
+      .getByRole("heading", { name: "Synthetic Browser Patient", exact: true })
+      .waitFor();
+    await clinical
+      .getByLabel(/Professional note/)
+      .fill("Synthetic browser clinical note for integration verification.");
+    await clinical
+      .getByRole("button", { name: "Save draft note", exact: true })
+      .click();
+    const note = clinical.locator("article.record-card").filter({
+      hasText: "Synthetic browser clinical note for integration verification.",
+    });
+    await note.waitFor();
+    await note.getByText("Attest this draft", { exact: true }).click();
+    await note.getByLabel("Re-enter your password").fill(clinicianPassword);
+    await note.getByRole("checkbox").check();
+    await note
+      .getByRole("button", { name: "Attest clinical note", exact: true })
+      .click();
+    await clinical
+      .locator("article.record-card")
+      .filter({ hasText: "attested" })
+      .waitFor();
+    await clinical
+      .getByRole("button", {
+        name: "I have reviewed the latest version",
+        exact: true,
+      })
+      .click();
+    await clinical.getByLabel("Documentation type").selectOption("comment");
+    await clinical
+      .getByLabel("Comment", { exact: true })
+      .fill("Synthetic professional comment with attribution.");
+    await clinical
+      .getByRole("button", { name: "Post comment", exact: true })
+      .click();
+    await clinical
+      .getByText("Synthetic professional comment with attribution.", {
+        exact: true,
+      })
+      .waitFor();
+    await clinical.getByRole("tab", { name: "Team actions" }).click();
+    const action = panel(clinical, "Create a team action");
+    await action
+      .getByLabel("Action", { exact: true })
+      .fill("Synthetic browser follow-up action");
+    await action
+      .getByLabel("Responsible team", { exact: true })
+      .selectOption({ index: 1 });
+    await action
+      .getByRole("button", { name: "Create action", exact: true })
+      .click();
+    const recordedAction = clinical
+      .locator("article.record-card")
+      .filter({ hasText: "Synthetic browser follow-up action" });
+    await recordedAction
+      .getByLabel("Next status", { exact: true })
+      .selectOption("completed");
+    await recordedAction
+      .getByLabel("Update / reason", { exact: true })
+      .fill("Synthetic action completed for verification");
+    await recordedAction
+      .getByRole("button", { name: "Record action update", exact: true })
+      .click();
+    await recordedAction.getByText("completed", { exact: true }).waitFor();
+    // Task rows can finish refetching before the encounter projection does.
+    // Review its committed version before submitting the next clinical mutation.
+    const currentCaseId = new URL(clinical.url()).pathname.split("/").at(-1)!;
+    const currentVersion = await clinical.evaluate(async (id) => {
+      const response = await fetch(`/api/v1/journey/encounters/${id}`);
+      if (!response.ok) throw new Error("Could not review the current journey");
+      return (await response.json()).encounter.version as number;
+    }, currentCaseId);
+    await clinical
+      .getByRole("button", { name: "Refresh journey", exact: true })
+      .click();
+    await expect(clinical.locator(".journey-version")).toContainText(
+      `Ledger version ${currentVersion} ·`,
+    );
+    await clinical.getByRole("tab", { name: "Shared observations" }).click();
+    const observationForm = panel(clinical, "Record an observation");
+    await observationForm
+      .getByLabel("Observation name / code", { exact: true })
+      .fill("SpO2");
+    await observationForm
+      .getByLabel("Measured value", { exact: true })
+      .fill("98");
+    await observationForm
+      .getByLabel("Unit (optional)", { exact: true })
+      .fill("%");
+    await observationForm
+      .getByLabel("Acting team role", { exact: true })
+      .selectOption({ index: 1 });
+    await observationForm
+      .getByRole("button", { name: "Record observation", exact: true })
+      .click();
+    await clinical.getByText("SpO2: 98 %", { exact: true }).waitFor();
+    await clinical.getByRole("tab", { name: "Audit & evidence" }).click();
+    await clinical
+      .getByRole("button", { name: "Verify ledger integrity" })
+      .click();
+    await clinical.getByText(/Integrity verified/).waitFor();
+    await clinical.screenshot({
+      path: "/tmp/ccu360-web-clinical-desktop.png",
+      fullPage: true,
+    });
+    console.log(
+      "PASS real patient registration, assigned journey, draft note, password attestation, comment and ledger integrity",
+    );
+    await clinicalContext.clearCookies({ name: "ccu-access" });
+    const secondTab = await clinicalContext.newPage();
+    secondTab.setDefaultTimeout(30_000);
+    await Promise.all([
+      clinical.goto(base + "/dashboard"),
+      secondTab.goto(base + "/dashboard"),
+    ]);
+    await Promise.all([
+      clinical.getByRole("heading", { name: /^Welcome,/ }).waitFor(),
+      secondTab.getByRole("heading", { name: /^Welcome,/ }).waitFor(),
+    ]);
+    assert.ok(
+      (await clinicalContext.cookies()).some(
+        (cookie) => cookie.name === "ccu-access",
+      ),
+    );
+    await clinical.goto(base + "/dashboard/facilities");
+    await clinical
+      .getByRole("heading", { name: "This area requires a different role." })
+      .waitFor();
+    await clinical
+      .getByRole("button", { name: "Sign out", exact: true })
+      .click();
+    await clinical.getByRole("heading", { name: "Welcome back." }).waitFor();
+    await secondTab.getByRole("heading", { name: "Welcome back." }).waitFor();
+    assert.equal(
+      await clinical.evaluate(
+        () =>
+          Object.keys(localStorage).length + Object.keys(sessionStorage).length,
+      ),
+      0,
+    );
+    console.log(
+      "PASS concurrent cross-tab refresh, role boundary, cross-tab logout and no browser-storage credentials/PHI",
+    );
+  }
   activePage = invited;
-  await checkWorksiteCommunication({browser, admin: invited, base, invitation: () => fixture("invitation", "employee-e2e@example.org"), password: invitedPassword});
+  await checkWorksiteCommunication({
+    browser,
+    admin: invited,
+    base,
+    invitation: () => fixture("invitation", "employee-e2e@example.org"),
+    password: invitedPassword,
+    networkMismatch,
+  });
   await owner.screenshot({
     path: "/tmp/ccu360-web-identity-desktop.png",
     fullPage: true,

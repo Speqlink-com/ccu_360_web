@@ -8,12 +8,14 @@ export async function checkWorksiteCommunication({
   base,
   invitation,
   password,
+  networkMismatch = false,
 }: {
   browser: Browser;
   admin: Page;
   base: string;
   invitation: () => string;
   password: string;
+  networkMismatch?: boolean;
 }) {
   await admin.goto(base + "/dashboard/worksite");
   await admin
@@ -27,7 +29,7 @@ export async function checkWorksiteCommunication({
   await site.getByLabel("Longitude", { exact: true }).fill("36.8");
   await site
     .getByLabel("Boundary radius (metres)", { exact: true })
-    .fill("250");
+    .fill("150");
   await site.getByRole("button", { name: "Add site", exact: true }).click();
   await expect(site).not.toBeVisible();
   await admin
@@ -68,6 +70,9 @@ export async function checkWorksiteCommunication({
   });
 
   const context = await browser.newContext({
+    ...(networkMismatch
+      ? { extraHTTPHeaders: { "x-vercel-forwarded-for": "8.8.8.8" } }
+      : {}),
     permissions: ["geolocation"],
     geolocation: { latitude: -1.264, longitude: 36.8, accuracy: 10 },
   });
@@ -122,6 +127,21 @@ export async function checkWorksiteCommunication({
     await employee
       .getByRole("heading", { name: "Be present. Stay connected." })
       .waitFor();
+    if (networkMismatch) {
+      const state = await employee.evaluate(async () =>
+        (await fetch("/api/v1/worksite/status")).json(),
+      );
+      assert.equal(state.network.reason, "signature_mismatch");
+      assert.equal(state.network.trusted_network, null);
+      assert.equal(state.required, true);
+      assert.equal(state.allowed, false);
+      await employee
+        .getByText(
+          "Connection recognition is temporarily unavailable. You can still verify your location using any internet connection.",
+          { exact: true },
+        )
+        .waitFor();
+    }
     assert.equal(
       await employee.evaluate(
         async () => (await fetch("/api/v1/communication/conversations")).status,

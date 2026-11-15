@@ -23,6 +23,9 @@ export const policy = z.object({
 });
 export const observation = z.object({
   source: z.string(),
+  verification: z.string().optional(),
+  reason: z.string().optional(),
+  support_reference: z.string().nullable().optional(),
   trusted_network: z
     .object({ id: z.string().uuid(), name: z.string() })
     .nullable(),
@@ -49,6 +52,17 @@ export const grant = z.object({
 });
 export type WorksiteStatus = z.infer<typeof worksiteStatus>;
 export type Site = z.infer<typeof site>;
+export type NetworkObservation = z.infer<typeof observation>;
+export function connectionNotice(network?: NetworkObservation) {
+  if (
+    network?.source === "unverified_gateway" ||
+    network?.verification === "unverified"
+  )
+    return "Connection recognition is temporarily unavailable. You can still verify your location using any internet connection.";
+  if (network?.trusted_network)
+    return `Registered connection: ${network.trusted_network.name}. Location verification is still required.`;
+  return null;
+}
 export function hasLocationAccess(
   status: WorksiteStatus | undefined,
   now: number,

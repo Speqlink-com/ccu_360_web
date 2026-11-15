@@ -24,6 +24,7 @@ import {
 import { Notice, stamp } from "@/features/live/shared";
 import { FacilityPicker } from "@/components/auth/facility-picker";
 import { Icon } from "@/components/ui/icon";
+import { ConnectionNotice } from "./connection-notice";
 
 type Access = {
   allowed: boolean;
@@ -267,6 +268,7 @@ export function WorksiteBoundary({ children }: { children: ReactNode }) {
           </div>
         )}
         <Notice error={access.error} />
+        <ConnectionNotice network={access.status?.network}/>
         <button
           className={buttonClasses.primary}
           disabled={access.checking || !access.foreground}
@@ -304,6 +306,7 @@ export function WorksiteBoundary({ children }: { children: ReactNode }) {
           </button>
         </aside>
       )}
+      {access.required && <ConnectionNotice network={access.status?.network}/>}
       {children}
     </>
   );
