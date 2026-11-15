@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -39,18 +40,18 @@ export function PatientPage({ id }: { id: string }) {
   const actions = query.data.actions.filter((a) => a.encounterId === id);
   return (
     <>
-      <Link className="back-link" href="/dashboard/patients">
+      <Link className="back-link mb-5.5 inline-flex items-center gap-[7px] text-[13px] text-muted" href="/dashboard/patients">
         <Icon name="left" size={15} />
         Patient list
       </Link>
-      <div className="patient-heading">
-        <span className="patient-avatar large-avatar">{patient.initials}</span>
+      <div className="patient-heading sticky top-0 z-20 mb-[23px] flex items-center gap-[17px] bg-background py-3 max-[700px]:flex-wrap max-[700px]:gap-3">
+        <span className="patient-avatar large-avatar h-[62px] w-[62px] rounded-[13px] text-xl">{patient.initials}</span>
         <div>
           <p className="eyebrow">PATIENT 360 · SYNTHETIC ENCOUNTER</p>
           <h1>{patient.name}</h1>
           <p className="muted">
             {patient.mrn} · {patient.age} years · {patient.sex}{" "}
-            <span className="identity-divider">|</span> {patient.unit} / Bed{" "}
+            <span className="identity-divider mx-2.5 text-[#c4ced4] max-[700px]:mx-1">|</span> {patient.unit} / Bed{" "}
             {patient.bed} · Day {patient.day}
           </p>
         </div>
@@ -63,7 +64,7 @@ export function PatientPage({ id }: { id: string }) {
         Patient identity and encounter stay visible throughout the workflow. All
         values here are synthetic.
       </div>
-      <div className="patient-tabs tabs">
+      <div className="patient-tabs tabs mb-5.5 gap-[26px] overflow-x-auto whitespace-nowrap border-b border-border">
         {[
           "Clinical state",
           "Actions",
@@ -95,7 +96,7 @@ export function PatientPage({ id }: { id: string }) {
         </section>
       ) : (
         <>
-          <div className="clinical-focus">
+          <div className="clinical-focus mb-5.5 flex justify-between gap-6 rounded-[10px] bg-navy p-[26px] text-white max-[1000px]:flex-col">
             <div>
               <p className="eyebrow">CURRENT DOCUMENTED FOCUS</p>
               <h2>{patient.concern}</h2>
@@ -122,10 +123,10 @@ export function PatientPage({ id }: { id: string }) {
               </div>
               <Badge>Manual entry</Badge>
             </div>
-            <div className="observation-grid">
+            <div className="observation-grid grid grid-cols-2 max-[700px]:grid-cols-1">
               {patient.observations.map((o) => (
-                <article className="observation" key={o.id}>
-                  <div className="flex-between">
+                <article className="observation border-r border-b border-border p-[25px] max-[700px]:border-r-0" key={o.id}>
+                  <div className="flex-between flex items-center justify-between gap-3">
                     <span>{o.label}</span>
                     <Badge
                       tone={
@@ -174,7 +175,7 @@ export function PatientPage({ id }: { id: string }) {
             </div>
           </section>
           {tab !== "Clinical state" && (
-            <section className="panel preparation">
+            <section className="panel preparation mt-5.5">
               <div className="panel-heading">
                 <div>
                   <h2>{tab}</h2>
@@ -182,7 +183,7 @@ export function PatientPage({ id }: { id: string }) {
                 </div>
                 <Badge tone="amber">Not finalized</Badge>
               </div>
-              <div className="preparation-body">
+              <div className="preparation-body p-5.5">
                 <h3>Outstanding actions</h3>
                 {actions
                   .filter((a) => a.status !== "completed")
@@ -210,20 +211,20 @@ export function PatientPage({ id }: { id: string }) {
                   maxLength={4000}
                   rows={5}
                 />
-                <div className="flex-between">
+                <div className="flex-between flex items-center justify-between gap-3">
                   <span className="small muted">
                     Draft stays on this screen and clears when you leave.
                   </span>
                   <button
                     disabled={!note.trim()}
-                    className="btn btn-primary btn-sm"
+                    className={buttonClasses.primarySmall}
                     onClick={() => setSaved(true)}
                   >
                     Review draft <Icon name="right" size={14} />
                   </button>
                 </div>
                 {saved && (
-                  <div className="draft-review" role="status">
+                  <div className="draft-review mt-5 rounded-[7px] border border-[#d8e9e4] bg-[#f4faf7] p-4.5" role="status">
                     <h3>Demo clinician commentary · Draft preview</h3>
                     <p>{note}</p>
                     <small>

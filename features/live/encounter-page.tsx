@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import { useState } from "react";
 import Link from "next/link";
 import { z } from "zod";
@@ -67,7 +68,7 @@ function ClinicalField({
         <strong>{field.label}</strong>
         {field.required ? " · Required" : ""}
       </label>
-      <label className="availability-label">
+      <label className="availability-label flex flex-wrap items-center gap-3 text-[13px] text-muted">
         Information availability
         <select
           name={field.key + "__status"}
@@ -198,14 +199,14 @@ function DocumentationForm({
       detail="Entries retain their original author. Notes are saved as drafts until the author attests them; comments are posted directly."
     >
       {changed && (
-        <div className="version-notice" role="alert">
+        <div className="version-notice my-4 rounded-lg border border-[#e9d7ae] bg-amber-bg p-4" role="alert">
           <p>
             This journey changed from version {version} to{" "}
             {data.encounter.version}. Review the latest records before saving
             your documentation.
           </p>
           <button
-            className="btn btn-secondary"
+            className={buttonClasses.secondary}
             onClick={() => setVersion(data.encounter.version)}
           >
             I have reviewed the latest version
@@ -349,7 +350,7 @@ function DocumentationForm({
         )}
       </ActionForm>
       {close && (
-        <button className="text-button" onClick={close}>
+        <button className="text-button border-0 bg-transparent px-0 py-2 text-left font-semibold text-teal-dark" onClick={close}>
           Cancel amendment
         </button>
       )}
@@ -376,7 +377,7 @@ function EntryCard({
       role.capabilities.includes("attest"),
   );
   return (
-    <article className="record-card">
+    <article className="record-card my-4 rounded-[10px] border border-border border-l-[3px] border-l-teal p-5">
       <header>
         <div>
           <strong>{responsibility?.section.label ?? record.section_key}</strong>
@@ -407,7 +408,7 @@ function EntryCard({
         {record.reason ? ` · Amendment: ${record.reason}` : ""}
       </small>
       {responsibility?.can_write && (mine || record.status !== "draft") && (
-        <button className="text-button" onClick={amend}>
+        <button className="text-button border-0 bg-transparent px-0 py-2 text-left font-semibold text-teal-dark" onClick={amend}>
           Create an attributed amendment
         </button>
       )}
@@ -584,28 +585,28 @@ export function EncounterPage({ id }: { id: string }) {
         actions={
           <>
             <Status value={data.encounter.status} />
-            <Link className="btn btn-secondary" href={`/dashboard/connect?encounter=${id}`}>
+            <Link className={buttonClasses.secondary} href={`/dashboard/connect?encounter=${id}`}>
               Discuss with care team
             </Link>
             <button
-              className="btn btn-secondary"
+              className={buttonClasses.secondary}
               onClick={() => detail.refetch()}
             >
               Refresh journey
             </button>
-            <Link className="btn btn-secondary" href="/dashboard/patients">
+            <Link className={buttonClasses.secondary} href="/dashboard/patients">
               Back to journeys
             </Link>
           </>
         }
       />
       <Notice error={detail.error} />
-      <div className="journey-version">
+      <div className="journey-version text-[13px] text-muted">
         Ledger version {data.encounter.version} · Form {data.template.name} v
         {data.template.version} · Times in East Africa Time
       </div>
       <div
-        className="live-tabs"
+        className="my-5 flex gap-2 overflow-x-auto border-b border-border"
         role="tablist"
         aria-label="Patient journey areas"
       >
@@ -618,6 +619,7 @@ export function EncounterPage({ id }: { id: string }) {
           <button
             role="tab"
             aria-selected={tab === key}
+            className="border-0 border-b-[3px] border-transparent bg-transparent px-[18px] py-3.5 font-semibold whitespace-nowrap text-muted aria-selected:border-teal aria-selected:text-teal-dark"
             key={key}
             onClick={() => {
               setTab(key);
@@ -630,20 +632,20 @@ export function EncounterPage({ id }: { id: string }) {
       </div>
       {tab === "documentation" && (
         <>
-          <div className="stage-pipeline">
+          <div className="mb-6 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2.5">
             {data.template.definition.stages.map((stage) => (
-              <div key={stage.key}>
-                <strong>{stage.label}</strong>
+              <div className="rounded-[10px] border border-border bg-surface p-3.5" key={stage.key}>
+                <strong className="text-[13px] text-navy">{stage.label}</strong>
                 {data.responsibilities
                   .filter((item) => item.stage === stage.key)
                   .map((item) => (
                     <button
                       key={item.section.key}
-                      className={
+                      className={`mt-2.5 block w-full rounded-md border p-2 text-left text-xs leading-[inherit] ${
                         responsibility?.section.key === item.section.key
-                          ? "selected"
-                          : ""
-                      }
+                          ? "border-teal bg-mint text-teal-dark"
+                          : "border-border bg-[#f8fafb]"
+                      }`}
                       onClick={() => {
                         setSectionKey(item.section.key);
                         setAmendment(undefined);
@@ -716,7 +718,7 @@ export function EncounterPage({ id }: { id: string }) {
           <Panel title="Team-owned actions">
             <QueryState query={tasks} />
             {tasks.data?.items.map((item) => (
-              <article className="record-card" key={item.id}>
+              <article className="record-card my-4 rounded-[10px] border border-border border-l-[3px] border-l-teal p-5" key={item.id}>
                 <header>
                   <strong>{item.title}</strong>
                   <Status value={item.status} />
@@ -827,7 +829,7 @@ export function EncounterPage({ id }: { id: string }) {
           >
             <QueryState query={observations} />
             {observations.data?.items.map((item) => (
-              <article className="record-card" key={item.id}>
+              <article className="record-card my-4 rounded-[10px] border border-border border-l-[3px] border-l-teal p-5" key={item.id}>
                 <strong>
                   {item.code}: {displayValue(item.value)} {item.unit ?? ""}
                 </strong>
@@ -957,11 +959,11 @@ export function EncounterPage({ id }: { id: string }) {
             title="Ledger integrity"
             detail="Server integrity seals preserve recorded authorship and change history; they are not independent notarization or personal qualified signatures."
           >
-            <p className="hash-value">
+            <p className="hash-value wrap-anywhere font-mono text-xs">
               Ledger head: {data.encounter.head_hash}
             </p>
             <button
-              className="btn btn-secondary"
+              className={buttonClasses.secondary}
               disabled={integrity.isPending}
               onClick={() => integrity.mutate()}
             >
@@ -1001,7 +1003,7 @@ export function EncounterPage({ id }: { id: string }) {
           <Panel title="Accountability timeline">
             <QueryState query={timeline} />
             {timeline.data?.items.map((item) => (
-              <div className="live-list-row" key={item.id}>
+              <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={item.id}>
                 <strong>
                   #{item.sequence} ·{" "}
                   {item.envelope.action.replaceAll(".", " · ")}

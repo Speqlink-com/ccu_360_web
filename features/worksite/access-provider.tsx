@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import {
   createContext,
   useCallback,
@@ -243,31 +244,31 @@ export function WorksiteBoundary({ children }: { children: ReactNode }) {
   if (pathname === "/dashboard/security") return children;
   if (!access.allowed)
     return (
-      <section className="location-gate">
-        <div className="location-illustration">
+      <section className="location-gate mx-auto my-8 max-w-[780px] rounded-[18px] border border-border bg-surface p-10 text-center max-[760px]:mx-0 max-[760px]:my-3 max-[760px]:px-5 max-[760px]:py-[26px]">
+        <div className="location-illustration mx-auto mt-0 mb-[22px] flex h-[140px] w-[170px] flex-col items-center justify-center gap-[17px] rounded-[50%_50%_20px_20px] border border-[#cce5de] bg-mint text-teal-dark">
           <Icon name="shield" size={40} />
-          <span>FACILITY ACCESS</span>
+          <span className="text-[10px] font-bold tracking-[.13em]">FACILITY ACCESS</span>
         </div>
         <p className="eyebrow">YOUR LOCATION · YOUR FACILITY</p>
-        <h1>
+        <h1 className="text-[32px] tracking-[-.04em] text-navy max-[760px]:text-[28px]">
           {access.checking
             ? "Checking facility access…"
             : "Be present. Stay connected."}
         </h1>
-        <p>
+        <p className="text-base leading-[1.8] text-muted">
           To open your facility workspace, verify that you’re inside an approved
           site. You can use mobile data, home internet or any other connection.
         </p>
         {!!access.status?.sites?.length && (
-          <div className="location-sites">
+          <div className="location-sites my-5 flex flex-wrap justify-center gap-2">
             {access.status.sites.map((site) => (
-              <span key={site.id}>{site.name}</span>
+              <span className="rounded-[30px] bg-background px-3.5 py-2 text-sm text-navy" key={site.id}>{site.name}</span>
             ))}
           </div>
         )}
         <Notice error={access.error} />
         <button
-          className="btn btn-primary"
+          className={buttonClasses.primary}
           disabled={access.checking || !access.foreground}
           onClick={access.status?.required ? access.verify : access.refresh}
         >
@@ -277,12 +278,12 @@ export function WorksiteBoundary({ children }: { children: ReactNode }) {
               ? "Verify my location"
               : "Check access again"}
         </button>
-        <p className="location-note">
+        <p className="location-note mt-6 mb-4 text-[13px]">
           Location permission is used for this access check. Employee
           coordinates are not stored. A trusted facility network does not
           replace location verification.
         </p>
-        <Link href="/dashboard/security">My account & security</Link>
+        <Link className="font-semibold text-teal-dark" href="/dashboard/security">My account & security</Link>
         {user &&
           user.memberships.filter(
             (member) =>
@@ -293,12 +294,12 @@ export function WorksiteBoundary({ children }: { children: ReactNode }) {
   return (
     <>
       {access.required && (
-        <aside className="location-banner">
+        <aside className="location-banner mb-6 flex items-center justify-between gap-3 rounded-[10px] border border-[#cde6df] bg-mint px-4.5 py-3 text-[14px] text-teal-dark">
           <span>
             <i /> Location verified{" "}
-            <small>Valid until {stamp(access.status?.expires_at)}</small>
+            <small className="ml-3 text-[#536d71] max-[760px]:mt-1.5 max-[760px]:ml-0 max-[760px]:block">Valid until {stamp(access.status?.expires_at)}</small>
           </span>
-          <button disabled={access.checking} onClick={access.verify}>
+          <button className="whitespace-nowrap border-0 bg-transparent font-semibold underline" disabled={access.checking} onClick={access.verify}>
             {access.checking ? "Updating…" : "Update location"}
           </button>
         </aside>

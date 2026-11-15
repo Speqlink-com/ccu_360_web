@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import { useState } from "react";
 import { useLiveQuery } from "@/features/identity/queries";
 import { useIdentity } from "@/features/identity/queries";
@@ -37,24 +38,24 @@ export function WorksiteSettingsPage() {
         detail="Keep employee work at the right place, with the freedom to use any internet connection."
         actions={<Badge tone="teal">Administrators have remote access</Badge>}
       />
-      <div className="access-summary">
+      <div className="access-summary mb-6 flex items-center gap-5 rounded-[14px] border border-[#cde6df] bg-mint p-6 max-[760px]:items-start max-[760px]:p-5">
         <Icon name="shield" size={30} />
         <div>
-          <h2>Location is the boundary. Internet is your choice.</h2>
-          <p>
+          <h2 className="mb-2 text-[21px] text-navy max-[760px]:text-[19px]">Location is the boundary. Internet is your choice.</h2>
+          <p className="text-[15px] leading-[1.6] text-[#48646c]">
             Employees verify their presence inside an active site. Registered
             networks provide connection context and never replace location.
           </p>
         </div>
       </div>
-      <div className="live-grid">
+      <div className="live-grid grid grid-cols-2 items-start gap-6 max-[760px]:grid-cols-1 max-[760px]:gap-0">
         <Panel
           title="Employee location policy"
           detail="Changes take effect immediately and require employees to verify again."
         >
           <QueryState query={settings} />
           {policySaved && (
-            <p className="success-message" role="status">
+            <p className="success-message rounded-lg border border-success-border bg-mint p-3 text-success-text" role="status">
               Facility access policy updated.
             </p>
           )}
@@ -86,7 +87,7 @@ export function WorksiteSettingsPage() {
                   Enabled — require location at the facility
                 </option>
               </Field>
-              <div className="live-form-grid">
+              <div className="live-form-grid grid grid-cols-2 gap-4 max-[760px]:grid-cols-1 max-[760px]:gap-0">
                 <Field
                   name="grant_seconds"
                   label="Verification validity (seconds)"
@@ -124,10 +125,10 @@ export function WorksiteSettingsPage() {
         >
           <QueryState query={sites} />
           {sites.data?.items.map((item) => (
-            <article className="worksite-item" key={item.id}>
+            <article className="worksite-item mb-[14px] flex items-start justify-between gap-[18px] border-b border-border py-5 max-[760px]:flex-wrap" key={item.id}>
               <div>
-                <strong>{item.name}</strong>
-                <p>
+                <strong className="text-base text-navy">{item.name}</strong>
+                <p className="text-sm leading-[1.6] text-muted">
                   {item.latitude.toFixed(6)}, {item.longitude.toFixed(6)} ·{" "}
                   {item.radius_meters} m radius
                 </p>
@@ -136,7 +137,7 @@ export function WorksiteSettingsPage() {
                 </Badge>
               </div>
               <button
-                className="btn btn-secondary"
+                className={buttonClasses.secondary}
                 onClick={() => setEditing(item)}
               >
                 Edit site
@@ -148,7 +149,7 @@ export function WorksiteSettingsPage() {
               Add the first facility boundary before enabling employee checks.
             </p>
           )}
-          <button className="btn btn-primary" onClick={() => setAdding(true)}>
+          <button className={buttonClasses.primary} onClick={() => setAdding(true)}>
             <Icon name="plus" /> Add facility site
           </button>
         </Panel>
@@ -158,13 +159,13 @@ export function WorksiteSettingsPage() {
         detail="Register public WAN addresses for connection records. Employees can still use personal mobile data."
       >
         <QueryState query={networks} />
-        <div className="live-grid">
+        <div className="live-grid grid grid-cols-2 items-start gap-6 max-[760px]:grid-cols-1 max-[760px]:gap-0">
           <div>
             {networks.data?.items.map((item) => (
-              <article className="worksite-item" key={item.id}>
+              <article className="worksite-item mb-[14px] flex items-start justify-between gap-[18px] border-b border-border py-5 max-[760px]:flex-wrap" key={item.id}>
                 <div>
-                  <strong>{item.name}</strong>
-                  <p>{item.cidr}</p>
+                  <strong className="text-base text-navy">{item.name}</strong>
+                  <p className="text-sm leading-[1.6] text-muted">{item.cidr}</p>
                   <Badge tone={item.active ? "teal" : "neutral"}>
                     {item.active ? "Registered" : "Inactive"}
                   </Badge>
@@ -258,7 +259,7 @@ function SiteDialog({
       {!current && (
         <>
           <button
-            className="btn btn-secondary"
+            className={buttonClasses.secondary}
             disabled={locating}
             onClick={() => {
               setLocating(true);
@@ -326,7 +327,7 @@ function SiteDialog({
           minLength={2}
           maxLength={120}
         />
-        <div className="live-form-grid">
+        <div className="live-form-grid grid grid-cols-2 gap-4 max-[760px]:grid-cols-1 max-[760px]:gap-0">
           <Field
             name="latitude"
             label="Latitude"

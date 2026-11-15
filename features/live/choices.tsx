@@ -54,7 +54,7 @@ export function ChoiceLoader({
       {query.hasNextPage && (
         <button
           type="button"
-          className="text-button"
+          className="text-button border-0 bg-transparent px-0 py-2 text-left font-semibold text-teal-dark"
           disabled={query.isFetchingNextPage}
           onClick={() => query.fetchNextPage()}
         >

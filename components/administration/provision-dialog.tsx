@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import { useState, type FormEvent } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
@@ -37,8 +38,8 @@ export function ProvisionDialog({
       onClose={onClose}
     >
       {mutation.isSuccess ? (
-        <div className="provision-result">
-          <span className="result-icon">
+        <div className="provision-result px-7 py-[26px] max-[760px]:p-[22px]">
+          <span className="result-icon grid h-[66px] w-[66px] place-items-center rounded-2xl bg-[#edf8f5]">
             <Icon name="shield" size={38} />
           </span>
           <h3>{mutation.data.user.name}</h3>
@@ -58,9 +59,9 @@ export function ProvisionDialog({
             This generated password is shown once here. Demo records reset when
             the server restarts.
           </div>
-          <div className="dialog-actions">
+          <div className="dialog-actions mt-6 flex items-center justify-end gap-3 border-t border-border pt-[25px] max-[760px]:flex-wrap max-[760px]:gap-2.5">
             <button
-              className="btn btn-secondary"
+              className={buttonClasses.secondary}
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(
@@ -74,17 +75,17 @@ export function ProvisionDialog({
             >
               {copied ? "Copied" : "Copy account details"}
             </button>
-            <button className="btn btn-primary" onClick={onClose}>
+            <button className={buttonClasses.primary} onClick={onClose}>
               Done <Icon name="actions" />
             </button>
           </div>
         </div>
       ) : (
-        <form onSubmit={submit} className="provision-form">
+        <form onSubmit={submit} className="provision-form px-7 py-[26px] max-[760px]:p-[22px]">
           {facility ? (
             <>
-              <p className="form-section-title">FACILITY DETAILS</p>
-              <div className="field-grid">
+              <p className="form-section-title mb-[18px] text-[10px] font-semibold tracking-[1.6px] text-[#658478]">FACILITY DETAILS</p>
+              <div className="field-grid grid grid-cols-2 gap-x-[22px] gap-y-[19px] max-[760px]:grid-cols-1 max-[760px]:gap-[18px]">
                 <Field
                   label="Facility name"
                   name="name"
@@ -130,8 +131,8 @@ export function ProvisionDialog({
                   required
                 />
               </div>
-              <p className="form-section-title">FIRST FACILITY ADMINISTRATOR</p>
-              <div className="field-grid">
+              <p className="form-section-title mb-[18px] text-[10px] font-semibold tracking-[1.6px] text-[#658478]">FIRST FACILITY ADMINISTRATOR</p>
+              <div className="field-grid grid grid-cols-2 gap-x-[22px] gap-y-[19px] max-[760px]:grid-cols-1 max-[760px]:gap-[18px]">
                 <Field label="Administrator name" name="adminName" required />
                 <Field
                   label="Administrator email"
@@ -143,7 +144,7 @@ export function ProvisionDialog({
             </>
           ) : (
             <>
-              <div className="field-grid">
+              <div className="field-grid grid grid-cols-2 gap-x-[22px] gap-y-[19px] max-[760px]:grid-cols-1 max-[760px]:gap-[18px]">
                 <Field
                   label="Full name"
                   name="name"
@@ -179,7 +180,7 @@ export function ProvisionDialog({
                   </select>
                 </label>
               </div>
-              <div className="role-note">
+              <div className="role-note mt-6 flex items-start gap-3 rounded-lg border border-[#e0ece6] bg-[#f0f7f4] px-[17px] py-[15px]">
                 <Icon name="shield" />
                 <p>
                   Access is limited to your facility. A facility administrator
@@ -194,15 +195,15 @@ export function ProvisionDialog({
               {mutation.error.message}
             </p>
           )}
-          <footer className="dialog-actions">
+          <footer className="dialog-actions mt-6 flex items-center justify-end gap-3 border-t border-border pt-[25px] max-[760px]:flex-wrap max-[760px]:gap-2.5">
             <button
               type="button"
-              className="btn btn-secondary"
+              className={buttonClasses.secondary}
               onClick={onClose}
             >
               Cancel
             </button>
-            <button disabled={mutation.isPending} className="btn btn-primary">
+            <button disabled={mutation.isPending} className={buttonClasses.primary}>
               {mutation.isPending
                 ? "Creating workspace access…"
                 : facility

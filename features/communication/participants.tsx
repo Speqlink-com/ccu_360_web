@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -85,10 +86,10 @@ export function ParticipantsDialog({
     >
       <QueryState query={members} />
       {members.data?.items.map((person) => (
-        <article className="participant-item" key={person.membership_id}>
-          <div>
-            <strong>{person.display_name}</strong>
-            <small>
+        <article className="participant-item flex items-center justify-between gap-4 border-b border-border py-4.5" key={person.membership_id}>
+          <div className="flex flex-col gap-[7px]">
+            <strong className="text-[15px] text-navy">{person.display_name}</strong>
+            <small className="text-xs text-muted">
               {person.role} · {person.membership_status}
             </small>
             <Badge tone={person.active ? "teal" : "neutral"}>
@@ -97,7 +98,7 @@ export function ParticipantsDialog({
           </div>
           {conversation.kind === "group" && conversation.role === "owner" && (
             <button
-              className="btn btn-secondary"
+              className={buttonClasses.secondary}
               onClick={() => setTarget(person)}
             >
               Manage
@@ -115,7 +116,7 @@ export function ParticipantsDialog({
       {conversation.kind === "group" && conversation.role === "owner" && (
         <form
           key={target?.membership_id ?? "add"}
-          className="live-form participant-form"
+          className="live-form participant-form mt-6 border-t border-border pt-6"
           onSubmit={(event) => {
             event.preventDefault();
             mutation.mutate(new FormData(event.currentTarget));
@@ -167,13 +168,13 @@ export function ParticipantsDialog({
             </Field>
             <Field name="reason" label="Reason" minLength={3} maxLength={500} />
             <Notice error={mutation.error} />
-            <button className="btn btn-primary">
+            <button className={buttonClasses.primary}>
               {mutation.isPending ? "Saving…" : "Save participant"}
             </button>
             {target && (
               <button
                 type="button"
-                className="btn btn-secondary"
+                className={buttonClasses.secondary}
                 onClick={() => setTarget(null)}
               >
                 Add someone else
@@ -183,8 +184,8 @@ export function ParticipantsDialog({
         </form>
       )}
       {conversation.kind === "group" && conversation.role !== "owner" && (
-        <details className="ownership-recovery">
-          <summary>Group owner no longer available?</summary>
+        <details className="ownership-recovery py-5 text-[14px] leading-[1.7] text-muted">
+          <summary className="cursor-pointer font-semibold text-teal-dark">Group owner no longer available?</summary>
           <p>
             An active participant can recover ownership only when no current
             owner retains access. The server checks eligibility.
@@ -203,7 +204,7 @@ export function ParticipantsDialog({
               maxLength={500}
             />
             <Notice error={claim.error} />
-            <button className="btn btn-secondary" disabled={claim.isPending}>
+            <button className={buttonClasses.secondary} disabled={claim.isPending}>
               Request ownership recovery
             </button>
           </form>

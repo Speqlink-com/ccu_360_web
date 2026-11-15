@@ -1,3 +1,4 @@
+import { buttonClasses } from "@/lib/presentation";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { WorkspacePage } from "@/features/workspace/workspace-page";
@@ -51,14 +52,14 @@ export default async function Page({
   const session = await currentDemoSession();
   if (session && !allowedSection(session.user.role, section))
     return (
-      <div className="access-denied">
+      <div className="access-denied px-5 py-[60px]">
         <p className="eyebrow">ROLE-BASED WORKSPACE</p>
         <h1>This area belongs to another role.</h1>
         <p>
           Your account has access to the workspace and responsibilities assigned
           to it.
         </p>
-        <Link href="/dashboard" className="btn btn-primary">
+        <Link href="/dashboard" className={buttonClasses.primary}>
           Back to my workspace
         </Link>
       </div>

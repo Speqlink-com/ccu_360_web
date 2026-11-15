@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses, metricClasses } from "@/lib/presentation";
 import Link from "next/link";
 import { useState } from "react";
 import { useWorkspace, useTransitionAction } from "./queries";
@@ -65,7 +66,7 @@ export function WorkspacePage({ section }: { section: Section }) {
   if (query.isError)
     return (
       <Empty title="The workspace could not be loaded.">
-        <button className="btn btn-secondary" onClick={() => query.refetch()}>
+        <button className={buttonClasses.secondary} onClick={() => query.refetch()}>
           Try again
         </button>
       </Empty>
@@ -89,20 +90,20 @@ export function WorkspacePage({ section }: { section: Section }) {
   return (
     <>
       {admitting && <AdmissionDialog onClose={() => setAdmitting(false)} />}
-      <div className="page-heading">
+      <div className="page-heading mb-[26px] flex items-center justify-between gap-5.5 max-[1000px]:items-start max-[760px]:flex-wrap max-[760px]:gap-4 max-[700px]:mb-5">
         <div>
-          <p className="eyebrow">
+          <p className="eyebrow mb-[9px]">
             {section === "overview"
               ? "CLINICAL OVERVIEW"
               : `${section.toUpperCase()} 360`}
           </p>
-          <h1>{titles[section][0]}</h1>
-          <p className="muted">{titles[section][1]}</p>
+          <h1 className="text-[31px] leading-[1.25] tracking-[-1px] max-[1000px]:text-[27px]">{titles[section][0]}</h1>
+          <p className="muted mt-[9px] text-sm leading-[1.7] max-[760px]:text-[13px]">{titles[section][1]}</p>
         </div>
         {canAdmit(session?.user.role) &&
           (section === "overview" || section === "patients") && (
             <button
-              className="btn btn-primary"
+              className={buttonClasses.primary}
               onClick={() => setAdmitting(true)}
             >
               <Icon name="plus" />
@@ -112,7 +113,7 @@ export function WorkspacePage({ section }: { section: Section }) {
       </div>
       {section === "overview" && (
         <>
-          <div className="shift-summary">
+          <div className="shift-summary mb-6 flex items-center justify-between gap-4 rounded-[9px] border border-[#d6e9e3] bg-[#edf7f3] px-5.5 py-5 max-[1000px]:flex-col max-[1000px]:items-start max-[760px]:p-4.5">
             <div>
               <span className="shift-icon">
                 <Icon name="activity" size={22} />
@@ -131,7 +132,7 @@ export function WorkspacePage({ section }: { section: Section }) {
               Open patient list <Icon name="arrow" size={16} />
             </Link>
           </div>
-          <div className="metrics">
+          <div className="metrics mb-7 grid grid-cols-4 gap-4.5 max-[1000px]:grid-cols-2 max-[760px]:mb-[23px] max-[760px]:gap-3">
             <Metric
               label="Patients in the unit"
               value={patients.length}
@@ -201,7 +202,7 @@ export function WorkspacePage({ section }: { section: Section }) {
         </section>
       )}
       {section === "overview" && (
-        <div className="overview-lower">
+        <div className="overview-lower mt-[26px] grid gap-5.5 [grid-template-columns:1.22fr_1fr] max-[1000px]:grid-cols-1">
           <section className="panel">
             <div className="panel-heading">
               <div>
@@ -301,7 +302,7 @@ export function WorkspacePage({ section }: { section: Section }) {
           <div className="consultation-grid">
             {consults.map((c) => (
               <article className="panel consultation-card" key={c.id}>
-                <div className="flex-between">
+                <div className="flex-between flex items-center justify-between gap-3">
                   <span className="service-initial">
                     {c.service.slice(0, 2)}
                   </span>
@@ -418,13 +419,13 @@ function Metric({
   amber?: boolean;
 }) {
   return (
-    <div className={`metric ${amber ? "metric-amber" : ""}`}>
-      <div>
+    <div className={metricClasses.card}>
+      <div className={metricClasses.heading}>
         <span>{label}</span>
-        <Icon name={icon} size={18} />
+        <Icon name={icon} size={18} className="text-[#729a92]" />
       </div>
-      <strong>{String(value).padStart(2, "0")}</strong>
-      <small>{detail}</small>
+      <strong className={metricClasses.value}>{String(value).padStart(2, "0")}</strong>
+      <small className={`${metricClasses.detail} ${amber ? "text-[#976b27]" : "text-[#6a7f8f]"}`}>{detail}</small>
     </div>
   );
 }
@@ -541,7 +542,7 @@ export function ActionList({
         </p>
       )}
       {mutation.isSuccess && (
-        <p className="inline-success" role="status">
+        <p className="inline-success bg-mint p-3 text-xs text-teal-dark" role="status">
           Demo action updated. Previous states remain in the history.
         </p>
       )}
@@ -597,7 +598,7 @@ export function ActionList({
             {a.status !== "completed" &&
               canWorkAction(session?.user.role, a.ownerRole) && (
                 <button
-                  className="btn btn-secondary btn-sm"
+                  className={buttonClasses.secondarySmall}
                   disabled={mutation.isPending}
                   onClick={() =>
                     mutation.mutate({

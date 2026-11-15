@@ -13,6 +13,7 @@ import { apiRequest } from "@/lib/api/client";
 import { finishSignOut } from "@/features/identity/queries";
 import { useSession } from "@/providers/session-provider";
 import { roleLabels } from "@/lib/domain/identity";
+import { FeedbackProvider } from "@/components/ui/feedback";
 import { useState } from "react";
 export function WorkspaceShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -99,7 +100,8 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     };
   }, [mobile, setMobile]);
   return (
-    <div className={`workspace ${collapsed ? "is-collapsed" : ""}`}>
+    <FeedbackProvider>
+    <div className={`workspace grid min-h-dvh w-full bg-background max-[760px]:block ${collapsed ? "is-collapsed [grid-template-columns:78px_minmax(0,1fr)] min-[1800px]:[grid-template-columns:82px_minmax(0,1fr)] max-[1250px]:[grid-template-columns:76px_minmax(0,1fr)]" : "[grid-template-columns:252px_minmax(0,1fr)] min-[1800px]:[grid-template-columns:272px_minmax(0,1fr)] max-[1250px]:[grid-template-columns:224px_minmax(0,1fr)]"}`}>
       <a className="skip-link" href="#workspace-main">
         Skip to workspace
       </a>
@@ -116,27 +118,27 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         role={mobile ? "dialog" : undefined}
         aria-modal={mobile || undefined}
         aria-label="Workspace navigation"
-        className={`sidebar ${mobile ? "sidebar-open" : ""}`}
+        className={`sidebar sticky top-0 z-40 flex h-dvh flex-col overflow-hidden border-r border-border px-4 pt-[23px] pb-3.5 max-[1000px]:px-[9px] max-[760px]:fixed max-[760px]:invisible max-[760px]:left-0 max-[760px]:w-[260px] max-[760px]:translate-x-[-100%] max-[760px]:px-4 max-[760px]:pt-[23px] max-[760px]:pb-3.5 ${platform ? "border-t-[3px] border-t-teal-dark bg-background" : "bg-white"} ${mobile ? "sidebar-open max-[760px]:visible max-[760px]:translate-x-0" : ""}`}
       >
         <Link
           href="/dashboard"
           aria-label="CCU360 unit overview"
-          className="sidebar-brand"
+          className="sidebar-brand block pl-[21px] max-[1250px]:pl-3"
         >
           <Brand />
-          <span className="collapsed-brand">360</span>
+          <span className="collapsed-brand hidden">360</span>
         </Link>
-        <div className="institution">
-          <span className="institution-mark">
+        <div className={`institution mx-0.5 mt-[22px] mb-[18px] flex items-center gap-2.5 border border-border px-2.5 py-[13px] ${platform ? "rounded-[4px] bg-surface" : "rounded-lg bg-[#f8fbfc]"}`}>
+          <span className="institution-mark grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#eaf6f3] text-teal-dark">
             <Icon name={platform ? "facilities" : "bed"} size={22} />
           </span>
-          <span className="nav-label">
-            <strong>
+          <span className="nav-label min-w-0">
+            <strong className="block text-xs leading-[1.4] font-semibold max-[1250px]:text-[11px]">
               {platform
                 ? "Ayot Health Solutions"
                 : (session?.facility?.name ?? "Your institution")}
             </strong>
-            <small>
+            <small className="mt-1 block text-[11px] text-muted">
               {platform
                 ? "Platform administration"
                 : (session?.facility?.city ?? "Critical care workspace")}
@@ -147,14 +149,14 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           {links.map((link) => (
             <div key={link.href}>
               {link.group && (
-                <p className="nav-group nav-label">{link.group}</p>
+                <p className="nav-group nav-label mx-3.5 mt-[26px] mb-2.5 text-[10px] font-semibold tracking-[1.5px] text-[#7b8e9c] [@media(max-height:850px)]:mt-[18px]">{link.group}</p>
               )}
               <Link
                 aria-label={link.title}
                 title={collapsed ? link.title : undefined}
                 href={link.href}
                 onClick={() => setMobile(false)}
-                className={`nav-link ${(link.href === "/dashboard" ? pathname === link.href : pathname.startsWith(link.href)) ? "active" : ""}`}
+                className={`nav-link my-[3px] flex min-h-12 items-center gap-3 px-3.5 py-[13px] text-sm font-medium text-[#5d7384] focus-visible:outline-2 focus-visible:outline-teal-dark max-[1000px]:gap-2 max-[1000px]:px-2.5 max-[760px]:min-h-11 ${platform ? "rounded-[4px]" : "rounded-lg"} ${(link.href === "/dashboard" ? pathname === link.href : pathname.startsWith(link.href)) ? "active bg-mint font-semibold text-teal-dark shadow-[inset_3px_0_#008f87]" : "hover:bg-[#f3f7f9] hover:text-teal-dark"}`}
                 aria-current={
                   (
                     link.href === "/dashboard"
@@ -168,26 +170,26 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                 <Icon name={link.icon} />
                 <span className="nav-label">{link.title}</span>
                 {link.icon === "connect" && (
-                  <span className="nav-pilot nav-label">PILOT</span>
+                  <span className="nav-pilot nav-label ml-auto text-[9px] tracking-[0.8px] text-teal max-[1000px]:hidden">PILOT</span>
                 )}
               </Link>
             </div>
           ))}
         </nav>
-        <div className="sidebar-bottom">
-          <div className="continuity-note nav-label">
-            <span className="mini-line" />
-            <strong>
+        <div className="sidebar-bottom mt-auto shrink-0 pt-[13px]">
+          <div className="continuity-note nav-label mx-1 mt-0 mb-4 rounded-lg border border-[#e5eeeb] bg-[#f5f9f8] px-[15px] py-[18px] [@media(max-height:850px)]:hidden">
+            <span className="mb-3 block h-[3px] w-6 bg-teal" />
+            <strong className="text-sm leading-normal font-[550]">
               {platform ? "One connected network." : "One facility. One team."}
             </strong>
-            <p>
+            <p className="mt-[7px] text-xs leading-[1.7] text-[#657c86]">
               {platform
                 ? "Independent facilities. Accountable care teams."
                 : "The right people. The right responsibility."}
             </p>
           </div>
           <button
-            className="collapse-button"
+            className="collapse-button flex w-full items-center gap-[11px] border-0 bg-white p-3 text-xs text-[#7a8792] max-[760px]:hidden"
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
@@ -197,7 +199,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           {
             <button
               type="button"
-              className="nav-link exit-link"
+              className="nav-link exit-link mt-2 mb-[3px] flex min-h-12 w-full items-center gap-3 rounded-none border-0 border-t border-border bg-white px-3.5 py-[13px] text-left text-[13px] text-[#5d7384] hover:bg-[#f3f7f9] hover:text-teal-dark max-[1000px]:gap-2 max-[1000px]:px-2.5 max-[760px]:min-h-11"
               disabled={leaving}
               onClick={signOut}
               aria-label="Sign out"
@@ -211,9 +213,9 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           {signOutError && <p role="alert">{signOutError}</p>}
         </div>
       </aside>
-      <div className="workspace-body" inert={mobile}>
-        <header className="topbar">
-          <div className="topbar-left">
+      <div className="flex min-w-0 flex-col" inert={mobile}>
+        <header className="topbar flex h-[82px] items-center justify-between gap-4 border-b border-border bg-surface px-9 max-[1250px]:px-7 max-[760px]:h-[73px] max-[760px]:px-4.5">
+          <div className="topbar-left flex items-center gap-5 max-[760px]:gap-3">
             <button
               className="icon-button mobile-menu"
               aria-label="Open navigation"
@@ -223,19 +225,20 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
             >
               <Icon name="menu" />
             </button>
-            <span className="topbar-context">
+            <span className="topbar-context text-[13px] text-[#7b8c99] max-[1250px]:hidden">
               {platform
                 ? "Platform workspace"
                 : clinical
                   ? "Clinical workspace"
                   : "Facility workspace"}
             </span>
-            <span className="topbar-separator">/</span>
+            <span className="topbar-separator text-[#c7d1d7] max-[1250px]:hidden">/</span>
             {clinical && isDemo ? (
-              <label className="unit-switcher">
+              <label className="unit-switcher flex items-center gap-[7px] text-[#5c6e80]">
                 <Icon name="bed" size={16} />
                 <span className="sr-only">Filter by unit</span>
                 <select
+                  className="max-w-[140px] border-0 bg-transparent py-1.5 pr-[34px] pl-0 text-sm text-navy"
                   value={unit}
                   onChange={(e) => setUnit(e.target.value as typeof unit)}
                 >
@@ -245,23 +248,23 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                 </select>
               </label>
             ) : (
-              <span className="workspace-context-name">
+              <span className="workspace-context-name text-sm font-[550] text-[#3a5265] max-[760px]:max-w-[175px] max-[760px]:truncate max-[760px]:text-xs">
                 {platform ? "Facility network" : session?.facility?.name}
               </span>
             )}
           </div>
-          <div className="topbar-right">
-            <span className="session-label">
-              <i />
+          <div className="topbar-right flex items-center gap-5 max-[760px]:gap-0">
+            <span className="session-label flex items-center gap-1.5 text-[11px] text-teal-dark max-[1000px]:hidden">
+              <i className="h-1.5 w-1.5 rounded-full bg-[#18a38d]" />
               {isDemo ? "Demo environment" : "Secure workspace"}
             </span>
-            <div className="profile">
-              <span className="avatar">
+            <div className="profile flex items-center gap-[11px] border-l border-border pl-6 max-[760px]:border-0 max-[760px]:pl-0">
+              <span className="avatar grid h-[42px] w-[42px] place-items-center rounded-full bg-[#eaf7f6] text-[10px] font-semibold text-navy max-[760px]:h-[37px] max-[760px]:w-[37px]">
                 <Icon name="profile" size={40} />
               </span>
               <span className="profile-copy">
-                <strong>{session?.user.name ?? "No active session"}</strong>
-                <small>
+                <strong className="block text-[13px] font-[550]">{session?.user.name ?? "No active session"}</strong>
+                <small className="mt-0.5 block text-[11px] text-[#89959e]">
                   {session
                     ? platform || session.facility
                       ? roleLabels[session.user.role]
@@ -273,18 +276,18 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         {isDemo && (
-          <div className="demo-ribbon">
+          <div className="demo-ribbon bg-[#edf5f2] px-9 py-2 text-[10px] tracking-[1px] text-[#56756f] max-[760px]:px-5 max-[760px]:py-[9px] max-[760px]:text-[9px]">
             DEMO ENVIRONMENT{" "}
-            <span>
+            <span className="ml-[9px] text-[11px] tracking-normal text-[#637f77] max-[760px]:mt-1 max-[760px]:ml-0 max-[760px]:block max-[760px]:text-[10px]">
               Synthetic records only · Facility-scoped access · Demo changes
               reset when the server restarts
             </span>
           </div>
         )}
-        <main id="workspace-main" className="workspace-main" tabIndex={-1}>
+        <main id="workspace-main" className="workspace-main px-9 pt-[34px] pb-[38px] text-[15px] outline-none min-[1800px]:px-11 min-[1800px]:py-[38px] max-[1250px]:p-7 max-[760px]:px-4.5 max-[760px]:pt-[25px] max-[760px]:pb-[30px]" tabIndex={-1}>
           {children}
         </main>
-        <footer className="workspace-footer">
+        <footer className="workspace-footer mt-auto flex justify-between gap-3 border-t border-border px-9 py-[21px] text-[11px] text-[#667786] max-[1000px]:px-7 max-[1000px]:text-[10px] max-[760px]:p-5 max-[760px]:text-[9px]">
           <span>
             CCU360™ <span>by Ayot Health Solutions</span>
           </span>
@@ -298,5 +301,6 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         </footer>
       </div>
     </div>
+    </FeedbackProvider>
   );
 }

@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import { type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog } from "@/components/ui/dialog";
@@ -26,8 +27,8 @@ export function AdmissionDialog({ onClose }: { onClose: () => void }) {
       subtitle="Create a synthetic encounter in your facility’s configured unit and bed."
       onClose={onClose}
     >
-      <form className="provision-form" onSubmit={submit}>
-        <div className="field-grid">
+      <form className="provision-form px-7 py-[26px] max-[760px]:p-[22px]" onSubmit={submit}>
+        <div className="field-grid grid grid-cols-2 gap-x-[22px] gap-y-[19px] max-[760px]:grid-cols-1 max-[760px]:gap-[18px]">
           <label>
             Patient name
             <input
@@ -72,7 +73,7 @@ export function AdmissionDialog({ onClose }: { onClose: () => void }) {
             <input name="bed" type="number" min="1" max="500" required />
           </label>
         </div>
-        <div className="role-note">
+        <div className="role-note mt-6 flex items-start gap-3 rounded-lg border border-[#e0ece6] bg-[#f0f7f4] px-[17px] py-[15px]">
           <Icon name="shield" />
           <p>
             No observations or clinical findings are inferred. A bed already
@@ -84,11 +85,11 @@ export function AdmissionDialog({ onClose }: { onClose: () => void }) {
             {mutation.error.message}
           </p>
         )}
-        <div className="dialog-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
+        <div className="dialog-actions mt-6 flex items-center justify-end gap-3 border-t border-border pt-[25px] max-[760px]:flex-wrap max-[760px]:gap-2.5">
+          <button type="button" className={buttonClasses.secondary} onClick={onClose}>
             Cancel
           </button>
-          <button className="btn btn-primary" disabled={mutation.isPending}>
+          <button className={buttonClasses.primary} disabled={mutation.isPending}>
             {mutation.isPending ? "Creating encounter…" : "Create encounter"}
             <Icon name="arrow" />
           </button>

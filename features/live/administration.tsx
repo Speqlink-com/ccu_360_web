@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import { useState } from "react";
 import { z } from "zod";
 import Link from "next/link";
@@ -38,13 +39,13 @@ export function FacilitiesPage() {
         title="Facilities"
         detail="Onboard independent providers and invite the people responsible for their administration."
       />
-      <div className="live-grid live-grid-wide">
+      <div className="live-grid live-grid-wide grid items-start gap-6 [grid-template-columns:minmax(0,1.8fr)_minmax(320px,1fr)] max-[1440px]:grid-cols-1 max-[760px]:gap-0">
         <Panel
           title="Provider network"
           detail="Facility suspension immediately revokes selected sessions and clinical access."
         >
           <QueryState query={query} />
-          <div className="live-table-wrap">
+          <div className="live-table-wrap w-full overflow-x-auto">
             <table className="live-table">
               <thead>
                 <tr>
@@ -75,6 +76,7 @@ export function FacilitiesPage() {
                             item.status === "active" ? "suspended" : "active",
                         }}
                         confirm={`${item.status === "active" ? "Suspend" : "Reactivate"} ${item.name}?`}
+                        successMessage={`${item.name} ${item.status === "active" ? "suspended" : "reactivated"}.`}
                       >
                         {item.status === "active" ? "Suspend" : "Reactivate"}
                       </ActionButton>
@@ -85,7 +87,7 @@ export function FacilitiesPage() {
             </table>
           </div>
           {query.data && !query.data.items.length && (
-            <p className="live-empty">
+            <p className="live-empty py-6 text-muted">
               No facilities yet. Onboard your first provider to start the
               network.
             </p>
@@ -151,13 +153,13 @@ export function AdministratorsPage() {
         title="AHS administrators & accounts"
         detail="Platform administrators onboard providers and govern access. Facility employees remain separate identities."
       />
-      <div className="live-grid live-grid-wide">
+      <div className="live-grid live-grid-wide grid items-start gap-6 [grid-template-columns:minmax(0,1.8fr)_minmax(320px,1fr)] max-[1440px]:grid-cols-1 max-[760px]:gap-0">
         <Panel
           title="Account directory"
           detail="The current administrator and the last administrator of any facility cannot be disabled."
         >
           <QueryState query={query} />
-          <div className="live-table-wrap">
+          <div className="live-table-wrap w-full overflow-x-auto">
             <table className="live-table">
               <thead>
                 <tr>
@@ -192,6 +194,7 @@ export function AdministratorsPage() {
                               path={`identity/ahs/invitations/${item.id}`}
                               method="DELETE"
                               confirm="Revoke this pending invitation?"
+                              successMessage="Administrator invitation revoked."
                             >
                               Revoke invitation
                             </ActionButton>
@@ -208,6 +211,7 @@ export function AdministratorsPage() {
                                     : "active",
                               }}
                               confirm="Change this person’s global account access?"
+                              successMessage={`Account ${item.status === "active" ? "disabled" : "reactivated"}.`}
                             >
                               {item.status === "active"
                                 ? "Disable"
@@ -268,15 +272,15 @@ export function EmployeesPage() {
         title="Employees"
         detail="Invite your facility’s administrators and care teams. Department assignments define which parts of a patient journey they can handle."
         actions={
-          <Link className="btn btn-secondary" href="/dashboard/workforce">
+          <Link className={buttonClasses.secondary} href="/dashboard/workforce">
             Configure care teams
           </Link>
         }
       />
-      <div className="live-grid live-grid-wide">
+      <div className="live-grid live-grid-wide grid items-start gap-6 [grid-template-columns:minmax(0,1.8fr)_minmax(320px,1fr)] max-[1440px]:grid-cols-1 max-[760px]:gap-0">
         <Panel title="Facility members">
           <QueryState query={query} />
-          <div className="live-table-wrap">
+          <div className="live-table-wrap w-full overflow-x-auto">
             <table className="live-table">
               <thead>
                 <tr>
@@ -354,7 +358,7 @@ export function EmployeesPage() {
             </table>
           </div>
           {query.data && !query.data.items.length && (
-            <p className="live-empty">
+            <p className="live-empty py-6 text-muted">
               Your team starts here. Invite an employee to give them their own
               account.
             </p>
@@ -442,7 +446,7 @@ export function AuditPage() {
       />
       <Panel title="Access history">
         <QueryState query={query} />
-        <div className="live-table-wrap">
+        <div className="live-table-wrap w-full overflow-x-auto">
           <table className="live-table">
             <thead>
               <tr>
@@ -481,7 +485,7 @@ export function AuditPage() {
         >
           <QueryState query={delivery} />
           {delivery.data?.items.map((item) => (
-            <div className="live-list-row" key={item.id}>
+            <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={item.id}>
               <span>
                 {stamp(item.created_at)} · {item.attempts} attempts
               </span>

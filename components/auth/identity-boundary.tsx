@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import { useEffect, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useIdentity } from "@/features/identity/queries";
@@ -99,17 +100,17 @@ export function IdentityBoundary({ children }: { children: ReactNode }) {
   }, [query.error, client]);
   if (query.isPending)
     return (
-      <div className="identity-loading" role="status">
+      <div className="identity-loading flex min-h-[80vh] flex-col items-center justify-center gap-6 p-6 text-center" role="status">
         <Brand />
         <h1>Opening your secure workspace…</h1>
       </div>
     );
   if (!query.data)
     return (
-      <div className="identity-loading">
+      <div className="identity-loading flex min-h-[80vh] flex-col items-center justify-center gap-6 p-6 text-center">
         <h1>We couldn’t verify your session.</h1>
         <p role="alert">{query.error?.message}</p>
-        <button className="btn btn-primary" onClick={() => query.refetch()}>
+        <button className={buttonClasses.primary} onClick={() => query.refetch()}>
           Try again
         </button>
         <Link href="/">Back to sign in</Link>

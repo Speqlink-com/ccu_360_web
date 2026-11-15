@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import Link from "next/link";
@@ -32,7 +33,7 @@ export function FacilityPicker({ user }: { user: IdentitySession }) {
     (item) => item.status === "active" && item.provider_status === "active",
   );
   return (
-    <div className="facility-picker">
+    <div className="facility-picker mx-auto my-6 flex max-w-[640px] flex-col gap-4.5 rounded-[14px] border border-border bg-surface p-8 max-[760px]:p-6">
       <h1>Choose your facility</h1>
       <p>Each facility has an independent workspace and access policy.</p>
       <label htmlFor="facility-select">Facility</label>
@@ -59,7 +60,7 @@ export function FacilityPicker({ user }: { user: IdentitySession }) {
         </p>
       )}
       <button
-        className="btn btn-primary"
+        className={buttonClasses.primary}
         disabled={!selected || mutation.isPending}
         onClick={() => selected && mutation.mutate(selected)}
       >

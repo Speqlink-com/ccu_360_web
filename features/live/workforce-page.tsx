@@ -96,11 +96,11 @@ export function WorkforcePage() {
         title="Departments & care teams"
         detail="Responsibility belongs to a team role. Named employees work through dated assignments, so shifts and staff changes retain a clear audit trail."
       />
-      <div className="live-grid">
+      <div className="live-grid grid grid-cols-2 items-start gap-6 max-[760px]:grid-cols-1 max-[760px]:gap-0">
         <Panel title="Departments">
           <QueryState query={departments} />
           {departments.data?.items.map((item) => (
-            <div className="live-list-row" key={item.id}>
+            <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={item.id}>
               <div>
                 <strong>{item.name}</strong>
                 <small>
@@ -242,7 +242,7 @@ export function WorkforcePage() {
       <Panel title="Shared team roles">
         <QueryState query={roles} />
         {roles.data?.items.map((role) => (
-          <div className="live-list-row" key={role.id}>
+          <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={role.id}>
             <div>
               <strong>{role.name}</strong>
               <p>
@@ -289,7 +289,7 @@ export function WorkforcePage() {
           change={setRoleOffset}
         />
       </Panel>
-      <div className="live-grid">
+      <div className="live-grid grid grid-cols-2 items-start gap-6 max-[760px]:grid-cols-1 max-[760px]:gap-0">
         <Panel
           title="Assign an employee"
           detail="Use local date/time; timestamps are stored with a time zone. Leave the end blank for an ongoing assignment."
@@ -344,7 +344,7 @@ export function WorkforcePage() {
         <Panel title="Dated assignments">
           <QueryState query={assignments} />
           {assignments.data?.items.map((item) => (
-            <div className="live-list-row" key={item.id}>
+            <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={item.id}>
               <div>
                 <strong>
                   {allPeople.find((person) => person.id === item.membership_id)
@@ -398,7 +398,7 @@ export function WorkforcePage() {
       >
         <QueryState query={staff} />
         {staff.data?.items.map((item) => (
-          <div className="live-list-row" key={item.membership_id}>
+          <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={item.membership_id}>
             <div>
               <strong>{item.display_name}</strong>
               <small>{item.email}</small>

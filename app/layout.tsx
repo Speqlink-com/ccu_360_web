@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   },
   description: "A shared clinical workspace for critical-care teams.",
   robots: { index: false, follow: false },
-  icons: { icon: "/ccu360-logo.png" },
+  icons: { icon: "/logo/logo.png" },
 };
 export default function RootLayout({
   children,

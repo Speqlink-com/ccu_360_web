@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import { useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -64,7 +65,7 @@ export function ConnectPage() {
         detail="A shared conversation. A clearer next step. Stay connected with the people in your facility."
         actions={
           <div
-            className={`connection-indicator connection-${connection}`}
+            className={`connection-indicator whitespace-nowrap rounded-[24px] border border-border bg-surface px-3.5 py-2.5 text-[13px] text-muted connection-${connection}`}
             role="status"
           >
             <i />
@@ -73,37 +74,38 @@ export function ConnectPage() {
         }
       />
       {encounter.success && (
-        <div className="context-banner">
+        <div className="context-banner mb-5 flex items-center justify-between gap-5 rounded-[10px] bg-mint px-5 py-4 text-sm max-[760px]:flex-col max-[760px]:items-start">
           <span>
             Starting from a patient journey. Every invited colleague must have
             current access to that journey.
           </span>
           <button
-            className="btn btn-secondary"
+            className={buttonClasses.secondary}
             onClick={() => setCreating(true)}
           >
             Start linked discussion
           </button>
         </div>
       )}
-      <div className={`connect-workspace ${selected ? "has-thread" : ""}`}>
-        <section className="connect-inbox" aria-label="Conversation inbox">
-          <header>
+      <div className={`connect-workspace grid min-h-[650px] overflow-hidden rounded-2xl border border-[#dce5e8] bg-surface shadow-[0_5px_24px_#06234c05] [grid-template-columns:340px_minmax(0,1fr)] [height:min(800px,calc(100dvh-230px))] max-[1100px]:[grid-template-columns:290px_minmax(0,1fr)] max-[760px]:block max-[760px]:min-h-[610px] max-[760px]:[height:calc(100dvh-180px)] ${selected ? "has-thread" : ""}`}>
+        <section className="connect-inbox flex min-h-0 flex-col border-r border-border max-[760px]:h-full max-[760px]:border-r-0" aria-label="Conversation inbox">
+          <header className="flex items-center justify-between px-5.5 pt-[26px] pb-3">
             <div>
-              <p className="eyebrow">YOUR FACILITY</p>
-              <h2>Conversations</h2>
+              <p className="eyebrow text-[10px]">YOUR FACILITY</p>
+              <h2 className="my-1.5 text-[22px] tracking-[-.03em] text-navy">Conversations</h2>
             </div>
             <button
-              className="connect-new"
+              className="connect-new grid h-10 w-10 place-items-center rounded-[11px] border border-[#b6dcd4] bg-mint text-teal-dark"
               aria-label="New conversation"
               onClick={() => setCreating(true)}
             >
               <Icon name="plus" size={23} />
             </button>
           </header>
-          <label className="connect-search">
+          <label className="connect-search mx-5 mt-3 mb-[18px] flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-[10px] text-muted focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-teal">
             <Icon name="search" />
             <input
+              className="w-full min-w-0 border-0 bg-transparent text-[13px] outline-none"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Filter conversation titles"
@@ -111,7 +113,7 @@ export function ConnectPage() {
             />
           </label>
           <QueryState query={inbox} />
-          <div className="conversation-list">
+          <div className="conversation-list flex-1 overflow-y-auto">
             {rows?.map((item) => (
               <ConversationRow
                 key={item.id}
@@ -140,7 +142,7 @@ export function ConnectPage() {
               change={setOffset}
             />
           )}
-          <footer>
+          <footer className="flex items-center gap-2 border-t border-border px-5.5 py-4.5 text-xs text-muted">
             <Icon name="shield" size={16} />
             <span>Private to invited participants</span>
           </footer>
@@ -152,23 +154,23 @@ export function ConnectPage() {
             back={() => select(null)}
           />
         ) : (
-          <section className="conversation-placeholder">
-            <div className="connect-emblem">
-              <Icon name="connect" size={48} />
+          <section className="conversation-placeholder flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_center,#eef8f5_0%,#fff_65%)] p-10 text-center">
+            <div className="connect-emblem mb-7 grid h-[115px] w-[115px] -rotate-5 place-items-center rounded-[32px] border border-[#d0e4df] bg-surface text-teal">
+              <Icon name="connect" size={48} className="rotate-[5deg]" />
             </div>
-            <p className="eyebrow">CONNECTED PEOPLE. COORDINATED CARE.</p>
-            <h2>Make room for a conversation.</h2>
-            <p>
+            <p className="eyebrow text-[10px] tracking-[.15em]">CONNECTED PEOPLE. COORDINATED CARE.</p>
+            <h2 className="my-4.5 max-w-[440px] text-[30px] leading-[1.2] tracking-[-.04em] text-navy">Make room for a conversation.</h2>
+            <p className="mb-6 max-w-[420px] text-base leading-[1.7] text-muted">
               Reach a colleague, coordinate your department, or start a
               discussion around a patient journey.
             </p>
             <button
-              className="btn btn-primary"
+              className={buttonClasses.primary}
               onClick={() => setCreating(true)}
             >
               Start a conversation <Icon name="arrow" />
             </button>
-            <small>
+            <small className="mt-7 max-w-[380px] leading-[1.8] text-muted">
               Read receipts show a message was viewed. Clinical sign-offs stay
               in the patient journey.
             </small>
@@ -222,27 +224,27 @@ function ConversationRow({
       "Direct conversation");
   return (
     <button
-      className={`conversation-row ${active ? "selected" : ""}`}
+      className={`conversation-row flex w-full items-center gap-3 border-0 border-b border-b-[#eef2f3] border-l-[3px] p-5 text-left ${active ? "selected border-l-teal bg-mint" : "border-l-transparent bg-surface hover:bg-[#f4f9f8]"}`}
       onClick={open}
       aria-current={active ? "true" : undefined}
     >
-      <span className={`conversation-avatar ${item.kind}`}>
+      <span className={`conversation-avatar grid h-[46px] w-[46px] shrink-0 place-items-center rounded-[14px] ${item.kind === "group" ? "group bg-[#e6f4ee] text-teal-dark" : "direct bg-[#edf2f7] text-navy"}`}>
         <Icon name={item.kind === "group" ? "connect" : "profile"} size={24} />
       </span>
-      <span className="conversation-summary">
-        <strong>{label}</strong>
-        <span>
+      <span className="conversation-summary flex min-w-0 flex-1 flex-col gap-[6px]">
+        <strong className="truncate text-[15px] text-navy">{label}</strong>
+        <span className="text-xs text-muted">
           {item.encounter_id
             ? "Patient journey discussion"
             : item.kind === "group"
               ? "Facility group"
               : "Private conversation"}
         </span>
-        <small>{stamp(item.updated_at)}</small>
+        <small className="text-[11px] text-[#7d8b97]">{stamp(item.updated_at)}</small>
       </span>
       {!!item.unread_count && (
         <span
-          className="unread-count"
+          className="unread-count grid h-[22px] min-w-[22px] place-items-center rounded-[20px] bg-teal px-[5px] text-[11px] font-bold text-white"
           aria-label={`${item.unread_count} unread messages`}
         >
           {item.unread_count > 99 ? "99+" : item.unread_count}
@@ -312,11 +314,12 @@ function NewConversation({
       >
         <fieldset disabled={mutation.isPending}>
           <div
-            className="connect-kind"
+            className="connect-kind mb-5.5 flex gap-2"
             role="group"
             aria-label="Conversation type"
           >
             <button
+              className="flex-1 rounded-lg border border-border bg-white p-3 text-[13px] font-semibold text-muted aria-pressed:border-teal aria-pressed:bg-mint aria-pressed:text-teal-dark"
               type="button"
               aria-pressed={kind === "direct"}
               onClick={() => {
@@ -327,6 +330,7 @@ function NewConversation({
               Direct conversation
             </button>
             <button
+              className="flex-1 rounded-lg border border-border bg-white p-3 text-[13px] font-semibold text-muted aria-pressed:border-teal aria-pressed:bg-mint aria-pressed:text-teal-dark"
               type="button"
               aria-pressed={kind === "group"}
               onClick={() => {
@@ -345,9 +349,10 @@ function NewConversation({
               maxLength={160}
             />
           )}
-          <div className="chosen-people">
+          <div className="chosen-people my-3 flex flex-wrap gap-2">
             {Object.entries(selected).map(([id, name]) => (
               <button
+                className="rounded-[22px] border border-[#cde6df] bg-mint px-3 py-2 text-xs text-teal-dark"
                 type="button"
                 key={id}
                 onClick={() =>
@@ -369,7 +374,7 @@ function NewConversation({
             onChange={(event) => setFilter(event.target.value)}
           />
           <QueryState query={colleagues} />
-          <div className="colleague-options">
+          <div className="colleague-options my-3.5 max-h-[280px] overflow-y-auto rounded-[10px] border border-border">
             {colleagues.data?.items
               .filter(
                 (person) =>
@@ -379,7 +384,7 @@ function NewConversation({
                     .includes(filter.toLowerCase()),
               )
               .map((person) => (
-                <label key={person.membership_id}>
+                <label className="flex cursor-pointer items-center gap-3.5 border-b border-border p-[15px]" key={person.membership_id}>
                   <input
                     type={kind === "direct" ? "radio" : "checkbox"}
                     name="colleague"
@@ -406,9 +411,9 @@ function NewConversation({
                       )
                     }
                   />
-                  <span>
-                    <strong>{person.display_name}</strong>
-                    <small>
+                  <span className="flex min-w-0 flex-col gap-[5px]">
+                    <strong className="text-sm text-navy">{person.display_name}</strong>
+                    <small className="wrap-anywhere text-xs text-muted">
                       {memberRole.safeParse(person.profession).success
                         ? memberLabels[
                             person.profession as keyof typeof memberLabels
@@ -430,7 +435,7 @@ function NewConversation({
           )}
           <Notice error={mutation.error} />
           <button
-            className="btn btn-primary"
+            className={buttonClasses.primary}
             type="submit"
             disabled={!chosen || (kind === "direct" && chosen !== 1)}
           >

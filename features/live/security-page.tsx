@@ -42,7 +42,7 @@ export function SecurityPage() {
         title="My account & security"
         detail="Manage your identity, password and signed-in devices. Times shown in East Africa Time."
       />
-      <div className="live-grid">
+      <div className="live-grid grid grid-cols-2 items-start gap-6 max-[760px]:grid-cols-1 max-[760px]:gap-0">
         <Panel title="Profile" detail={user.email}>
           <ActionForm
             scope={user.id}
@@ -120,7 +120,7 @@ export function SecurityPage() {
       >
         <QueryState query={sessions} />
         {sessions.data?.items.map((session) => (
-          <div className="live-list-row" key={session.id}>
+          <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={session.id}>
             <div>
               <strong>
                 {session.device_name}

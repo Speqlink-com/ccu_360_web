@@ -5,7 +5,14 @@ import Link from "next/link";
 import Image from "next/image";
 import QRCode from "qrcode";
 import { z } from "zod";
-import { Brand } from "@/components/ui/brand";
+import {
+  IndexEditorial,
+  IndexEntryHeader,
+  indexAuthSubmitClasses,
+  indexFooterClasses,
+  indexFormSideClasses,
+  indexLayoutClasses,
+} from "@/components/auth/index-presentation";
 import {
   apiRequest,
   notifyIdentityChange,
@@ -156,43 +163,17 @@ export function LiveSignIn({
                 ? "Keep your recovery codes."
                 : "Welcome back.";
   return (
-    <main className="auth-layout">
-      <section className="auth-story">
-        <Brand large />
-        <div className="auth-copy">
-          <p className="eyebrow">CRITICAL CARE, CONNECTED</p>
-          <h1>
-            One patient.
-            <br />
-            One shared view.
-            <br />
-            <span>A connected team.</span>
-          </h1>
-          <p>
-            Secure access for every facility, every department, and every team
-            along the patient journey.
-          </p>
-          <div className="journey">
-            <span>Know the patient</span>
-            <i />
-            <span>Coordinate the team</span>
-            <i />
-            <span>Close the loop</span>
-          </div>
-        </div>
-        <div className="auth-footer">
-          <span>Developed by Ayot Health Solutions</span>
-          <span>CCU360™</span>
-        </div>
-      </section>
-      <section className="auth-form-side">
-        <div className="auth-form">
+    <main className={indexLayoutClasses}>
+      <IndexEditorial />
+      <section className={indexFormSideClasses}>
+        <IndexEntryHeader />
+        <div className="auth-form w-full max-w-[380px] self-center justify-self-center py-8">
           <p className="eyebrow">YOUR SECURE WORKSPACE</p>
           <h2>{title}</h2>
           {complete ? (
             <>
-              <p role="status">{complete}</p>
-              <Link className="btn btn-primary" href="/">
+              <p className="mt-4 text-sm leading-6 text-muted" role="status">{complete}</p>
+              <Link className={indexAuthSubmitClasses} href="/">
                 Return to sign in
               </Link>
             </>
@@ -202,7 +183,7 @@ export function LiveSignIn({
                 Save these codes in your password manager. Each code works once
                 if you lose access to your authenticator.
               </p>
-              <div className="recovery-codes">
+              <div className="recovery-codes grid grid-cols-1 gap-2 wrap-anywhere rounded-[3px] border border-border bg-[#f4f8f9] p-3.5 text-xs">
                 {codes.map((code) => (
                   <code key={code}>{code}</code>
                 ))}
@@ -216,7 +197,7 @@ export function LiveSignIn({
                 I have saved my recovery codes.
               </label>
               <button
-                className="btn btn-primary"
+                className={indexAuthSubmitClasses}
                 disabled={!codesSaved}
                 onClick={() => {
                   setCodes([]);
@@ -245,7 +226,7 @@ export function LiveSignIn({
               </p>
               {step === "enroll" && !factor && (
                 <button
-                  className="btn btn-primary"
+                  className={indexAuthSubmitClasses}
                   disabled={enrollment.isPending}
                   onClick={() => enrollment.mutate()}
                 >
@@ -253,7 +234,7 @@ export function LiveSignIn({
                 </button>
               )}
               {factor && (
-                <div className="factor-setup">
+                <div className="factor-setup my-5 text-center">
                   <Image
                     unoptimized
                     src={factor.image}
@@ -262,7 +243,7 @@ export function LiveSignIn({
                     height={224}
                   />
                   <p>Or enter this setup key manually:</p>
-                  <code className="setup-key">{factor.secret}</code>
+                  <code className="setup-key block select-all wrap-anywhere rounded-[3px] bg-[#f1f6f7] p-3 text-base tracking-[.08em]">{factor.secret}</code>
                 </div>
               )}
               {(step !== "enroll" || factor) && (
@@ -285,14 +266,14 @@ export function LiveSignIn({
                       )}
                       {purpose !== "forgot" && (
                         <>
-                          <div className="label-row">
+                          <div className="label-row mt-[22px] flex justify-between">
                             <label htmlFor="password">
                               {purpose === "login"
                                 ? "Password"
                                 : "Password (12–128 characters)"}
                             </label>
                             <button
-                              className="text-button"
+                              className="text-button border-0 bg-transparent px-0 py-2 text-left font-semibold text-teal-dark"
                               type="button"
                               onClick={() => setVisible(!visible)}
                             >
@@ -349,12 +330,12 @@ export function LiveSignIn({
                     </>
                   )}
                   {error && (
-                    <p className="inline-error" role="alert">
+                    <p className="inline-error rounded-[3px] border border-[#edd3d6] bg-[#fff0f1] p-3 text-xs text-red" role="alert">
                       {error.message}
                     </p>
                   )}
                   <button
-                    className="btn btn-primary auth-submit"
+                    className={indexAuthSubmitClasses}
                     disabled={mutation.isPending}
                   >
                     {mutation.isPending
@@ -374,11 +355,11 @@ export function LiveSignIn({
                 </form>
               )}
               {step === "enroll" && !factor && error && (
-                <p className="inline-error" role="alert">
+                <p className="inline-error rounded-[3px] border border-[#edd3d6] bg-[#fff0f1] p-3 text-xs text-red" role="alert">
                   {error.message}
                 </p>
               )}
-              <div className="auth-links">
+              <div className="auth-links my-5 font-semibold text-teal-dark">
                 {purpose === "login" && step === "authenticated" ? (
                   <Link href="/auth/forgot-password">
                     Forgot your password?
@@ -387,14 +368,14 @@ export function LiveSignIn({
                   <Link href="/">Back to sign in</Link>
                 )}
               </div>
-              <p className="auth-trust">
+              <p className="auth-trust mt-6 flex gap-3 text-xs leading-[1.8] text-muted">
                 Access is invitation only. Contact your facility administrator
                 if you need an account.
               </p>
             </>
           )}
         </div>
-        <p className="auth-bottom">
+        <p className={indexFooterClasses}>
           One patient state. Every critical-care workflow.
         </p>
       </section>

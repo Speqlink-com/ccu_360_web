@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -78,7 +79,7 @@ export function PatientsPage() {
       {!reception && (
         <Panel title="My team’s journeys">
           <QueryState query={query} />
-          <div className="live-table-wrap">
+          <div className="live-table-wrap w-full overflow-x-auto">
             <table className="live-table">
               <thead>
                 <tr>
@@ -107,7 +108,7 @@ export function PatientsPage() {
                     </td>
                     <td>
                       <Link
-                        className="btn btn-secondary"
+                        className={buttonClasses.secondary}
                         href={`/dashboard/patients/${item.id}`}
                       >
                         Open journey
@@ -119,7 +120,7 @@ export function PatientsPage() {
             </table>
           </div>
           {query.data && !query.data.items.length && (
-            <p className="live-empty">
+            <p className="live-empty py-6 text-muted">
               No journeys are assigned to your current care teams. Ask your
               facility administrator to confirm your assignment and coverage.
             </p>
@@ -132,7 +133,7 @@ export function PatientsPage() {
         </Panel>
       )}
       {!auditor && (
-        <div className="live-grid">
+        <div className="live-grid grid grid-cols-2 items-start gap-6 max-[760px]:grid-cols-1 max-[760px]:gap-0">
           <Panel
             title="Find or register a patient"
             detail="Use the exact facility patient identifier. Searches stay out of browser URLs."
@@ -152,7 +153,7 @@ export function PatientsPage() {
                 label="Patient identifier / MRN"
                 maxLength={100}
               />
-              <button className="btn btn-secondary" disabled={search.isPending}>
+              <button className={buttonClasses.secondary} disabled={search.isPending}>
                 {search.isPending ? "Searching…" : "Find patient"}
               </button>
             </form>
@@ -163,7 +164,7 @@ export function PatientsPage() {
               </p>
             )}
             {selected && (
-              <div className="patient-selection">
+              <div className="patient-selection my-5 rounded-[10px] border border-success-border bg-mint p-4">
                 <strong>{selected.display_name}</strong>
                 <p>
                   {selected.identifier} ·{" "}
@@ -203,7 +204,7 @@ export function PatientsPage() {
             )}
             <button
               type="button"
-              className="text-button"
+              className="text-button border-0 bg-transparent px-0 py-2 text-left font-semibold text-teal-dark"
               onClick={() => setRegister(!register)}
             >
               {register ? "Close registration" : "Register a new patient"}
@@ -249,7 +250,7 @@ export function PatientsPage() {
                       ))}
                   </Field>
                   <ChoiceLoader query={templates} />
-                  <div className="live-form-grid">
+                  <div className="live-form-grid grid grid-cols-2 gap-4 max-[760px]:grid-cols-1 max-[760px]:gap-0">
                     <Field name="unit" label="Unit" maxLength={100} />
                     <Field
                       name="bed"
@@ -285,7 +286,7 @@ export function PatientsPage() {
                   <ChoiceLoader query={roles} />
                 </ActionForm>
               ) : (
-                <p className="live-empty">
+                <p className="live-empty py-6 text-muted">
                   Find or register the patient first.
                 </p>
               )}

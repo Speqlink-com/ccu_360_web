@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -88,7 +89,7 @@ export function TemplatesPage() {
         title="Journey forms & branding"
         detail="Customize your facility’s document identity and professional sections while retaining the shared nine-stage journey. Published versions remain fixed for existing patient records."
       />
-      <div className="live-grid">
+      <div className="live-grid grid grid-cols-2 items-start gap-6 max-[760px]:grid-cols-1 max-[760px]:gap-0">
         <Panel
           title="Document branding"
           detail="Each change creates a new brand version."
@@ -107,7 +108,7 @@ export function TemplatesPage() {
           </label>
           {upload.isPending && <p role="status">Uploading logo…</p>}
           {logo && (
-            <p className="success-message" role="status">
+            <p className="success-message rounded-lg border border-success-border bg-mint p-3 text-success-text" role="status">
               Logo uploaded. Save the brand to attach it.
             </p>
           )}
@@ -134,7 +135,7 @@ export function TemplatesPage() {
               }
               minLength={2}
             />
-            <div className="live-form-grid">
+            <div className="live-form-grid grid grid-cols-2 gap-4 max-[760px]:grid-cols-1 max-[760px]:gap-0">
               <Field
                 name="primary_color"
                 label="Primary colour"
@@ -156,7 +157,7 @@ export function TemplatesPage() {
         >
           <QueryState query={base} />
           <button
-            className="btn btn-primary"
+            className={buttonClasses.primary}
             disabled={!base.data || !!draft}
             onClick={() => base.data && setDraft(structuredClone(base.data))}
           >
@@ -185,7 +186,7 @@ export function TemplatesPage() {
             }}
           >
             <fieldset disabled={save.isPending}>
-              <div className="live-form-grid">
+              <div className="live-form-grid grid grid-cols-2 gap-4 max-[760px]:grid-cols-1 max-[760px]:gap-0">
                 <Field
                   name="name"
                   label="Form name"
@@ -238,10 +239,10 @@ export function TemplatesPage() {
                 </select>
               </label>
               {draft.stages.map((stage, stageIndex) => (
-                <details className="stage-editor" key={stage.key}>
+                <details className="stage-editor my-3 rounded-[10px] border border-border px-4" key={stage.key}>
                   <summary>{stage.label}</summary>
                   {stage.sections.map((section, sectionIndex) => (
-                    <section key={section.key} className="section-editor">
+                    <section key={section.key} className="section-editor border-t border-border py-4">
                       <label className="check-label">
                         <input
                           type="checkbox"
@@ -287,9 +288,9 @@ export function TemplatesPage() {
                                 ))}
                             </select>
                           </label>
-                          <div className="field-inventory">
+                          <div className="field-inventory my-3 grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-3">
                             {section.fields.map((field, fieldIndex) => (
-                              <div key={fieldIndex} className="custom-field">
+                              <div key={fieldIndex} className="custom-field flex flex-col gap-3 rounded-lg border border-border p-3">
                                 <label>
                                   Field label
                                   <input
@@ -389,7 +390,7 @@ export function TemplatesPage() {
                                       Required
                                     </label>
                                     <button
-                                      className="text-button"
+                                      className="text-button border-0 bg-transparent px-0 py-2 text-left font-semibold text-teal-dark"
                                       type="button"
                                       onClick={() =>
                                         update((next) => {
@@ -414,7 +415,7 @@ export function TemplatesPage() {
                           </div>
                           <button
                             type="button"
-                            className="btn btn-secondary"
+                            className={buttonClasses.secondary}
                             disabled={section.fields.length >= 30}
                             onClick={() =>
                               update((next) => {
@@ -439,13 +440,13 @@ export function TemplatesPage() {
                 </details>
               ))}
               <Notice error={save.error} />
-              <div className="live-heading-actions">
-                <button className="btn btn-primary" disabled={save.isPending}>
+              <div className="flex flex-wrap items-center gap-[10px]">
+                <button className={buttonClasses.primary} disabled={save.isPending}>
                   {save.isPending ? "Saving…" : "Save draft version"}
                 </button>
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className={buttonClasses.secondary}
                   onClick={() => {
                     if (window.confirm("Discard this unsaved form?"))
                       setDraft(null);
@@ -461,7 +462,7 @@ export function TemplatesPage() {
       <Panel title="Form versions">
         <QueryState query={templates} />
         {templates.data?.items.map((item) => (
-          <div className="live-list-row" key={item.id}>
+          <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={item.id}>
             <div>
               <strong>
                 {item.name} · v{item.version}
@@ -479,7 +480,7 @@ export function TemplatesPage() {
             </div>
             <Status value={item.status} />
             <button
-              className="btn btn-secondary"
+              className={buttonClasses.secondary}
               disabled={!!draft}
               onClick={() => setDraft(structuredClone(item.definition))}
             >

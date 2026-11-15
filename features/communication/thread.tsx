@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -154,31 +155,31 @@ export function ConversationThread({
       .join(", ") ||
       "Direct conversation");
   return (
-    <section className="conversation-thread" aria-label="Open conversation">
-      <header className="thread-heading">
+    <section className="conversation-thread relative flex min-h-0 min-w-0 flex-col bg-[#fafcfc]" aria-label="Open conversation">
+      <header className="thread-heading flex items-center gap-3.5 border-b border-border bg-surface px-6 py-5 max-[1100px]:gap-2.5 max-[1100px]:p-4">
         <button
-          className="thread-back"
+          className="thread-back hidden border-0 bg-transparent max-[760px]:block"
           onClick={back}
           aria-label="Back to conversations"
         >
           <Icon name="left" />
         </button>
-        <span className="conversation-avatar">
+        <span className="conversation-avatar grid h-[46px] w-[46px] shrink-0 place-items-center rounded-[14px] bg-[#edf2f7] text-navy">
           <Icon
             name={meta.data?.kind === "group" ? "connect" : "profile"}
             size={24}
           />
         </span>
-        <div>
-          <h2>{title}</h2>
-          <p>
+        <div className="min-w-0 flex-1">
+          <h2 className="mb-[5px] wrap-anywhere text-[19px] text-navy max-[760px]:text-[17px]">{title}</h2>
+          <p className="text-xs text-muted">
             {meta.data?.encounter_id
               ? "Patient journey discussion"
               : "Private facility conversation"}
           </p>
         </div>
         <button
-          className="btn btn-secondary"
+          className={`${buttonClasses.secondary} px-3 py-[9px] text-xs`}
           disabled={!meta.data}
           onClick={() => setMembersOpen(true)}
         >
@@ -190,7 +191,7 @@ export function ConversationThread({
         <>
           {meta.data.encounter_id && (
             <Link
-              className="thread-context"
+              className="thread-context flex items-center gap-2.5 bg-mint px-6 py-3 text-[13px] text-teal-dark"
               href={`/dashboard/patients/${meta.data.encounter_id}`}
             >
               <Icon name="patients" /> Open patient journey{" "}
@@ -199,7 +200,7 @@ export function ConversationThread({
           )}
           <div
             ref={scroll}
-            className="message-history"
+            className="message-history min-h-0 flex-1 overflow-y-auto overscroll-contain px-7 py-6 max-[1100px]:p-5 max-[760px]:p-4.5"
             aria-label="Message history"
             onScroll={() => {
               const view = scroll.current!;
@@ -208,10 +209,10 @@ export function ConversationThread({
               );
             }}
           >
-            <div className="history-controls">
+            <div className="history-controls flex justify-center gap-2">
               {history.hasNextPage && (
                 <button
-                  className="btn btn-secondary"
+                  className={`${buttonClasses.secondary} mb-5 px-3 py-2 text-xs`}
                   disabled={history.isFetchingNextPage}
                   onClick={() => {
                     setAtBottom(false);
@@ -225,7 +226,7 @@ export function ConversationThread({
               )}
               {history.data && latest < meta.data.last_sequence && (
                 <button
-                  className="btn btn-secondary"
+                  className={`${buttonClasses.secondary} mb-5 px-3 py-2 text-xs`}
                   onClick={() => {
                     void client.resetQueries({
                       queryKey: [...key, `conversations/${id}/messages`],
@@ -256,31 +257,32 @@ export function ConversationThread({
               return (
                 <article
                   key={item.id}
-                  className={`chat-message ${mine ? "mine" : ""}`}
+                  className={`chat-message mb-6 w-fit max-w-[min(85%,680px)] max-[1100px]:max-w-[95%] ${mine ? "mine ml-auto" : ""}`}
                 >
-                  <div className="message-byline">
-                    <strong>{mine ? "You" : item.sender_name}</strong>
-                    <time dateTime={item.created_at}>
+                  <div className="message-byline mb-2 flex flex-wrap items-baseline gap-3">
+                    <strong className="text-[13px] text-navy">{mine ? "You" : item.sender_name}</strong>
+                    <time className="text-[10px] text-muted" dateTime={item.created_at}>
                       {stamp(item.created_at)}
                     </time>
                   </div>
                   <div
-                    className={`message-body ${item.redacted ? "redacted" : ""}`}
+                    className={`message-body wrap-anywhere whitespace-pre-wrap border px-[19px] py-4 leading-[1.7] ${item.redacted ? "redacted rounded-[0_14px_14px_14px] border-dashed border-[#e1e8eb] bg-transparent text-sm italic text-muted" : mine ? "rounded-[14px_0_14px_14px] border-[#cde7dc] bg-[#e5f4ee] text-base text-[#21384e]" : "rounded-[0_14px_14px_14px] border-[#e1e8eb] bg-surface text-base text-[#21384e]"}`}
                   >
                     {item.redacted
                       ? "Message removed · revision record retained"
                       : item.body}
                   </div>
-                  <footer>
+                  <footer className="flex items-center justify-between gap-5 pt-2 text-[10px] text-muted">
                     <span>
                       {item.revision > 1 && !item.redacted ? "Edited · " : ""}
                       {mine && readers > 0
                         ? `Viewed by ${readers} colleague${readers === 1 ? "" : "s"}`
                         : ""}
                     </span>
-                    <div>
+                    <div className="flex gap-2.5">
                       {!item.redacted && mine && (
                         <button
+                          className="border-0 bg-transparent px-0 py-[3px] text-[11px] text-teal-dark"
                           onClick={() => setAction({ kind: "edit", item })}
                         >
                           Edit
@@ -289,12 +291,14 @@ export function ConversationThread({
                       {!item.redacted &&
                         (mine || meta.data!.role === "owner") && (
                           <button
+                            className="border-0 bg-transparent px-0 py-[3px] text-[11px] text-teal-dark"
                             onClick={() => setAction({ kind: "redact", item })}
                           >
                             Remove
                           </button>
                         )}
                       <button
+                        className="border-0 bg-transparent px-0 py-[3px] text-[11px] text-teal-dark"
                         onClick={() => setAction({ kind: "history", item })}
                       >
                         History
@@ -306,19 +310,20 @@ export function ConversationThread({
             })}
           </div>
           {!atBottom && (
-            <button className="new-messages" onClick={() => setAtBottom(true)}>
+            <button className="new-messages absolute bottom-[240px] left-1/2 -translate-x-1/2 rounded-[30px] border-0 bg-navy px-[15px] py-2.5 text-xs text-white shadow-[0_3px_10px_#06234c22]" onClick={() => setAtBottom(true)}>
               Jump to latest messages ↓
             </button>
           )}
           <form
-            className="message-composer"
+            className="message-composer border-t border-border bg-surface px-6 py-5 max-[760px]:p-4"
             onSubmit={(event) => {
               event.preventDefault();
               send.mutate();
             }}
           >
-            <label htmlFor="message-draft">Message this conversation</label>
+            <label className="mb-2.5 block text-xs font-semibold text-navy" htmlFor="message-draft">Message this conversation</label>
             <textarea
+              className="max-h-[200px] min-h-[85px] w-full resize-y rounded-[10px] border border-[#d6e1e5] bg-[#fafcfc] p-3.5 text-base leading-[1.6]"
               id="message-draft"
               value={text}
               maxLength={8000}
@@ -328,13 +333,13 @@ export function ConversationThread({
               onChange={(event) => setText(event.target.value)}
             />
             <Notice error={send.error} />
-            <div>
-              <small>
+            <div className="mt-3 flex items-center justify-between gap-4 max-[760px]:items-end">
+              <small className="text-[11px] leading-[1.6] text-muted max-[760px]:max-w-[150px]">
                 {text.length.toLocaleString()} / 8,000 · Clinical sign-offs stay
                 in the journey.
               </small>
               <button
-                className="btn btn-primary"
+                className={`${buttonClasses.primary} min-w-[155px] max-[760px]:min-w-[125px] max-[760px]:text-[13px]`}
                 disabled={!text.trim() || send.isPending}
               >
                 {send.isPending ? "Sending…" : "Send message"}
@@ -447,24 +452,24 @@ function MessageDialog({
         <>
           <QueryState query={paged} />
           {paged.data?.items.map((item) => (
-            <article className="revision-item" key={item.revision}>
-              <strong>
+            <article className="revision-item border-b border-border py-4" key={item.revision}>
+              <strong className="text-navy">
                 Revision {item.revision} · {item.kind}
               </strong>
-              <p>{stamp(item.created_at)}</p>
-              <small className="hash-value">{item.content_digest}</small>
+              <p className="text-xs text-muted">{stamp(item.created_at)}</p>
+              <small className="hash-value wrap-anywhere font-mono text-xs">{item.content_digest}</small>
             </article>
           ))}
-          <div className="live-pager">
+          <div className="live-pager mt-5 flex flex-wrap items-center justify-end gap-3">
             <button
-              className="btn btn-secondary"
+              className={buttonClasses.secondary}
               disabled={!offset}
               onClick={() => setOffset(Math.max(0, offset - 20))}
             >
               Previous
             </button>
             <button
-              className="btn btn-secondary"
+              className={buttonClasses.secondary}
               disabled={(paged.data?.items.length ?? 0) < 20}
               onClick={() => setOffset(offset + 20)}
             >
@@ -497,7 +502,7 @@ function MessageDialog({
               maxLength={500}
             />
             <Notice error={mutation.error} />
-            <button className="btn btn-primary">
+            <button className={buttonClasses.primary}>
               {mutation.isPending
                 ? "Saving…"
                 : action.kind === "redact"

@@ -3,7 +3,14 @@ import { useRouter } from "next/navigation";
 import { sessionSchema } from "@/lib/domain/identity";
 import { demoRequest } from "@/lib/api/demo-client";
 import { useState, type FormEvent } from "react";
-import { Brand } from "@/components/ui/brand";
+import {
+  IndexEditorial,
+  IndexEntryHeader,
+  indexAuthSubmitClasses,
+  indexFooterClasses,
+  indexFormSideClasses,
+  indexLayoutClasses,
+} from "@/components/auth/index-presentation";
 import { Icon } from "@/components/ui/icon";
 import { isDemo } from "@/lib/config";
 
@@ -37,37 +44,11 @@ export function SignIn() {
     }
   }
   return (
-    <main className="auth-layout">
-      <section className="auth-story">
-        <Brand large />
-        <div className="auth-copy">
-          <p className="eyebrow">CRITICAL CARE, CONNECTED</p>
-          <h1>
-            One patient.
-            <br />
-            One shared view.
-            <br />
-            <span>A connected team.</span>
-          </h1>
-          <p>
-            From admission to handover, bring the patient’s story and the work
-            around it together.
-          </p>
-          <div className="journey">
-            <span>Know the patient</span>
-            <i />
-            <span>Coordinate the team</span>
-            <i />
-            <span>Close the loop</span>
-          </div>
-        </div>
-        <div className="auth-footer">
-          <span>Developed by Ayot Health Solutions</span>
-          <span>CCU360™</span>
-        </div>
-      </section>
-      <section className="auth-form-side">
-        <div className="auth-form">
+    <main className={indexLayoutClasses}>
+      <IndexEditorial />
+      <section className={indexFormSideClasses}>
+        <IndexEntryHeader />
+        <div className="auth-form w-full max-w-[380px] self-center justify-self-center py-8">
           <p className="eyebrow">YOUR CLINICAL WORKSPACE</p>
           <h2>Welcome back.</h2>
           <p className="muted">
@@ -83,11 +64,11 @@ export function SignIn() {
               required
               placeholder="you@hospital.org"
             />
-            <div className="label-row">
+            <div className="label-row mt-[22px] flex justify-between">
               <label htmlFor="password">Password</label>
               <span className="muted small">Institution managed</span>
             </div>
-            <div className="password-field">
+            <div className="password-field relative">
               <input
                 id="password"
                 name="password"
@@ -105,12 +86,12 @@ export function SignIn() {
               </button>
             </div>
             {error && (
-              <p className="inline-error" role="alert">
+              <p className="inline-error rounded-[7px] border border-[#edd3d6] bg-[#fff0f1] p-3 text-xs text-red" role="alert">
                 {error}
               </p>
             )}
             <button
-              className="btn btn-primary auth-submit"
+              className={indexAuthSubmitClasses}
               type="submit"
               disabled={busy}
             >
@@ -119,8 +100,8 @@ export function SignIn() {
             </button>
           </form>
           {isDemo && (
-            <div className="demo-signin-info">
-              <span className="demo-signin-dot" />
+            <div className="demo-signin-info mt-6 flex gap-[11px] rounded-[9px] border border-[#dfece5] bg-[#f2f8f5] p-[17px]">
+              <span className="demo-signin-dot mt-[7px] h-[7px] w-[7px] shrink-0 rounded-full bg-[#50a887]" />
               <div>
                 <strong>Explore your role in CCU360</strong>
                 <p>
@@ -131,7 +112,7 @@ export function SignIn() {
               </div>
             </div>
           )}
-          <div className="auth-trust">
+          <div className="auth-trust mt-6 flex gap-3 text-xs leading-[1.8] text-muted">
             <Icon name="shield" />
             <span>
               Access is reserved for authorized care teams.
@@ -140,7 +121,7 @@ export function SignIn() {
             </span>
           </div>
         </div>
-        <p className="auth-bottom">
+        <p className={indexFooterClasses}>
           One patient state. Every critical-care workflow.
         </p>
       </section>

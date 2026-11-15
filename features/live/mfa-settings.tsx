@@ -1,4 +1,5 @@
 "use client";
+import { buttonClasses } from "@/lib/presentation";
 import { useState } from "react";
 import Image from "next/image";
 import QRCode from "qrcode";
@@ -31,7 +32,7 @@ export function MfaSettings() {
         title="Save your recovery codes"
         detail="These replace any previous recovery codes. Each works once. Store them in your password manager before continuing."
       >
-        <div className="recovery-codes">
+        <div className="recovery-codes grid grid-cols-1 gap-2 wrap-anywhere rounded-lg border border-border bg-[#f4f8f9] p-3.5 text-xs">
           {codes.map((code) => (
             <code key={code}>{code}</code>
           ))}
@@ -45,7 +46,7 @@ export function MfaSettings() {
           I have saved these recovery codes.
         </label>
         <button
-          className="btn btn-primary"
+          className={buttonClasses.primary}
           disabled={!saved}
           onClick={async () => {
             setCodes([]);
@@ -97,7 +98,7 @@ export function MfaSettings() {
       )}
       {factor && (
         <>
-          <div className="factor-setup">
+          <div className="factor-setup my-5 text-center">
             <Image
               unoptimized
               src={factor.image}
@@ -105,7 +106,7 @@ export function MfaSettings() {
               height={224}
               alt="Scan in your authenticator app"
             />
-            <code className="setup-key">{factor.secret}</code>
+            <code className="setup-key block select-all wrap-anywhere rounded-lg bg-[#f1f6f7] p-3 text-base tracking-[.08em]">{factor.secret}</code>
           </div>
           <ActionForm
             scope={user.id}
@@ -132,7 +133,7 @@ export function MfaSettings() {
       )}
       {user.mfa_enabled && (
         <>
-          <p className="success-message">
+          <p className="success-message rounded-lg border border-success-border bg-mint p-3 text-success-text">
             Authenticator verification is enabled.
           </p>
           <details>
