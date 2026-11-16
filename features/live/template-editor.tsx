@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/api/client";
+import { apiRequest, ApiError } from "@/lib/api/client";
 import { buttonClasses } from "@/lib/presentation";
 import {
   brand,
@@ -46,6 +46,7 @@ export function TemplateEditor({
   onClose: () => void;
 }) {
   const client = useQueryClient();
+  const formRef = useRef<HTMLFormElement>(null);
   const [name, setName] = useState(initial.name);
   const [brandId, setBrandId] = useState(initial.brand_id);
   const [draft, setDraft] = useState<Definition>(() =>
@@ -80,6 +81,17 @@ export function TemplateEditor({
           },
         },
       ),
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        const path = error.issues[0]?.path ?? [];
+        const index = path.indexOf("stages");
+        const stage =
+          typeof path[index + 1] === "number"
+            ? draft.stages[path[index + 1] as number]
+            : undefined;
+        if (index >= 0 && stage) setStageKey(stage.key);
+      }
+    },
     onSuccess: async (saved) => {
       setRevision(saved.revision);
       setDirty(false);
@@ -168,6 +180,7 @@ export function TemplateEditor({
         </div>
       </div>
       <form
+        ref={formRef}
         onSubmit={(event) => {
           event.preventDefault();
           save.mutate();
@@ -181,6 +194,7 @@ export function TemplateEditor({
                 required
                 minLength={2}
                 maxLength={120}
+                name="name"
                 value={name}
                 onChange={(event) => {
                   setName(event.target.value);
@@ -192,6 +206,7 @@ export function TemplateEditor({
               Facility branding
               <select
                 required
+                name="brand_id"
                 value={brandId}
                 onChange={(event) => {
                   setBrandId(event.target.value);
@@ -369,6 +384,7 @@ export function TemplateEditor({
                               required
                               minLength={2}
                               maxLength={120}
+                              name={`definition.stages.${stageIndex}.sections.${sectionIndex}.label`}
                               value={section.label}
                               onChange={(event) =>
                                 editSection((item) => {
@@ -549,6 +565,7 @@ export function TemplateEditor({
                                             required
                                             minLength={2}
                                             maxLength={120}
+                                            name={`definition.stages.${stageIndex}.sections.${sectionIndex}.fields.${fieldIndex}.label`}
                                             value={field.label}
                                             onChange={(event) =>
                                               editField((item) => {
@@ -561,6 +578,7 @@ export function TemplateEditor({
                                           Field type
                                           <select
                                             aria-label="Field type"
+                                            name={`definition.stages.${stageIndex}.sections.${sectionIndex}.fields.${fieldIndex}.type`}
                                             value={field.type}
                                             disabled={!!canonical}
                                             onChange={(event) =>
@@ -595,6 +613,7 @@ export function TemplateEditor({
                                           <textarea
                                             required
                                             maxLength={6000}
+                                            name={`definition.stages.${stageIndex}.sections.${sectionIndex}.fields.${fieldIndex}.choices`}
                                             value={field.choices.join("\n")}
                                             onChange={(event) =>
                                               editField((item) => {
@@ -677,12 +696,13 @@ export function TemplateEditor({
                 required
                 minLength={3}
                 maxLength={500}
+                name="reason"
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
                 placeholder="Describe the change for the configuration audit"
               />
             </label>
-            <Notice error={save.error} />
+            <Notice error={save.error} formRef={formRef} />
             <Notice error={reload.error} />
             {save.isSuccess && (
               <p role="status" className="mb-3 text-teal-dark">

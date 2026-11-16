@@ -2038,3 +2038,9 @@ td small {
 .record-card dd { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .record-card > small { color: var(--muted); display: block; }
 @media (max-width: 760px) { .live-welcome { padding: 24px; } .live-welcome-mark { display: none; } .live-table { min-width: 560px; } .live-form .option-grid { grid-template-columns: 1fr; } }
+
+/* Invalid controls retain native labels and link to the server validation summary. */
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #b83b4b; box-shadow: 0 0 0 1px #b83b4b; }
+.request-error p { margin: 0; }
+.request-error p + p { margin-top: 4px; }
+.request-error ul { list-style: disc; padding-left: 20px; }

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { authCookieNames } from "./auth-cookies";
 import { sessionTokens } from "../api/identity-contract";
+import {
+  safeValidationIssues,
+  type ValidationIssue,
+} from "../api/problem-contract";
 import { signedNetworkHeaders } from "./network-observation";
 
 const uuid = "[0-9a-fA-F-]{36}";
@@ -153,10 +157,24 @@ const privateHeaders = {
   Vary: "Cookie",
   "X-Content-Type-Options": "nosniff",
 };
-function error(status: number, code: string, requestId?: string | null) {
+function error(
+  status: number,
+  code: string,
+  requestId?: string | null,
+  issues: ValidationIssue[] = [],
+) {
+  if (requestId && !/^[a-zA-Z0-9-]{1,64}$/.test(requestId))
+    requestId = undefined;
+  if (status >= 500 && !requestId) {
+    requestId = crypto.randomUUID();
+    console.error(
+      JSON.stringify({ event: "api_gateway_failure", requestId, status }),
+    );
+  }
   return NextResponse.json(
     {
       error: code,
+      ...(issues.length ? { issues } : {}),
       ...(requestId && /^[a-zA-Z0-9-]{1,64}$/.test(requestId)
         ? { requestId }
         : {}),
@@ -247,7 +265,9 @@ export async function identityGateway(
   } catch (e) {
     return error(
       e instanceof Error && e.message === "body_too_large" ? 413 : 400,
-      "invalid_request",
+      e instanceof Error && e.message === "body_too_large"
+        ? "request_body_too_large"
+        : "invalid_request",
     );
   }
   const publicPath = [
@@ -292,18 +312,28 @@ export async function identityGateway(
         },
       },
     );
-  } catch {
-    return error(503, "service_unavailable");
+  } catch (failure) {
+    const timedOut =
+      failure instanceof DOMException && failure.name === "TimeoutError";
+    return error(
+      timedOut ? 504 : 503,
+      timedOut ? "upstream_timeout" : "service_unavailable",
+    );
   }
   if (!upstream.ok) {
     let code = "request_failed";
+    let issues: ValidationIssue[] = [];
     try {
-      const data = await upstream.json();
+      const data: unknown = await upstream.json();
+      if (!data || typeof data !== "object" || Array.isArray(data))
+        throw new Error("invalid_problem");
+      const problem = data as Record<string, unknown>;
+      issues = safeValidationIssues(problem.errors);
       if (
-        typeof (data.title ?? data.detail) === "string" &&
-        /^[a-z][a-z0-9_]{0,100}$/.test(data.title ?? data.detail)
+        typeof (problem.title ?? problem.detail) === "string" &&
+        /^[a-z][a-z0-9_]{0,100}$/.test(String(problem.title ?? problem.detail))
       )
-        code = data.title ?? data.detail;
+        code = String(problem.title ?? problem.detail);
     } catch {
       /* No upstream body is logged. */
     }
@@ -311,6 +341,7 @@ export async function identityGateway(
       upstream.status,
       code,
       upstream.headers.get("x-request-id"),
+      issues,
     );
     const retry = upstream.headers.get("retry-after");
     if (retry && /^\d{1,6}$/.test(retry))
@@ -344,7 +375,10 @@ export async function identityGateway(
   }
   let data: Record<string, unknown>;
   try {
-    data = await upstream.json();
+    const parsed: unknown = await upstream.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      return error(502, "invalid_response");
+    data = parsed as Record<string, unknown>;
   } catch {
     return error(502, "invalid_response");
   }

@@ -400,7 +400,7 @@ export function TemplatesPage() {
               </div>
               <Status value={item.status} />
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-wrap items-start gap-2">
               <button
                 className={buttonClasses.secondary}
                 onClick={() => {

@@ -11,6 +11,31 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
     .filter({ hasText: "Critical Care" });
   await department.getByText("Edit department", { exact: true }).click();
   const edit = department.locator("form").first();
+  await edit.evaluate((form) => {
+    (form as HTMLFormElement).noValidate = true;
+  });
+  await edit.getByLabel("Department name").fill("X");
+  await edit.getByLabel("Department code").fill("INVALID CODE");
+  await edit.getByLabel("Change reason").fill("Synthetic validation check");
+  await edit
+    .getByRole("button", { name: "Save department", exact: true })
+    .click();
+  await edit
+    .getByRole("alert")
+    .getByText("Check the form details", { exact: true })
+    .waitFor();
+  await expect(edit.getByLabel("Department name")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await expect(edit.getByLabel("Department name")).toBeFocused();
+  await expect(edit.getByLabel("Department code")).toHaveValue("INVALID CODE");
+  await expect(edit.getByRole("alert")).not.toContainText("password");
+  await page.screenshot({
+    path: "/tmp/ccu360-field-validation-desktop.png",
+    fullPage: true,
+  });
+  await edit.getByLabel("Department code").fill("critical_care");
   await edit.getByLabel("Department name").fill("Intensive Care");
   await edit.getByLabel("Change reason").fill("Synthetic department rename");
   await edit
@@ -70,6 +95,51 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
     .click();
   const editor = page.getByRole("region", { name: "Saved draft editor" });
   await editor.waitFor();
+  await editor
+    .getByRole("button", { name: "Close editor", exact: true })
+    .click();
+  const initialVersion = panel("Form version library")
+    .locator("article")
+    .filter({ hasText: "Synthetic Provider Ledger" })
+    .first();
+  page.once("dialog", (dialog) => dialog.accept());
+  await initialVersion
+    .getByRole("button", { name: "Approve & publish", exact: true })
+    .click();
+  const publicationError = initialVersion.getByRole("alert");
+  await publicationError
+    .getByText("Admission 360 · Section 1 · Responsible care teams", {
+      exact: true,
+    })
+    .waitFor();
+  await expect(publicationError).not.toContainText("password");
+  await expect(
+    publicationError.getByText("Support details", { exact: true }),
+  ).toBeVisible();
+  await expect(publicationError.locator("details")).not.toHaveAttribute(
+    "open",
+    "",
+  );
+  await page.screenshot({
+    path: "/tmp/ccu360-publication-error-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
+  await page.screenshot({
+    path: "/tmp/ccu360-publication-error-mobile.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await initialVersion
+    .getByRole("button", { name: "Edit saved draft", exact: true })
+    .click();
+  await editor.waitFor();
+
   await editor
     .getByLabel("Apply a medical team role across all stages")
     .selectOption({ label: "Intensive medical cover" });

@@ -1,9 +1,16 @@
 "use client";
 import { buttonClasses } from "@/lib/presentation";
-import { useId, useRef, type ReactNode, type FormEvent } from "react";
+import {
+  useId,
+  useRef,
+  type ReactNode,
+  type FormEvent,
+  type RefObject,
+} from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { apiRequest, ApiError } from "@/lib/api/client";
+import { RequestError } from "@/components/ui/request-error";
 import { Badge } from "@/components/ui/primitives";
 import {
   FeedbackMessage,
@@ -60,16 +67,14 @@ export function Panel({
     </section>
   );
 }
-export function Notice({ error }: { error: Error | null }) {
-  if (!error) return null;
-  return (
-    <FeedbackMessage tone="error">
-      <p>{error.message}</p>
-      {error instanceof ApiError && error.requestId && (
-        <small>Support reference: {error.requestId}</small>
-      )}
-    </FeedbackMessage>
-  );
+export function Notice({
+  error,
+  formRef,
+}: {
+  error: Error | null;
+  formRef?: RefObject<HTMLFormElement | null>;
+}) {
+  return <RequestError error={error} formRef={formRef} />;
 }
 export function QueryState({
   query,
@@ -221,7 +226,10 @@ export function ActionForm({
       await onSuccess?.(result);
     },
     onError: async (error) => {
-      if (error instanceof ApiError && error.status === 409)
+      if (
+        error instanceof ApiError &&
+        (error.status === 409 || error.outcomeUnknown)
+      )
         await client.invalidateQueries({ queryKey: ["live", scope] });
     },
   });
@@ -235,8 +243,8 @@ export function ActionForm({
       }}
     >
       <fieldset disabled={mutation.isPending || disabled}>
+        <Notice error={mutation.error} formRef={form} />
         {children}
-        <Notice error={mutation.error} />
         {mutation.isSuccess && (
           <FeedbackMessage tone="success">{successMessage}</FeedbackMessage>
         )}
@@ -282,7 +290,7 @@ export function ActionButton({
     },
   });
   return (
-    <div className="live-action">
+    <div className="live-action max-w-full self-start">
       <button
         className={buttonClasses.secondary}
         disabled={mutation.isPending}

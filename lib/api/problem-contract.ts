@@ -1,0 +1,163 @@
+import { z } from "zod";
+// Public schema vocabulary only. Arbitrary dictionary keys and submitted values are never forwarded.
+export const publicProblemFields = new Set<string>([
+  "accent_color",
+  "accuracy_meters",
+  "acting_role_id",
+  "active",
+  "admin_email",
+  "admin_name",
+  "admitted_at",
+  "after",
+  "approved",
+  "attestation",
+  "availability",
+  "bed",
+  "body",
+  "brand_id",
+  "capabilities",
+  "challenge_token",
+  "choices",
+  "cidr",
+  "client_id",
+  "code",
+  "comment",
+  "current_password",
+  "cursor",
+  "date_of_birth",
+  "decision",
+  "definition",
+  "department_id",
+  "device_name",
+  "display_name",
+  "due_at",
+  "email",
+  "enabled",
+  "encounter_id",
+  "ends_at",
+  "entry_id",
+  "evidence",
+  "expected_revision",
+  "expected_version",
+  "fields",
+  "grant_seconds",
+  "identifier",
+  "identity_roles",
+  "key",
+  "kind",
+  "label",
+  "latitude",
+  "limit",
+  "logo_id",
+  "longitude",
+  "max_accuracy_meters",
+  "membership_id",
+  "membership_ids",
+  "name",
+  "new_password",
+  "observation_id",
+  "observed_at",
+  "offset",
+  "organization_id",
+  "owner_role_id",
+  "password",
+  "patient_id",
+  "primary_color",
+  "radius_meters",
+  "reason",
+  "receiving_role_id",
+  "reference",
+  "refresh_token",
+  "required",
+  "role",
+  "role_id",
+  "role_ids",
+  "section_key",
+  "sections",
+  "sequence",
+  "sha256",
+  "source_entry_id",
+  "source_reference",
+  "stages",
+  "starts_at",
+  "status",
+  "supersedes_id",
+  "template_id",
+  "title",
+  "token",
+  "type",
+  "unit",
+  "value",
+  "values",
+]);
+export const validationIssue = z.object({
+  path: z
+    .array(
+      z.union([
+        z.string().refine((value) => publicProblemFields.has(value)),
+        z.number().int().min(0).max(10_000),
+      ]),
+    )
+    .max(12),
+  code: z.enum([
+    "section_team_required",
+    "section_team_unavailable",
+    "section_team_permissions",
+    "stage_section_required",
+    "required",
+    "unexpected_field",
+    "too_short",
+    "too_long",
+    "too_few_items",
+    "too_many_items",
+    "invalid_value",
+    "invalid_email",
+    "invalid_format",
+    "invalid_selection",
+    "invalid_number",
+    "invalid_date",
+    "invalid_time",
+    "invalid_datetime",
+    "timezone_required",
+    "invalid_boolean",
+    "invalid_choice",
+    "minimum",
+    "maximum",
+    "greater_than",
+    "less_than",
+    "finite_number",
+    "name_invalid",
+    "assignment_interval",
+    "choices_required",
+    "choices_invalid",
+    "choices_not_allowed",
+    "value_required",
+    "unavailable_reason_required",
+    "group_title_required",
+    "direct_title_forbidden",
+  ]),
+  params: z
+    .object({
+      min: z
+        .number()
+        .finite()
+        .min(-Number.MAX_SAFE_INTEGER)
+        .max(Number.MAX_SAFE_INTEGER)
+        .optional(),
+      max: z
+        .number()
+        .finite()
+        .min(-Number.MAX_SAFE_INTEGER)
+        .max(Number.MAX_SAFE_INTEGER)
+        .optional(),
+    })
+    .optional(),
+});
+export type ValidationIssue = z.infer<typeof validationIssue>;
+export function safeValidationIssues(value: unknown): ValidationIssue[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 20).flatMap((item) => {
+    const result = validationIssue.safeParse(item);
+    return result.success ? [result.data] : [];
+  });
+}

@@ -66,3 +66,22 @@ records, include all enabled stages and expose accountability/evidence history.
 creation, real logo upload, draft custom fields and professional sections, preview,
 validation, publication, retirement and desktop/mobile document layout. All accounts
 and records are confined to the runner's disposable local database.
+
+## Production errors
+
+`lib/api/problem-contract.ts` accepts only public field paths, approved validation
+codes and numeric schema bounds. The gateway strips raw upstream inputs, exception
+contexts and messages. `lib/api/error-messages.ts` owns safe workflow descriptions;
+`lib/api/errors.ts` formats field labels/rules and status-specific guidance.
+`components/ui/request-error.tsx` is shared by workspace and authentication forms.
+It retains entered values, focuses/marks invalid controls, provides accessible error
+summaries and keeps copyable support references inside a collapsed details section.
+
+Publication preflight identifies missing/incompatible care teams by stage and
+section. It does not refer to password policy. Connection failures, response
+validation, timeouts, stale records and permission denials have distinct guidance.
+Uncertain writes are not automatically retried; users are asked to verify the
+record first. Client requests have a bounded AbortController deadline, including
+compatibility with browsers without AbortSignal.any/timeout. Route/root error
+boundaries never display raw exceptions or promise that a pending change was not
+saved. See backend `docs/error-handling.md` for the wire contract and redaction rules.

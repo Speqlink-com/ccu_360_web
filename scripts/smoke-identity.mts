@@ -537,7 +537,7 @@ try {
   if (activePage) {
     console.error(
       await activePage
-        .locator(".inline-error")
+        .locator(".inline-error, .request-error")
         .allTextContents()
         .catch(() => []),
     );

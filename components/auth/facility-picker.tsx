@@ -1,4 +1,5 @@
 "use client";
+import { RequestError } from "@/components/ui/request-error";
 import { buttonClasses } from "@/lib/presentation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -54,11 +55,7 @@ export function FacilityPicker({ user }: { user: IdentitySession }) {
           No active facility access is available. Contact your administrator.
         </p>
       )}
-      {mutation.error && (
-        <p className="inline-error" role="alert">
-          {mutation.error.message}
-        </p>
-      )}
+      <RequestError error={mutation.error} />
       <button
         className={buttonClasses.primary}
         disabled={!selected || mutation.isPending}

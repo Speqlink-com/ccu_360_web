@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
+import { RequestError } from "@/components/ui/request-error";
 import QRCode from "qrcode";
 import { z } from "zod";
 import {
@@ -30,6 +31,7 @@ export function LiveSignIn({
   purpose?: "login" | "forgot" | "reset" | "invite";
 }) {
   const client = useQueryClient();
+  const formRef = useRef<HTMLFormElement>(null);
   const [step, setStep] = useState<LoginStep | "codes">("authenticated");
   const [factor, setFactor] = useState<{
     secret: string;
@@ -172,7 +174,9 @@ export function LiveSignIn({
           <h2>{title}</h2>
           {complete ? (
             <>
-              <p className="mt-4 text-sm leading-6 text-muted" role="status">{complete}</p>
+              <p className="mt-4 text-sm leading-6 text-muted" role="status">
+                {complete}
+              </p>
               <Link className={indexAuthSubmitClasses} href="/">
                 Return to sign in
               </Link>
@@ -243,11 +247,13 @@ export function LiveSignIn({
                     height={224}
                   />
                   <p>Or enter this setup key manually:</p>
-                  <code className="setup-key block select-all wrap-anywhere rounded-[3px] bg-[#f1f6f7] p-3 text-base tracking-[.08em]">{factor.secret}</code>
+                  <code className="setup-key block select-all wrap-anywhere rounded-[3px] bg-[#f1f6f7] p-3 text-base tracking-[.08em]">
+                    {factor.secret}
+                  </code>
                 </div>
               )}
               {(step !== "enroll" || factor) && (
-                <form onSubmit={submit}>
+                <form ref={formRef} onSubmit={submit}>
                   {step !== "verify" && step !== "enroll" && (
                     <>
                       {(purpose === "login" || purpose === "forgot") && (
@@ -329,11 +335,7 @@ export function LiveSignIn({
                       />
                     </>
                   )}
-                  {error && (
-                    <p className="inline-error rounded-[3px] border border-[#edd3d6] bg-[#fff0f1] p-3 text-xs text-red" role="alert">
-                      {error.message}
-                    </p>
-                  )}
+                  {error && <RequestError error={error} formRef={formRef} />}
                   <button
                     className={indexAuthSubmitClasses}
                     disabled={mutation.isPending}
@@ -355,9 +357,7 @@ export function LiveSignIn({
                 </form>
               )}
               {step === "enroll" && !factor && error && (
-                <p className="inline-error rounded-[3px] border border-[#edd3d6] bg-[#fff0f1] p-3 text-xs text-red" role="alert">
-                  {error.message}
-                </p>
+                <RequestError error={error} />
               )}
               <div className="auth-links my-5 font-semibold text-teal-dark">
                 {purpose === "login" && step === "authenticated" ? (
