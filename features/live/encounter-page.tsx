@@ -1,6 +1,6 @@
 "use client";
 import { buttonClasses } from "@/lib/presentation";
-import { useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
@@ -113,6 +113,36 @@ function ClinicalField({
             </option>
           ))}
         </select>
+      ) : field.type === "multichoice" ? (
+        <select
+          id={id}
+          name={field.key}
+          multiple
+          required={field.required}
+          defaultValue={Array.isArray(old) ? old.map(String) : []}
+        >
+          {field.choices.map((choice) => (
+            <option key={choice} value={choice}>
+              {choice}
+            </option>
+          ))}
+        </select>
+      ) : field.type === "radio" ? (
+        <fieldset id={id} className="option-grid">
+          <legend className="sr-only">{field.label}</legend>
+          {field.choices.map((choice) => (
+            <label key={choice} className="check-label">
+              <input
+                type="radio"
+                name={field.key}
+                value={choice}
+                required={field.required}
+                defaultChecked={old === choice}
+              />
+              {choice}
+            </label>
+          ))}
+        </fieldset>
       ) : field.type === "choice" || field.type === "boolean" ? (
         <select
           id={id}
@@ -151,7 +181,9 @@ function ClinicalField({
               ? "datetime-local"
               : field.type === "number"
                 ? "number"
-                : "text"
+                : field.type === "date" || field.type === "time"
+                  ? field.type
+                  : "text"
           }
           step={field.type === "number" ? "any" : undefined}
           maxLength={8000}
@@ -173,7 +205,9 @@ function DocumentationForm({
   section,
   amendment,
   close,
+  onSaved,
 }: {
+  onSaved?: () => void;
   data: Case;
   section: Section;
   amendment?: Entry;
@@ -199,7 +233,10 @@ function DocumentationForm({
       detail="Entries retain their original author. Notes are saved as drafts until the author attests them; comments are posted directly."
     >
       {changed && (
-        <div className="version-notice my-4 rounded-lg border border-[#e9d7ae] bg-amber-bg p-4" role="alert">
+        <div
+          className="version-notice my-4 rounded-lg border border-[#e9d7ae] bg-amber-bg p-4"
+          role="alert"
+        >
           <p>
             This journey changed from version {version} to{" "}
             {data.encounter.version}. Review the latest records before saving
@@ -256,6 +293,7 @@ function DocumentationForm({
         onSuccess={(result) => {
           const parsed = z.object({ version: z.number() }).parse(result);
           setVersion(parsed.version);
+          onSaved?.();
           close?.();
         }}
       >
@@ -350,7 +388,10 @@ function DocumentationForm({
         )}
       </ActionForm>
       {close && (
-        <button className="text-button border-0 bg-transparent px-0 py-2 text-left font-semibold text-teal-dark" onClick={close}>
+        <button
+          className="text-button border-0 bg-transparent px-0 py-2 text-left font-semibold text-teal-dark"
+          onClick={close}
+        >
           Cancel amendment
         </button>
       )}
@@ -368,6 +409,7 @@ function EntryCard({
 }) {
   const org = useIdentity().data!.organization_id!;
   const mine = record.author.user_id === data.current_actor.user_id;
+  const actionable = record.is_current && data.encounter.status === "active";
   const responsibility = data.responsibilities.find(
     (item) => item.section.key === record.section_key,
   );
@@ -387,8 +429,18 @@ function EntryCard({
             {stamp(record.recorded_at)}
           </p>
         </div>
-        <Status value={record.status} />
+        <div className="flex flex-wrap gap-2">
+          <Status value={record.status} />
+          {!record.is_current && <Status value="historical" />}
+        </div>
       </header>
+      {!record.is_current && (
+        <p className="my-3 rounded-lg border border-border bg-[#f7fafb] p-3 text-sm text-muted">
+          Retained revision {record.revision} · Latest revision{" "}
+          {record.latest_revision}. This version remains part of the audit
+          history.
+        </p>
+      )}
       <dl>
         {Object.entries(record.values).map(([key, item]) => (
           <div key={key}>
@@ -407,12 +459,18 @@ function EntryCard({
         Revision {record.revision} · {record.kind}
         {record.reason ? ` · Amendment: ${record.reason}` : ""}
       </small>
-      {responsibility?.can_write && (mine || record.status !== "draft") && (
-        <button className="text-button border-0 bg-transparent px-0 py-2 text-left font-semibold text-teal-dark" onClick={amend}>
-          Create an attributed amendment
-        </button>
-      )}
-      {mine &&
+      {actionable &&
+        responsibility?.can_write &&
+        (mine || record.status !== "draft") && (
+          <button
+            className="text-button border-0 bg-transparent px-0 py-2 text-left font-semibold text-teal-dark"
+            onClick={amend}
+          >
+            Create an attributed amendment
+          </button>
+        )}
+      {actionable &&
+        mine &&
         record.status === "draft" &&
         record.kind === "note" &&
         responsibility?.can_attest && (
@@ -458,7 +516,11 @@ function EntryCard({
             </ActionForm>
           </details>
         )}
-      {record.status === "attested" &&
+      {actionable &&
+        record.status === "attested" &&
+        data.effective_roles.some((role) =>
+          role.capabilities.includes("attest"),
+        ) &&
         data.template.definition.stages
           .find((stage) => stage.key === "handover")
           ?.sections.some((section) => section.key === record.section_key) &&
@@ -509,12 +571,28 @@ export function EncounterPage({ id }: { id: string }) {
   const [sectionKey, setSectionKey] = useState("");
   const [offset, setOffset] = useState(0);
   const [amendment, setAmendment] = useState<Entry | undefined>();
-  const detail = useLiveQuery(org, `journey/encounters/${id}`, caseView);
+  const [unsaved, setUnsaved] = useState(false);
+  useEffect(() => {
+    if (!unsaved) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsaved]);
+  const detail = useLiveQuery(
+    org,
+    `journey/encounters/${id}`,
+    caseView,
+    true,
+    15_000,
+  );
   const entries = useLiveQuery(
     org,
     `journey/encounters/${id}/records/entries?offset=${offset}&limit=20`,
     pageOf(entry),
     tab === "documentation",
+    15_000,
   );
   const tasks = useLiveQuery(
     org,
@@ -577,15 +655,65 @@ export function EncounterPage({ id }: { id: string }) {
     data.responsibilities.find((item) => item.section.key === sectionKey) ??
     data.responsibilities.find((item) => item.can_write);
   const isActive = data.encounter.status === "active";
+  const activeStage =
+    data.template.definition.stages.find((stage) =>
+      stage.sections.some(
+        (section) => section.key === responsibility?.section.key,
+      ),
+    ) ?? data.template.definition.stages[0];
+  const selectSection = (key: string) => {
+    if (
+      unsaved &&
+      !window.confirm("Discard unsaved documentation before changing sections?")
+    )
+      return;
+    setUnsaved(false);
+    setSectionKey(key);
+    setAmendment(undefined);
+  };
   return (
-    <>
+    <div
+      className="journey-document"
+      style={
+        {
+          "--document-primary": data.brand?.primary_color ?? "#092744",
+          "--document-accent": data.brand?.accent_color ?? "#008f89",
+        } as CSSProperties
+      }
+    >
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-5 rounded-xl border border-border border-b-4 border-b-[var(--document-accent)] bg-white p-6">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted">
+            CCU360 · Clinical journey ledger
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-[var(--document-primary)]">
+            {data.brand?.title ?? "Patient Journey Record"}
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            One encounter. Shared clinical state. Accountable care at every
+            stage.
+          </p>
+        </div>
+        {data.brand?.logo_id && (
+          // eslint-disable-next-line @next/next/no-img-element -- Authenticated tenant asset; do not expose to the public image optimizer.
+          <img
+            alt="Facility logo"
+            className="max-h-20 max-w-44 object-contain"
+            src={`/api/v1/journey/config/logos/${data.brand.logo_id}`}
+          />
+        )}
+      </div>
       <Heading
+        eyebrow="PATIENT JOURNEY RECORD"
         title={data.patient.display_name}
         detail={`${data.patient.identifier} · ${data.encounter.unit} · Bed ${data.encounter.bed ?? "unassigned"} · Admitted ${stamp(data.encounter.admitted_at)}`}
         actions={
           <>
             <Status value={data.encounter.status} />
-            <Link className={buttonClasses.secondary} href={`/dashboard/connect?encounter=${id}`}>
+            <Link
+              className={buttonClasses.secondary}
+              href={`/dashboard/connect?encounter=${id}`}
+            >
               Discuss with care team
             </Link>
             <button
@@ -594,7 +722,10 @@ export function EncounterPage({ id }: { id: string }) {
             >
               Refresh journey
             </button>
-            <Link className={buttonClasses.secondary} href="/dashboard/patients">
+            <Link
+              className={buttonClasses.secondary}
+              href="/dashboard/patients"
+            >
               Back to journeys
             </Link>
           </>
@@ -622,6 +753,14 @@ export function EncounterPage({ id }: { id: string }) {
             className="border-0 border-b-[3px] border-transparent bg-transparent px-[18px] py-3.5 font-semibold whitespace-nowrap text-muted aria-selected:border-teal aria-selected:text-teal-dark"
             key={key}
             onClick={() => {
+              if (
+                unsaved &&
+                !window.confirm(
+                  "Discard unsaved documentation before changing journey areas?",
+                )
+              )
+                return;
+              setUnsaved(false);
               setTab(key);
               setOffset(0);
             }}
@@ -632,85 +771,144 @@ export function EncounterPage({ id }: { id: string }) {
       </div>
       {tab === "documentation" && (
         <>
-          <div className="mb-6 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2.5">
-            {data.template.definition.stages.map((stage) => (
-              <div className="rounded-[10px] border border-border bg-surface p-3.5" key={stage.key}>
-                <strong className="text-[13px] text-navy">{stage.label}</strong>
-                {data.responsibilities
-                  .filter((item) => item.stage === stage.key)
-                  .map((item) => (
-                    <button
-                      key={item.section.key}
-                      className={`mt-2.5 block w-full rounded-md border p-2 text-left text-xs leading-[inherit] ${
-                        responsibility?.section.key === item.section.key
-                          ? "border-teal bg-mint text-teal-dark"
-                          : "border-border bg-[#f8fafb]"
-                      }`}
-                      onClick={() => {
-                        setSectionKey(item.section.key);
-                        setAmendment(undefined);
-                      }}
-                    >
-                      {item.section.identity_roles.join(" / ")}
-                      {item.can_write ? " · Your team" : ""}
-                      {item.coverage_gap ? " · Coverage gap" : ""}
-                    </button>
-                  ))}
-              </div>
-            ))}
+          <div className="mb-6 rounded-xl border border-border bg-[#f1f8f7] p-4 text-sm text-muted">
+            <strong className="text-[var(--document-primary)]">
+              Source-aware record.
+            </strong>{" "}
+            Observations retain their original author and time. Each team
+            documents its own findings, decisions and actions.{" "}
+            <button
+              className="font-semibold text-teal-dark underline"
+              onClick={() => {
+                setTab("observations");
+                setOffset(0);
+              }}
+            >
+              View shared observations
+            </button>
           </div>
-          {amendment ? (
-            <DocumentationForm
-              key={amendment.id}
-              data={data}
-              section={
-                data.responsibilities.find(
-                  (item) => item.section.key === amendment.section_key,
-                )!.section
-              }
-              amendment={amendment}
-              close={() => setAmendment(undefined)}
-            />
-          ) : responsibility?.can_write && isActive ? (
-            <DocumentationForm
-              key={responsibility.section.key}
-              data={data}
-              section={responsibility.section}
-            />
-          ) : (
-            <Panel title="Section access">
-              <p>
-                {responsibility?.section.label ?? "Journey documentation"} is
-                available for reading. Only the assigned professional team can
-                document in this section.
+          <div className="grid items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+            <nav
+              aria-label="Patient journey stages"
+              className="flex gap-2 overflow-x-auto rounded-xl border border-border bg-surface p-3 lg:sticky lg:top-5 lg:flex-col"
+            >
+              <p className="hidden px-3 py-2 text-xs font-bold uppercase tracking-widest text-muted lg:block">
+                Journey stages
               </p>
-            </Panel>
-          )}
-          <Panel
-            title="Recorded notes & comments"
-            detail="Original records and later revisions are retained. Attestation is a separate, password-confirmed action."
-          >
-            <QueryState query={entries} />
-            {entries.data?.items.map((record) => (
-              <EntryCard
-                key={record.id}
-                record={record}
-                data={data}
-                amend={() => {
-                  setAmendment(record);
-                  setSectionKey(record.section_key);
-                }}
-              />
-            ))}
-            {entries.data && !entries.data.items.length && (
-              <p>No documentation has been recorded yet.</p>
-            )}
-            <Pager
-              offset={offset}
-              count={entries.data?.items.length ?? 0}
-              change={setOffset}
-            />
-          </Panel>
+              {data.template.definition.stages.map((stage, index) => {
+                const sections = data.responsibilities.filter(
+                  (item) => item.stage === stage.key,
+                );
+                const target =
+                  sections.find((item) => item.can_write) ?? sections[0];
+                return (
+                  <button
+                    key={stage.key}
+                    disabled={!target}
+                    aria-current={
+                      activeStage.key === stage.key ? "step" : undefined
+                    }
+                    className={`shrink-0 rounded-lg border p-3 text-left text-sm ${activeStage.key === stage.key ? "border-[var(--document-accent)] bg-[#eef7f5] text-[var(--document-primary)]" : "border-transparent text-muted"}`}
+                    onClick={() => target && selectSection(target.section.key)}
+                  >
+                    <span className="mr-2 font-mono text-xs">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <strong>{stage.label}</strong>
+                    <small className="mt-1 block lg:ml-6">
+                      {sections.some((item) => item.can_write)
+                        ? "Your care team contributes"
+                        : "Shared documentation"}
+                    </small>
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="min-w-0">
+              <div className="mb-5 rounded-xl border border-border bg-surface p-5">
+                <p className="text-xs font-bold uppercase tracking-widest text-muted">
+                  Stage documentation
+                </p>
+                <h2 className="mt-2 text-2xl text-[var(--document-primary)]">
+                  {activeStage.label}
+                </h2>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {data.responsibilities
+                    .filter((item) => item.stage === activeStage.key)
+                    .map((item) => (
+                      <button
+                        key={item.section.key}
+                        className={`rounded-lg border px-3 py-2 text-sm ${responsibility?.section.key === item.section.key ? "border-teal bg-mint text-teal-dark" : "border-border"}`}
+                        onClick={() => selectSection(item.section.key)}
+                      >
+                        {item.section.label}
+                        {item.can_write ? " · Your team" : ""}
+                        {item.coverage_gap ? " · Coverage gap" : ""}
+                      </button>
+                    ))}
+                </div>
+              </div>
+              <div onChangeCapture={() => setUnsaved(true)}>
+                {amendment ? (
+                  <DocumentationForm
+                    key={amendment.id}
+                    data={data}
+                    section={
+                      data.responsibilities.find(
+                        (item) => item.section.key === amendment.section_key,
+                      )!.section
+                    }
+                    amendment={amendment}
+                    close={() => {
+                      setAmendment(undefined);
+                      setUnsaved(false);
+                    }}
+                    onSaved={() => setUnsaved(false)}
+                  />
+                ) : responsibility?.can_write && isActive ? (
+                  <DocumentationForm
+                    key={responsibility.section.key}
+                    data={data}
+                    section={responsibility.section}
+                    onSaved={() => setUnsaved(false)}
+                  />
+                ) : (
+                  <Panel title="Section access">
+                    <p>
+                      {responsibility?.section.label ?? "Journey documentation"}{" "}
+                      is available for reading. Only the assigned professional
+                      team can document in this section.
+                    </p>
+                  </Panel>
+                )}
+              </div>
+              <Panel
+                title="Recorded notes & comments"
+                detail="Shared notes and comments from every stage, with original authors and revisions retained. Attestation is a separate, password-confirmed action."
+              >
+                <QueryState query={entries} />
+                {entries.data?.items.map((record) => (
+                  <EntryCard
+                    key={record.id}
+                    record={record}
+                    data={data}
+                    amend={() => {
+                      setAmendment(record);
+                      setSectionKey(record.section_key);
+                    }}
+                  />
+                ))}
+                {entries.data && !entries.data.items.length && (
+                  <p>No documentation has been recorded yet.</p>
+                )}
+                <Pager
+                  offset={offset}
+                  count={entries.data?.items.length ?? 0}
+                  change={setOffset}
+                />
+              </Panel>
+            </div>
+          </div>
         </>
       )}
       {tab === "actions" && (
@@ -718,7 +916,10 @@ export function EncounterPage({ id }: { id: string }) {
           <Panel title="Team-owned actions">
             <QueryState query={tasks} />
             {tasks.data?.items.map((item) => (
-              <article className="record-card my-4 rounded-[10px] border border-border border-l-[3px] border-l-teal p-5" key={item.id}>
+              <article
+                className="record-card my-4 rounded-[10px] border border-border border-l-[3px] border-l-teal p-5"
+                key={item.id}
+              >
                 <header>
                   <strong>{item.title}</strong>
                   <Status value={item.status} />
@@ -829,7 +1030,10 @@ export function EncounterPage({ id }: { id: string }) {
           >
             <QueryState query={observations} />
             {observations.data?.items.map((item) => (
-              <article className="record-card my-4 rounded-[10px] border border-border border-l-[3px] border-l-teal p-5" key={item.id}>
+              <article
+                className="record-card my-4 rounded-[10px] border border-border border-l-[3px] border-l-teal p-5"
+                key={item.id}
+              >
                 <strong>
                   {item.code}: {displayValue(item.value)} {item.unit ?? ""}
                 </strong>
@@ -1003,7 +1207,10 @@ export function EncounterPage({ id }: { id: string }) {
           <Panel title="Accountability timeline">
             <QueryState query={timeline} />
             {timeline.data?.items.map((item) => (
-              <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={item.id}>
+              <div
+                className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4"
+                key={item.id}
+              >
                 <strong>
                   #{item.sequence} ·{" "}
                   {item.envelope.action.replaceAll(".", " · ")}
@@ -1044,6 +1251,6 @@ export function EncounterPage({ id }: { id: string }) {
           )}
         </>
       )}
-    </>
+    </div>
   );
 }

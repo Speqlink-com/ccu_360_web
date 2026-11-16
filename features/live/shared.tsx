@@ -5,7 +5,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { apiRequest, ApiError } from "@/lib/api/client";
 import { Badge } from "@/components/ui/primitives";
-import { FeedbackMessage, LoadingState, useToast } from "@/components/ui/feedback";
+import {
+  FeedbackMessage,
+  LoadingState,
+  useToast,
+} from "@/components/ui/feedback";
 
 export function Heading({
   title,
@@ -21,11 +25,17 @@ export function Heading({
   return (
     <header className="mt-1 mb-7 flex items-start justify-between gap-6 max-[760px]:flex-col">
       <div>
-        <p className="text-[11px] font-bold tracking-[.13em] text-teal-dark">{eyebrow}</p>
-        <h1 className="mt-2 mb-3 text-[clamp(26px,2.3vw,36px)] leading-[1.15] tracking-[-.035em] text-navy">{title}</h1>
+        <p className="text-[11px] font-bold tracking-[.13em] text-teal-dark">
+          {eyebrow}
+        </p>
+        <h1 className="mt-2 mb-3 text-[clamp(26px,2.3vw,36px)] leading-[1.15] tracking-[-.035em] text-navy">
+          {title}
+        </h1>
         <p className="m-0 max-w-[860px] text-[15px] text-muted">{detail}</p>
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-[10px]">{actions}</div>}
+      {actions && (
+        <div className="flex flex-wrap items-center gap-[10px]">{actions}</div>
+      )}
     </header>
   );
 }
@@ -41,7 +51,9 @@ export function Panel({
   return (
     <section className="live-panel mb-6 min-w-0 rounded-[14px] border border-border bg-surface p-6 max-[760px]:p-[18px] [&_p]:wrap-anywhere">
       <header className="mb-5">
-        <h2 className="mb-2 text-xl leading-[inherit] tracking-[-.02em] text-navy">{title}</h2>
+        <h2 className="mb-2 text-xl leading-[inherit] tracking-[-.02em] text-navy">
+          {title}
+        </h2>
         {detail && <p className="m-0 max-w-[850px] text-muted">{detail}</p>}
       </header>
       {children}
@@ -69,15 +81,15 @@ export function QueryState({
     refetch: () => unknown;
   };
 }) {
-  if (query.isPending)
-    return (
-      <LoadingState />
-    );
+  if (query.isPending) return <LoadingState />;
   if (query.isError)
     return (
       <div>
         <Notice error={query.error} />
-        <button className={buttonClasses.secondary} onClick={() => query.refetch()}>
+        <button
+          className={buttonClasses.secondary}
+          onClick={() => query.refetch()}
+        >
           Retry
         </button>
       </div>
@@ -185,6 +197,7 @@ export function ActionForm({
   onSuccess,
   successMessage = "Saved successfully.",
   reset = true,
+  disabled = false,
 }: {
   scope: string | null;
   path: string;
@@ -195,6 +208,7 @@ export function ActionForm({
   onSuccess?: (result: unknown) => void | Promise<void>;
   successMessage?: string;
   reset?: boolean;
+  disabled?: boolean;
 }) {
   const client = useQueryClient();
   const form = useRef<HTMLFormElement>(null);
@@ -220,13 +234,11 @@ export function ActionForm({
         mutation.mutate(new FormData(event.currentTarget));
       }}
     >
-      <fieldset disabled={mutation.isPending}>
+      <fieldset disabled={mutation.isPending || disabled}>
         {children}
         <Notice error={mutation.error} />
         {mutation.isSuccess && (
-          <FeedbackMessage tone="success">
-            {successMessage}
-          </FeedbackMessage>
+          <FeedbackMessage tone="success">{successMessage}</FeedbackMessage>
         )}
         <button type="submit" className={buttonClasses.primary}>
           {mutation.isPending ? "Saving…" : label}

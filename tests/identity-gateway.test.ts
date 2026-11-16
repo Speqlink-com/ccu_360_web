@@ -282,3 +282,112 @@ test("Zustand identity UI is isolated per provider and resets facility selection
   first.getState().reset();
   assert.equal(first.getState().pendingOrganization, null);
 });
+
+test("configuration lifecycle endpoints pass through the authenticated gateway", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  for (const action of ["clone", "publish", "validate"])
+    assert.equal(
+      allowedGatewayPath(`journey/config/templates/${id}/${action}`, "POST"),
+      true,
+    );
+  assert.equal(
+    allowedGatewayPath(`journey/config/templates/${id}`, "PUT"),
+    true,
+  );
+  assert.equal(
+    allowedGatewayPath(`journey/config/brands/${id}/revisions`, "POST"),
+    true,
+  );
+  assert.equal(
+    allowedGatewayPath(`journey/config/templates/${id}`, "GET"),
+    true,
+  );
+  assert.equal(
+    allowedGatewayPath(`journey/config/templates/${id}/unexpected`, "POST"),
+    false,
+  );
+});
+
+test("multiple choice and radio answers retain structured values and reject invented choices", () => {
+  const section: Section = {
+    key: "local_section",
+    label: "Local section",
+    enabled: true,
+    identity_roles: ["doctor"],
+    role_ids: [],
+    fields: [
+      {
+        key: "services",
+        label: "Services",
+        type: "multichoice",
+        required: true,
+        choices: ["Renal", "Nutrition"],
+      },
+      {
+        key: "priority",
+        label: "Priority",
+        type: "radio",
+        required: true,
+        choices: ["Routine", "Urgent"],
+      },
+    ],
+  };
+  const data = new FormData();
+  data.append("services", "Renal");
+  data.append("services", "Nutrition");
+  data.set("priority", "Urgent");
+  assert.deepEqual(collectEntryValues(section, data), {
+    services: { status: "present", value: ["Renal", "Nutrition"] },
+    priority: { status: "present", value: "Urgent" },
+  });
+  data.append("services", "Unapproved");
+  assert.throws(() => collectEntryValues(section, data), /available options/);
+});
+
+test("logo uploads use the backend's 2 MiB limit without expanding other request limits", async () => {
+  const upload = (path: string, size: number) =>
+    new NextRequest(base + path, {
+      method: "POST",
+      headers: {
+        origin: "https://ccu360.health",
+        "content-type": "image/png",
+        cookie: `${cookie.access}=synthetic-access`,
+      },
+      body: new Uint8Array(size),
+    });
+  let received = 0;
+  const logo = await identityGateway(
+    upload("journey/config/logos", 1_000_000),
+    "journey/config/logos",
+    async (_url, init) => {
+      received = (init?.body as Uint8Array).byteLength;
+      return json({ id: "11111111-1111-4111-8111-111111111111" }, 201);
+    },
+  );
+  assert.equal(logo.status, 201);
+  assert.equal(received, 1_000_000);
+  assert.equal(
+    (
+      await identityGateway(
+        upload("journey/config/logos", 2_097_153),
+        "journey/config/logos",
+        async () => {
+          throw new Error("Should not forward oversized logo");
+        },
+      )
+    ).status,
+    413,
+  );
+  assert.equal(
+    (
+      await identityGateway(
+        upload("journey/config/brands", 600_001),
+        "journey/config/brands",
+        async () => {
+          throw new Error("Should not forward oversized JSON");
+        },
+      )
+    ).status,
+    413,
+  );
+});

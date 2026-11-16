@@ -32,6 +32,7 @@ export function useLiveQuery<T>(
   path: string,
   schema: z.ZodType<T>,
   enabled = true,
+  refetchInterval: number | false = false,
 ) {
   const identity = useIdentity().data;
   const result = useQuery({
@@ -39,6 +40,7 @@ export function useLiveQuery<T>(
     queryFn: ({ signal }) => apiRequest("/api/v1/" + path, schema, { signal }),
     enabled: enabled && !!identity,
     staleTime: 15_000,
+    refetchInterval,
     gcTime: 60_000,
   });
   return {

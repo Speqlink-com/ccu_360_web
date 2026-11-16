@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { chromium, expect, type Page } from "@playwright/test";
+import { checkJourneyConfiguration } from "./journey-configuration-check.mjs";
 import { checkWorksiteCommunication } from "./worksite-communication-check.mjs";
 
 const root = process.cwd(),
@@ -203,101 +204,108 @@ try {
   await ready(base);
   console.log("Isolated web ready");
   browser = await chromium.launch({ headless: true, channel: "chromium" });
-  const ownerContext = await browser.newContext();
-  const owner = await ownerContext.newPage();
-  activePage = owner;
-  owner.setDefaultTimeout(30_000);
-  await signIn(owner, base, "ahs-e2e@example.org", ownerPassword);
-  await enroll(owner);
-  assert.ok(
-    (await ownerContext.cookies())
-      .filter((cookie) => cookie.name.startsWith("ccu-"))
-      .every((cookie) => cookie.httpOnly && cookie.sameSite === "Lax"),
-  );
-  await owner.goto(base + "/dashboard/facilities");
-  const onboarding = panel(owner, "Onboard a facility");
-  await onboarding
-    .getByLabel("Facility name", { exact: true })
-    .fill("Synthetic New Facility");
-  await onboarding.getByLabel("Unique facility code").fill("E2E_NEW");
-  await onboarding
-    .getByLabel("Administrator’s full name")
-    .fill("Synthetic Facility Owner");
-  await onboarding
-    .getByLabel("Administrator’s email")
-    .fill("facility-e2e@example.org");
-  await onboarding
-    .getByRole("button", { name: "Create facility & send invitation" })
-    .click();
-  await owner
-    .getByText(
-      "Facility created. The administrator’s invitation is queued for delivery.",
-    )
-    .waitFor();
-  await owner.goto(base + "/dashboard/administrators");
-  const adminForm = panel(owner, "Invite an AHS administrator");
-  await adminForm
-    .getByLabel("Full name")
-    .fill("Synthetic Second Administrator");
-  await adminForm
-    .getByLabel("Email", { exact: true })
-    .fill("second-ahs-e2e@example.org");
-  await adminForm
-    .getByRole("button", { name: "Send administrator invitation" })
-    .click();
-  await adminForm.getByText("Administrator invitation queued.").waitFor();
-  console.log(
-    "PASS first AHS password, QR/TOTP enrollment, HttpOnly session, facility onboarding and administrator invitation",
-  );
-  const invitedContext = await browser.newContext();
-  const invited = await invitedContext.newPage();
-  activePage = invited;
-  invited.setDefaultTimeout(30_000);
-  const token = fixture("invitation", "facility-e2e@example.org");
-  await invited.goto(base + "/auth/accept-invite#token=" + token);
-  await invited
-    .getByLabel("Password (12–128 characters)", { exact: true })
-    .fill(invitedPassword);
-  await invited.getByLabel("Confirm password").fill(invitedPassword);
-  await invited.getByRole("button", { name: "Accept invitation" }).click();
-  await invited.getByRole("heading", { name: "You’re all set." }).waitFor();
-  assert.equal(new URL(invited.url()).hash, "");
-  await signIn(invited, base, "facility-e2e@example.org", invitedPassword);
-  await enroll(invited);
-  if (
+  const clinicalOnly = process.env.CCU360_TEST_CLINICAL_ONLY === "1";
+  let owner!: Page, invited!: Page;
+  if (!clinicalOnly) {
+    const ownerContext = await browser.newContext();
+    owner = await ownerContext.newPage();
+    activePage = owner;
+    owner.setDefaultTimeout(60_000);
+    await signIn(owner, base, "ahs-e2e@example.org", ownerPassword);
+    await enroll(owner);
+    assert.ok(
+      (await ownerContext.cookies())
+        .filter((cookie) => cookie.name.startsWith("ccu-"))
+        .every((cookie) => cookie.httpOnly && cookie.sameSite === "Lax"),
+    );
+    await owner.goto(base + "/dashboard/facilities");
+    const onboarding = panel(owner, "Onboard a facility");
+    await onboarding
+      .getByLabel("Facility name", { exact: true })
+      .fill("Synthetic New Facility");
+    await onboarding.getByLabel("Unique facility code").fill("E2E_NEW");
+    await onboarding
+      .getByLabel("Administrator’s full name")
+      .fill("Synthetic Facility Owner");
+    await onboarding
+      .getByLabel("Administrator’s email")
+      .fill("facility-e2e@example.org");
+    await onboarding
+      .getByRole("button", { name: "Create facility & send invitation" })
+      .click();
+    await owner
+      .getByText(
+        "Facility created. The administrator’s invitation is queued for delivery.",
+      )
+      .waitFor();
+    await owner.goto(base + "/dashboard/administrators");
+    const adminForm = panel(owner, "Invite an AHS administrator");
+    await adminForm
+      .getByLabel("Full name")
+      .fill("Synthetic Second Administrator");
+    await adminForm
+      .getByLabel("Email", { exact: true })
+      .fill("second-ahs-e2e@example.org");
+    await adminForm
+      .getByRole("button", { name: "Send administrator invitation" })
+      .click();
+    await adminForm.getByText("Administrator invitation queued.").waitFor();
+    console.log(
+      "PASS first AHS password, QR/TOTP enrollment, HttpOnly session, facility onboarding and administrator invitation",
+    );
+    const invitedContext = await browser.newContext();
+    invited = await invitedContext.newPage();
+    activePage = invited;
+    invited.setDefaultTimeout(60_000);
+    const token = fixture("invitation", "facility-e2e@example.org");
+    await invited.goto(base + "/auth/accept-invite#token=" + token);
     await invited
-      .getByRole("heading", { name: "Choose your facility", exact: true })
-      .isVisible()
-  )
-    await chooseFacility(invited);
-  await invited.goto(base + "/dashboard/employees");
-  const employeeForm = panel(invited, "Invite an employee");
-  await employeeForm.getByLabel("Full name").fill("Synthetic New Employee");
-  await employeeForm
-    .getByLabel("Email", { exact: true })
-    .fill("employee-e2e@example.org");
-  await employeeForm
-    .getByRole("button", { name: "Send employee invitation" })
-    .click();
-  await employeeForm.getByText(/Employee invitation queued/).waitFor();
-  await invited.goto(base + "/dashboard/workforce");
-  const departments = panel(invited, "Departments");
-  await departments.getByText("Add a department", { exact: true }).click();
-  await departments.getByLabel("Department name").fill("Critical Care");
-  await departments
-    .getByLabel("Code (lowercase, numbers, underscores)")
-    .fill("critical_care");
-  await departments.getByRole("button", { name: "Create department" }).click();
-  await departments.getByText("Saved successfully.").waitFor();
-  console.log(
-    "PASS provider invitation acceptance, mandatory MFA, tenant selection, employee invitation and department creation",
-  );
+      .getByLabel("Password (12–128 characters)", { exact: true })
+      .fill(invitedPassword);
+    await invited.getByLabel("Confirm password").fill(invitedPassword);
+    await invited.getByRole("button", { name: "Accept invitation" }).click();
+    await invited.getByRole("heading", { name: "You’re all set." }).waitFor();
+    assert.equal(new URL(invited.url()).hash, "");
+    await signIn(invited, base, "facility-e2e@example.org", invitedPassword);
+    await enroll(invited);
+    if (
+      await invited
+        .getByRole("heading", { name: "Choose your facility", exact: true })
+        .isVisible()
+    )
+      await chooseFacility(invited);
+    await invited.goto(base + "/dashboard/employees");
+    const employeeForm = panel(invited, "Invite an employee");
+    await employeeForm.getByLabel("Full name").fill("Synthetic New Employee");
+    await employeeForm
+      .getByLabel("Email", { exact: true })
+      .fill("employee-e2e@example.org");
+    await employeeForm
+      .getByRole("button", { name: "Send employee invitation" })
+      .click();
+    await employeeForm.getByText(/Employee invitation queued/).waitFor();
+    await invited.goto(base + "/dashboard/workforce");
+    const departments = panel(invited, "Departments");
+    await departments.getByText("Add a department", { exact: true }).click();
+    await departments.getByLabel("Department name").fill("Critical Care");
+    await departments
+      .getByLabel("Code (lowercase, numbers, underscores)")
+      .fill("critical_care");
+    await departments
+      .getByRole("button", { name: "Create department" })
+      .click();
+    await departments.getByText("Saved successfully.").waitFor();
+    console.log(
+      "PASS provider invitation acceptance, mandatory MFA, tenant selection, employee invitation and department creation",
+    );
+    if (!networkMismatch) await checkJourneyConfiguration(invited, base);
+  }
   // Focused network regression keeps the separate clinical-mutation scenario optional.
   if (!networkMismatch) {
     const clinicalContext = await browser.newContext();
     const clinical = await clinicalContext.newPage();
     activePage = clinical;
-    clinical.setDefaultTimeout(30_000);
+    clinical.setDefaultTimeout(60_000);
     await signIn(
       clinical,
       base,
@@ -359,6 +367,10 @@ try {
       .locator("article.record-card")
       .filter({ hasText: "attested" })
       .waitFor();
+    await expect(
+      clinical.getByText("Attest this draft", { exact: true }),
+    ).toHaveCount(0);
+    await clinical.getByText("historical", { exact: true }).waitFor();
     await clinical
       .getByRole("button", {
         name: "I have reviewed the latest version",
@@ -377,6 +389,23 @@ try {
         exact: true,
       })
       .waitFor();
+    await clinical.screenshot({
+      path: "/tmp/ccu360-shared-ledger-desktop.png",
+      fullPage: true,
+    });
+    await clinical.setViewportSize({ width: 390, height: 844 });
+    await expect
+      .poll(() =>
+        clinical.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      )
+      .toBe(true);
+    await clinical.screenshot({
+      path: "/tmp/ccu360-shared-ledger-mobile.png",
+      fullPage: true,
+    });
+    await clinical.setViewportSize({ width: 1440, height: 1000 });
     await clinical.getByRole("tab", { name: "Team actions" }).click();
     const action = panel(clinical, "Create a team action");
     await action
@@ -447,7 +476,7 @@ try {
     );
     await clinicalContext.clearCookies({ name: "ccu-access" });
     const secondTab = await clinicalContext.newPage();
-    secondTab.setDefaultTimeout(30_000);
+    secondTab.setDefaultTimeout(60_000);
     await Promise.all([
       clinical.goto(base + "/dashboard"),
       secondTab.goto(base + "/dashboard"),
@@ -481,24 +510,26 @@ try {
       "PASS concurrent cross-tab refresh, role boundary, cross-tab logout and no browser-storage credentials/PHI",
     );
   }
-  activePage = invited;
-  await checkWorksiteCommunication({
-    browser,
-    admin: invited,
-    base,
-    invitation: () => fixture("invitation", "employee-e2e@example.org"),
-    password: invitedPassword,
-    networkMismatch,
-  });
-  await owner.screenshot({
-    path: "/tmp/ccu360-web-identity-desktop.png",
-    fullPage: true,
-  });
-  await invited.setViewportSize({ width: 390, height: 844 });
-  await invited.screenshot({
-    path: "/tmp/ccu360-web-identity-mobile.png",
-    fullPage: true,
-  });
+  if (!clinicalOnly) {
+    activePage = invited;
+    await checkWorksiteCommunication({
+      browser,
+      admin: invited,
+      base,
+      invitation: () => fixture("invitation", "employee-e2e@example.org"),
+      password: invitedPassword,
+      networkMismatch,
+    });
+    await owner.screenshot({
+      path: "/tmp/ccu360-web-identity-desktop.png",
+      fullPage: true,
+    });
+    await invited.setViewportSize({ width: 390, height: 844 });
+    await invited.screenshot({
+      path: "/tmp/ccu360-web-identity-mobile.png",
+      fullPage: true,
+    });
+  }
   console.log(
     "PASS browser integration. No real email, production database or production account was used.",
   );

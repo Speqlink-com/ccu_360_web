@@ -14,6 +14,7 @@ const readRoutes = [
   /^journey\/(inbox|published-templates|team-options|access-audit)$/,
   /^journey\/config\/(baseline|brands|templates)$/,
   new RegExp(`^journey/config/logos/${uuid}$`),
+  new RegExp(`^journey/config/(templates|brands)/${uuid}$`),
   new RegExp(
     `^journey/encounters/${uuid}(/records/(entries|observations|verifications|tasks|handovers|timeline)|/evidence/(verify|bundle)|/outputs/${uuid}(/manifest)?)?$`,
   ),
@@ -59,6 +60,8 @@ export function featureGatewayPath(path: string, method: string) {
       ),
     ],
     POST: [
+      new RegExp(`^journey/config/templates/${uuid}/(clone|validate)$`),
+      new RegExp(`^journey/config/brands/${uuid}/revisions$`),
       /^worksite\/(sites|networks|location\/(challenges|attestations))$/,
       /^communication\/(conversations|realtime\/tickets)$/,
       new RegExp(
@@ -66,6 +69,7 @@ export function featureGatewayPath(path: string, method: string) {
       ),
     ],
     PUT: [
+      new RegExp(`^journey/config/templates/${uuid}$`),
       /^worksite\/policy$/,
       new RegExp(`^worksite/sites/${uuid}$`),
       new RegExp(
@@ -73,6 +77,7 @@ export function featureGatewayPath(path: string, method: string) {
       ),
     ],
     PATCH: [
+      new RegExp(`^journey/config/(templates|brands)/${uuid}$`),
       new RegExp(`^worksite/networks/${uuid}$`),
       new RegExp(`^communication/conversations/${uuid}/messages/${uuid}$`),
     ],
@@ -208,7 +213,10 @@ export async function identityGateway(
   let body: Uint8Array | string | undefined;
   try {
     if (request.method !== "GET") {
-      const raw = await boundedBody(request);
+      const raw = await boundedBody(
+        request,
+        path === "journey/config/logos" ? 2_097_152 : 600_000,
+      );
       if (path === "journey/config/logos") body = raw;
       else {
         if (

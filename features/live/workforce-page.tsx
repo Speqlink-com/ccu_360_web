@@ -21,6 +21,12 @@ import {
   value,
 } from "./shared";
 import { useChoices, ChoiceLoader } from "./choices";
+const localInputTime = (stamp: string) => {
+  const date = new Date(stamp);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+};
 const capabilities = [
   "register",
   "admit",
@@ -100,7 +106,10 @@ export function WorkforcePage() {
         <Panel title="Departments">
           <QueryState query={departments} />
           {departments.data?.items.map((item) => (
-            <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={item.id}>
+            <div
+              className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4"
+              key={item.id}
+            >
               <div>
                 <strong>{item.name}</strong>
                 <small>
@@ -109,15 +118,52 @@ export function WorkforcePage() {
                 </small>
               </div>
               <details>
-                <summary>Change status</summary>
+                <summary>Edit department</summary>
+                <ActionForm
+                  scope={org}
+                  path={`workforce/departments/${item.id}`}
+                  method="PATCH"
+                  label="Save department"
+                  reset={false}
+                  body={(data) => ({
+                    active: item.active,
+                    expected_version: item.version,
+                    name: value(data, "name"),
+                    code: value(data, "code"),
+                    reason: value(data, "reason"),
+                  })}
+                >
+                  <Field
+                    name="name"
+                    label="Department name"
+                    defaultValue={item.name}
+                    minLength={2}
+                    maxLength={120}
+                  />
+                  <Field
+                    name="code"
+                    label="Department code"
+                    defaultValue={item.code}
+                    pattern="[a-z][a-z0-9_]{1,39}"
+                    maxLength={40}
+                  />
+                  <Field
+                    name="reason"
+                    label="Change reason"
+                    minLength={3}
+                    maxLength={500}
+                  />
+                </ActionForm>
+                <p className="mt-5 text-sm text-muted">
+                  Archiving removes employee access through this department. Its
+                  history is retained.
+                </p>
                 <ActionForm
                   scope={org}
                   path={`workforce/departments/${item.id}`}
                   method="PATCH"
                   label={
-                    item.active
-                      ? "Deactivate department"
-                      : "Reactivate department"
+                    item.active ? "Archive department" : "Restore department"
                   }
                   body={(data) => ({
                     active: !item.active,
@@ -242,7 +288,10 @@ export function WorkforcePage() {
       <Panel title="Shared team roles">
         <QueryState query={roles} />
         {roles.data?.items.map((role) => (
-          <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={role.id}>
+          <div
+            className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4"
+            key={role.id}
+          >
             <div>
               <strong>{role.name}</strong>
               <p>
@@ -261,12 +310,66 @@ export function WorkforcePage() {
             </div>
             <Status value={role.active ? "active" : "suspended"} />
             <details>
-              <summary>Manage role</summary>
+              <summary>Edit care-team role</summary>
               <ActionForm
                 scope={org}
                 path={`workforce/roles/${role.id}`}
                 method="PATCH"
-                label={role.active ? "Deactivate role" : "Reactivate role"}
+                label="Save care-team role"
+                reset={false}
+                body={(data) => ({
+                  active: role.active,
+                  expected_version: role.version,
+                  name: value(data, "name"),
+                  code: value(data, "code"),
+                  capabilities: data.getAll("capabilities"),
+                  reason: value(data, "reason"),
+                })}
+              >
+                <Field
+                  name="name"
+                  label="Team role name"
+                  defaultValue={role.name}
+                  minLength={2}
+                  maxLength={120}
+                />
+                <Field
+                  name="code"
+                  label="Role code"
+                  defaultValue={role.code}
+                  pattern="[a-z][a-z0-9_]{1,39}"
+                  maxLength={40}
+                />
+                <fieldset className="option-grid">
+                  <legend>Responsibilities</legend>
+                  {capabilities.map((capability) => (
+                    <label className="check-label" key={capability}>
+                      <input
+                        type="checkbox"
+                        name="capabilities"
+                        value={capability}
+                        defaultChecked={role.capabilities.includes(capability)}
+                      />
+                      {capabilityLabels[capability]}
+                    </label>
+                  ))}
+                </fieldset>
+                <Field
+                  name="reason"
+                  label="Change reason"
+                  minLength={3}
+                  maxLength={500}
+                />
+              </ActionForm>
+              <p className="mt-5 text-sm text-muted">
+                Archive unused roles to preserve their assignments and
+                documentation history.
+              </p>
+              <ActionForm
+                scope={org}
+                path={`workforce/roles/${role.id}`}
+                method="PATCH"
+                label={role.active ? "Archive role" : "Restore role"}
                 body={(data) => ({
                   active: !role.active,
                   expected_version: role.version,
@@ -344,7 +447,10 @@ export function WorkforcePage() {
         <Panel title="Dated assignments">
           <QueryState query={assignments} />
           {assignments.data?.items.map((item) => (
-            <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={item.id}>
+            <div
+              className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4"
+              key={item.id}
+            >
               <div>
                 <strong>
                   {allPeople.find((person) => person.id === item.membership_id)
@@ -361,7 +467,49 @@ export function WorkforcePage() {
                 </small>
               </div>
               <details>
-                <summary>Change assignment</summary>
+                <summary>Edit assignment</summary>
+                <ActionForm
+                  scope={org}
+                  path={`workforce/assignments/${item.id}`}
+                  method="PATCH"
+                  label="Save assignment dates"
+                  reset={false}
+                  body={(data) => ({
+                    active: item.active,
+                    expected_version: item.version,
+                    starts_at: new Date(value(data, "starts_at")).toISOString(),
+                    ends_at: value(data, "ends_at")
+                      ? new Date(value(data, "ends_at")).toISOString()
+                      : null,
+                    reason: value(data, "reason"),
+                  })}
+                >
+                  <Field
+                    name="starts_at"
+                    label="Starts at"
+                    type="datetime-local"
+                    defaultValue={localInputTime(item.starts_at)}
+                  />
+                  <Field
+                    name="ends_at"
+                    label="Ends at"
+                    type="datetime-local"
+                    required={false}
+                    defaultValue={
+                      item.ends_at ? localInputTime(item.ends_at) : ""
+                    }
+                  />
+                  <Field
+                    name="reason"
+                    label="Change reason"
+                    minLength={3}
+                    maxLength={500}
+                  />
+                </ActionForm>
+                <p className="mt-5 text-sm text-muted">
+                  To transfer responsibility, end this assignment and create a
+                  dated assignment for the receiving employee.
+                </p>
                 <ActionForm
                   scope={org}
                   path={`workforce/assignments/${item.id}`}
@@ -398,7 +546,10 @@ export function WorkforcePage() {
       >
         <QueryState query={staff} />
         {staff.data?.items.map((item) => (
-          <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={item.membership_id}>
+          <div
+            className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4"
+            key={item.membership_id}
+          >
             <div>
               <strong>{item.display_name}</strong>
               <small>{item.email}</small>

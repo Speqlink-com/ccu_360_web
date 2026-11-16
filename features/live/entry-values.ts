@@ -17,8 +17,13 @@ export function collectEntryValues(section: Section, data: FormData) {
       continue;
     }
     const raw = String(data.get(field.key) ?? "").trim();
-    if (field.type === "observation_refs") {
+    if (field.type === "observation_refs" || field.type === "multichoice") {
       const refs = data.getAll(field.key).map(String);
+      if (
+        field.type === "multichoice" &&
+        refs.some((ref) => !field.choices.includes(ref))
+      )
+        throw new Error(`Choose available options for ${field.label}.`);
       if (refs.length) result[field.key] = { status, value: refs };
       else if (field.required) throw new Error(`${field.label} is required.`);
       continue;
@@ -42,7 +47,10 @@ export function collectEntryValues(section: Section, data: FormData) {
       value = raw === "true";
     }
     if (field.type === "datetime") value = new Date(raw).toISOString();
-    if (field.type === "choice" && !field.choices.includes(raw))
+    if (
+      ["choice", "radio"].includes(field.type) &&
+      !field.choices.includes(raw)
+    )
       throw new Error(`Choose an available option for ${field.label}.`);
     result[field.key] = { status, value };
   }

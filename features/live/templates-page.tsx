@@ -1,507 +1,500 @@
 "use client";
-import { buttonClasses } from "@/lib/presentation";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { apiRequest } from "@/lib/api/client";
 import { useIdentity, useLiveQuery } from "@/features/identity/queries";
 import { pageOf } from "@/lib/api/identity-contract";
-import {
-  definition,
-  brand,
-  formTemplate,
-  teamRole,
-  type Definition,
-} from "./journey-contract";
+import { buttonClasses } from "@/lib/presentation";
+import { definition, brand, formTemplate, teamRole } from "./journey-contract";
 import {
   Heading,
   Panel,
   Field,
   ActionForm,
   ActionButton,
-  Notice,
   QueryState,
   Status,
   Pager,
   value,
 } from "./shared";
 import { useChoices, ChoiceLoader } from "./choices";
+import { TemplateEditor } from "./template-editor";
+import { TemplatePreview } from "./template-preview";
 
+type Brand = z.infer<typeof brand>;
+type Template = z.infer<typeof formTemplate>;
+function BrandForm({ org, existing }: { org: string; existing?: Brand }) {
+  const [logo, setLogo] = useState(existing?.logo_id ?? "");
+  const [uploadError, setUploadError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  return (
+    <ActionForm
+      disabled={uploading}
+      scope={org}
+      path={
+        existing
+          ? `journey/config/brands/${existing.id}/revisions`
+          : "journey/config/brands"
+      }
+      label={
+        existing ? "Save new branding version" : "Create facility branding"
+      }
+      reset={false}
+      body={(data) => ({
+        title: value(data, "title"),
+        primary_color: value(data, "primary_color"),
+        accent_color: value(data, "accent_color"),
+        logo_id: logo || null,
+        ...(existing
+          ? {
+              expected_version: existing.revision,
+              reason: value(data, "reason"),
+            }
+          : {}),
+      })}
+    >
+      <Field
+        name="title"
+        label="Facility document title"
+        defaultValue={existing?.title}
+        minLength={2}
+        maxLength={160}
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field
+          name="primary_color"
+          label="Primary colour"
+          type="color"
+          defaultValue={existing?.primary_color ?? "#092744"}
+        />
+        <Field
+          name="accent_color"
+          label="Accent colour"
+          type="color"
+          defaultValue={existing?.accent_color ?? "#008f89"}
+        />
+      </div>
+      <label className="live-field">
+        Facility logo (PNG, JPEG or WebP, up to 2 MiB)
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          disabled={uploading}
+          onChange={async (event) => {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            setUploadError("");
+            if (!file.size || file.size > 2_097_152) {
+              setUploadError("Choose a logo up to 2 MiB.");
+              return;
+            }
+            setUploading(true);
+            try {
+              const { apiRequest } = await import("@/lib/api/client");
+              const result = await apiRequest(
+                "/api/v1/journey/config/logos",
+                z.object({ id: z.string() }),
+                { method: "POST", body: file },
+              );
+              setLogo(result.id);
+            } catch (error) {
+              setUploadError(
+                error instanceof Error ? error.message : "Logo upload failed.",
+              );
+            } finally {
+              setUploading(false);
+            }
+          }}
+        />
+      </label>
+      {uploading && (
+        <p role="status">Uploading logo. Wait for the preview before saving.</p>
+      )}
+      {uploadError && (
+        <p role="alert" className="text-red-700">
+          {uploadError}
+        </p>
+      )}
+      {logo && (
+        <div className="mb-4 flex items-center gap-5 rounded-lg border border-border p-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/v1/journey/config/logos/${logo}`}
+            alt="Facility logo"
+            className="max-h-20 max-w-44 object-contain"
+          />
+          <button
+            className="text-sm text-red-700"
+            type="button"
+            onClick={() => setLogo("")}
+          >
+            Remove logo from this version
+          </button>
+        </div>
+      )}
+      {existing && (
+        <Field
+          name="reason"
+          label="Change reason"
+          minLength={3}
+          maxLength={500}
+        />
+      )}
+      <p className="mb-4 text-sm text-muted">
+        Branding is versioned. Choose this version on a draft form to apply it
+        to future patient journeys.
+      </p>
+    </ActionForm>
+  );
+}
 export function TemplatesPage() {
-  const user = useIdentity().data!;
-  const org = user.organization_id!;
-  const client = useQueryClient();
+  const org = useIdentity().data!.organization_id!;
   const [offset, setOffset] = useState(0);
-  const [draft, setDraft] = useState<Definition | null>(null);
-  const [logo, setLogo] = useState<string | null>(null);
+  const [brandOffset, setBrandOffset] = useState(0);
+  const [editing, setEditing] = useState<Template | null>(null);
+  const [preview, setPreview] = useState<Template | null>(null);
+  const [previewStage, setPreviewStage] = useState("admission");
   const base = useLiveQuery(org, "journey/config/baseline", definition);
   const templates = useLiveQuery(
     org,
     `journey/config/templates?offset=${offset}&limit=20`,
     pageOf(formTemplate),
   );
+  const brandsPage = useLiveQuery(
+    org,
+    `journey/config/brands?offset=${brandOffset}&limit=20`,
+    pageOf(brand),
+  );
   const brands = useChoices(org, "journey/config/brands", brand);
   const roles = useChoices(org, "workforce/roles", teamRole);
-  const options =
-    roles.data?.pages
-      .flatMap((page) => page.items)
-      .filter((role) => role.active) ?? [];
-  const upload = useMutation({
-    mutationFn: async (file: File) => {
-      if (!file.size || file.size > 256_000)
-        throw new Error("Choose a PNG, JPEG or WebP logo smaller than 250 KB.");
-      const result = await apiRequest(
-        "/api/v1/journey/config/logos",
-        z.object({ id: z.string() }),
-        { method: "POST", body: file },
-      );
-      setLogo(result.id);
-    },
-  });
-  const save = useMutation({
-    mutationFn: (data: FormData) => {
-      if (!draft) throw new Error("Prepare a journey form first.");
-      return apiRequest("/api/v1/journey/config/templates", formTemplate, {
-        method: "POST",
-        body: {
-          name: value(data, "name"),
-          brand_id: value(data, "brand_id"),
-          definition: definition.parse(draft),
-        },
-      });
-    },
-    onSuccess: async () => {
-      setDraft(null);
-      await client.invalidateQueries({ queryKey: ["live", org] });
-    },
-  });
-  function update(change: (next: Definition) => void) {
-    setDraft((previous) => {
-      if (!previous) return previous;
-      const next = structuredClone(previous);
-      change(next);
-      return next;
-    });
-  }
+  const allBrands = brands.data?.pages.flatMap((page) => page.items) ?? [];
+  const allRoles = roles.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <>
       <Heading
         title="Journey forms & branding"
-        detail="Customize your facility’s document identity and professional sections while retaining the shared nine-stage journey. Published versions remain fixed for existing patient records."
+        detail="Design your facility’s shared patient document. Publish reviewed form versions, preserve existing encounters, and give every professional team a clear place to contribute."
       />
-      <div className="live-grid grid grid-cols-2 items-start gap-6 max-[760px]:grid-cols-1 max-[760px]:gap-0">
-        <Panel
-          title="Document branding"
-          detail="Each change creates a new brand version."
-        >
-          <label className="live-field">
-            <span>Facility logo (PNG, JPEG or WebP, up to 250 KB)</span>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              disabled={upload.isPending}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) upload.mutate(file);
-              }}
-            />
-          </label>
-          {upload.isPending && <p role="status">Uploading logo…</p>}
-          {logo && (
-            <p className="success-message rounded-lg border border-success-border bg-mint p-3 text-success-text" role="status">
-              Logo uploaded. Save the brand to attach it.
-            </p>
-          )}
-          <Notice error={upload.error} />
-          <ActionForm
-            scope={org}
-            path="journey/config/brands"
-            label="Save brand version"
-            body={(data) => ({
-              title: value(data, "title"),
-              primary_color: value(data, "primary_color"),
-              accent_color: value(data, "accent_color"),
-              logo_id: logo,
-            })}
-            onSuccess={() => setLogo(null)}
+      <div className="mb-6 grid gap-4 md:grid-cols-3">
+        {[
+          [
+            "01",
+            "Define the facility",
+            "Set the document title, colours and logo.",
+          ],
+          [
+            "02",
+            "Design the journey",
+            "Customize fields and assign shared care teams.",
+          ],
+          [
+            "03",
+            "Review & publish",
+            "Preview, validate and approve a pinned version.",
+          ],
+        ].map(([number, title, detail]) => (
+          <div
+            key={number}
+            className="rounded-xl border border-border bg-surface p-5"
           >
-            <Field
-              name="title"
-              label="Document title"
-              defaultValue={
-                user.memberships.find(
-                  (member) => member.organization_id === org,
-                )?.provider_name
-              }
-              minLength={2}
-            />
-            <div className="live-form-grid grid grid-cols-2 gap-4 max-[760px]:grid-cols-1 max-[760px]:gap-0">
-              <Field
-                name="primary_color"
-                label="Primary colour"
-                type="color"
-                defaultValue="#06234c"
-              />
-              <Field
-                name="accent_color"
-                label="Accent colour"
-                type="color"
-                defaultValue="#008f87"
-              />
+            <span className="font-mono text-sm text-teal-dark">{number}</span>
+            <h2 className="mt-2 font-semibold text-navy">{title}</h2>
+            <p className="mt-2 text-sm text-muted">{detail}</p>
+          </div>
+        ))}
+      </div>
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <Panel
+          title="Facility identity"
+          detail="Create reusable branding for the final journey ledger."
+        >
+          <details>
+            <summary className="mb-4 cursor-pointer font-semibold text-teal-dark">
+              Add facility branding
+            </summary>
+            <BrandForm org={org} />
+          </details>
+          <QueryState query={brandsPage} />
+          {brandsPage.data?.items.map((item) => (
+            <div key={item.id} className="border-t border-border py-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <strong>{item.title}</strong>
+                  <p className="text-sm text-muted">
+                    Brand v{item.version}
+                    {item.source_brand_id ? " · Revised identity" : ""}
+                  </p>
+                </div>
+                <div className="flex gap-2" aria-label="Brand colours">
+                  <span
+                    className="h-7 w-7 rounded-full border border-border"
+                    style={{ backgroundColor: item.primary_color }}
+                  />
+                  <span
+                    className="h-7 w-7 rounded-full border border-border"
+                    style={{ backgroundColor: item.accent_color }}
+                  />
+                </div>
+                <Status value={item.active ? "active" : "archived"} />
+              </div>
+              <details className="mt-3">
+                <summary className="cursor-pointer text-sm font-semibold text-teal-dark">
+                  Revise branding
+                </summary>
+                <div className="mt-4">
+                  <BrandForm org={org} existing={item} />
+                </div>
+              </details>
+              <details className="mt-3">
+                <summary className="cursor-pointer text-sm text-muted">
+                  {item.active ? "Archive branding" : "Restore branding"}
+                </summary>
+                <ActionForm
+                  scope={org}
+                  path={`journey/config/brands/${item.id}`}
+                  method="PATCH"
+                  label={
+                    item.active
+                      ? "Archive branding version"
+                      : "Restore branding version"
+                  }
+                  body={(data) => ({
+                    active: !item.active,
+                    expected_version: item.revision,
+                    reason: value(data, "reason"),
+                  })}
+                >
+                  <Field
+                    name="reason"
+                    label="Reason"
+                    minLength={3}
+                    maxLength={500}
+                  />
+                </ActionForm>
+              </details>
             </div>
-          </ActionForm>
+          ))}
+          <Pager
+            offset={brandOffset}
+            count={brandsPage.data?.items.length ?? 0}
+            change={setBrandOffset}
+          />
         </Panel>
         <Panel
-          title="Create a journey form"
-          detail="Start from the standard form or copy a prior version. Assign a responsible team role to every enabled section before publishing."
+          title="Start a journey form"
+          detail="Start from the standard nine-stage ledger. Existing versions can be cloned below."
         >
           <QueryState query={base} />
-          <button
-            className={buttonClasses.primary}
-            disabled={!base.data || !!draft}
-            onClick={() => base.data && setDraft(structuredClone(base.data))}
-          >
-            Customize standard journey
-          </button>
-          <ChoiceLoader query={roles} />
           <ChoiceLoader query={brands} />
-          {!options.length && (
-            <p>
-              First create care-team roles with reading, documentation and
-              attestation permissions under Departments & care teams.
-            </p>
+          <ChoiceLoader query={roles} />
+          {base.data && (
+            <ActionForm
+              disabled={!!editing}
+              scope={org}
+              path="journey/config/templates"
+              label="Create & open draft"
+              body={(data) => ({
+                name: value(data, "name"),
+                brand_id: value(data, "brand_id"),
+                definition: base.data,
+              })}
+              onSuccess={(result) => {
+                setEditing(formTemplate.parse(result));
+                setPreview(null);
+              }}
+            >
+              <Field
+                name="name"
+                label="Form name"
+                minLength={2}
+                maxLength={120}
+              />
+              <Field name="brand_id" label="Facility branding">
+                <option value="">Choose active branding</option>
+                {allBrands
+                  .filter((item) => item.active)
+                  .map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.title} · v{item.version}
+                    </option>
+                  ))}
+              </Field>
+              {editing && (
+                <p className="mb-4 text-sm text-muted">
+                  Close the open editor before starting another draft.
+                </p>
+              )}
+            </ActionForm>
           )}
+          <p className="mt-4 text-sm text-muted">
+            Create departments and compatible care-team roles before publishing.
+            Each enabled section needs a team with reading, documentation and
+            attestation permissions.
+          </p>
         </Panel>
       </div>
-      {draft && (
+      {editing && base.data && (
+        <TemplateEditor
+          key={editing.id}
+          org={org}
+          initial={editing}
+          baseline={base.data}
+          brands={allBrands}
+          roles={allRoles}
+          onClose={() => setEditing(null)}
+        />
+      )}
+      {preview && (
         <Panel
-          title="Draft form editor"
-          detail="Canonical stages and required clinical fields are retained. New fields belong to their professional section."
+          title={`Document preview · ${preview.name}`}
+          detail={`Version ${preview.version} · ${preview.status} · Illustrative data only`}
         >
-          <form
-            className="live-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              save.mutate(new FormData(event.currentTarget));
-            }}
-          >
-            <fieldset disabled={save.isPending}>
-              <div className="live-form-grid grid grid-cols-2 gap-4 max-[760px]:grid-cols-1 max-[760px]:gap-0">
-                <Field
-                  name="name"
-                  label="Form name"
-                  minLength={2}
-                  maxLength={120}
-                />
-                <Field name="brand_id" label="Brand version">
-                  <option value="">Select brand</option>
-                  {brands.data?.pages
-                    .flatMap((page) => page.items)
-                    .map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.title} · version {item.version}
-                      </option>
-                    ))}
-                </Field>
-              </div>
-              <label className="live-field">
-                <span>Apply a medical team role across all stages</span>
-                <select
-                  defaultValue=""
-                  onChange={(event) => {
-                    const id = event.target.value;
-                    if (id)
-                      update((next) => {
-                        for (const stage of next.stages)
-                          for (const section of stage.sections)
-                            if (
-                              section.identity_roles.length === 1 &&
-                              section.identity_roles[0] === "doctor"
-                            ) {
-                              section.role_ids = [id];
-                              section.enabled = true;
-                            }
-                      });
-                  }}
-                >
-                  <option value="">Choose a medical role</option>
-                  {options
-                    .filter((role) =>
-                      role.identity_roles.every(
-                        (profession) => profession === "doctor",
-                      ),
-                    )
-                    .map((role) => (
-                      <option key={role.id} value={role.id}>
-                        {role.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              {draft.stages.map((stage, stageIndex) => (
-                <details className="stage-editor my-3 rounded-[10px] border border-border px-4" key={stage.key}>
-                  <summary>{stage.label}</summary>
-                  {stage.sections.map((section, sectionIndex) => (
-                    <section key={section.key} className="section-editor border-t border-border py-4">
-                      <label className="check-label">
-                        <input
-                          type="checkbox"
-                          checked={section.enabled}
-                          onChange={(event) =>
-                            update((next) => {
-                              next.stages[stageIndex].sections[
-                                sectionIndex
-                              ].enabled = event.target.checked;
-                            })
-                          }
-                        />
-                        {section.label}
-                      </label>
-                      {section.enabled && (
-                        <>
-                          <label className="live-field">
-                            <span>Responsible team role</span>
-                            <select
-                              required
-                              value={section.role_ids[0] ?? ""}
-                              onChange={(event) =>
-                                update((next) => {
-                                  next.stages[stageIndex].sections[
-                                    sectionIndex
-                                  ].role_ids = event.target.value
-                                    ? [event.target.value]
-                                    : [];
-                                })
-                              }
-                            >
-                              <option value="">Select a compatible role</option>
-                              {options
-                                .filter((role) =>
-                                  role.identity_roles.every((profession) =>
-                                    section.identity_roles.includes(profession),
-                                  ),
-                                )
-                                .map((role) => (
-                                  <option key={role.id} value={role.id}>
-                                    {role.name}
-                                  </option>
-                                ))}
-                            </select>
-                          </label>
-                          <div className="field-inventory my-3 grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-3">
-                            {section.fields.map((field, fieldIndex) => (
-                              <div key={fieldIndex} className="custom-field flex flex-col gap-3 rounded-lg border border-border p-3">
-                                <label>
-                                  Field label
-                                  <input
-                                    required
-                                    minLength={2}
-                                    maxLength={120}
-                                    value={field.label}
-                                    onChange={(event) =>
-                                      update((next) => {
-                                        next.stages[stageIndex].sections[
-                                          sectionIndex
-                                        ].fields[fieldIndex].label =
-                                          event.target.value;
-                                      })
-                                    }
-                                  />
-                                </label>
-                                {fieldIndex >=
-                                (base.data?.stages[stageIndex].sections[
-                                  sectionIndex
-                                ]?.fields.length ?? 99) ? (
-                                  <>
-                                    <label>
-                                      Field key
-                                      <input
-                                        required
-                                        pattern="[a-z][a-z0-9_]{1,49}"
-                                        value={field.key}
-                                        onChange={(event) =>
-                                          update((next) => {
-                                            next.stages[stageIndex].sections[
-                                              sectionIndex
-                                            ].fields[fieldIndex].key =
-                                              event.target.value;
-                                          })
-                                        }
-                                      />
-                                    </label>
-                                    <label>
-                                      Type
-                                      <select
-                                        value={field.type}
-                                        onChange={(event) =>
-                                          update((next) => {
-                                            const item =
-                                              next.stages[stageIndex].sections[
-                                                sectionIndex
-                                              ].fields[fieldIndex];
-                                            item.type = event.target
-                                              .value as typeof field.type;
-                                            item.choices = [];
-                                          })
-                                        }
-                                      >
-                                        {[
-                                          "text",
-                                          "textarea",
-                                          "number",
-                                          "boolean",
-                                          "choice",
-                                          "datetime",
-                                        ].map((kind) => (
-                                          <option key={kind}>{kind}</option>
-                                        ))}
-                                      </select>
-                                    </label>
-                                    {field.type === "choice" && (
-                                      <label>
-                                        Choices (one per line)
-                                        <textarea
-                                          required
-                                          value={field.choices.join("\n")}
-                                          onChange={(event) =>
-                                            update((next) => {
-                                              next.stages[stageIndex].sections[
-                                                sectionIndex
-                                              ].fields[fieldIndex].choices =
-                                                event.target.value.split("\n");
-                                            })
-                                          }
-                                        />
-                                      </label>
-                                    )}
-                                    <label className="check-label">
-                                      <input
-                                        type="checkbox"
-                                        checked={field.required}
-                                        onChange={(event) =>
-                                          update((next) => {
-                                            next.stages[stageIndex].sections[
-                                              sectionIndex
-                                            ].fields[fieldIndex].required =
-                                              event.target.checked;
-                                          })
-                                        }
-                                      />
-                                      Required
-                                    </label>
-                                    <button
-                                      className="text-button border-0 bg-transparent px-0 py-2 text-left font-semibold text-teal-dark"
-                                      type="button"
-                                      onClick={() =>
-                                        update((next) => {
-                                          next.stages[stageIndex].sections[
-                                            sectionIndex
-                                          ].fields.splice(fieldIndex, 1);
-                                        })
-                                      }
-                                    >
-                                      Remove custom field
-                                    </button>
-                                  </>
-                                ) : (
-                                  <small>
-                                    {field.type.replaceAll("_", " ")} ·{" "}
-                                    {field.required ? "Required" : "Optional"} ·
-                                    Standard field
-                                  </small>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                          <button
-                            type="button"
-                            className={buttonClasses.secondary}
-                            disabled={section.fields.length >= 30}
-                            onClick={() =>
-                              update((next) => {
-                                next.stages[stageIndex].sections[
-                                  sectionIndex
-                                ].fields.push({
-                                  key: "custom_" + section.fields.length,
-                                  label: "Additional information",
-                                  type: "text",
-                                  required: false,
-                                  choices: [],
-                                });
-                              })
-                            }
-                          >
-                            Add custom field
-                          </button>
-                        </>
-                      )}
-                    </section>
-                  ))}
-                </details>
+          <div className="mb-4 flex flex-wrap gap-3">
+            <select
+              aria-label="Preview stage"
+              value={previewStage}
+              onChange={(event) => setPreviewStage(event.target.value)}
+            >
+              {preview.definition.stages.map((stage) => (
+                <option key={stage.key} value={stage.key}>
+                  {stage.label}
+                </option>
               ))}
-              <Notice error={save.error} />
-              <div className="flex flex-wrap items-center gap-[10px]">
-                <button className={buttonClasses.primary} disabled={save.isPending}>
-                  {save.isPending ? "Saving…" : "Save draft version"}
-                </button>
-                <button
-                  type="button"
-                  className={buttonClasses.secondary}
-                  onClick={() => {
-                    if (window.confirm("Discard this unsaved form?"))
-                      setDraft(null);
-                  }}
-                >
-                  Discard draft
-                </button>
-              </div>
-            </fieldset>
-          </form>
+            </select>
+            <button
+              type="button"
+              className={buttonClasses.secondary}
+              onClick={() => setPreview(null)}
+            >
+              Close preview
+            </button>
+          </div>
+          <TemplatePreview
+            definition={preview.definition}
+            branding={allBrands.find((item) => item.id === preview.brand_id)}
+            stageKey={previewStage}
+          />
         </Panel>
       )}
-      <Panel title="Form versions">
+      <Panel
+        title="Form version library"
+        detail="Published versions are immutable. Clone a version for changes; retiring a form prevents new admissions while existing patient journeys retain it."
+      >
         <QueryState query={templates} />
         {templates.data?.items.map((item) => (
-          <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={item.id}>
-            <div>
-              <strong>
-                {item.name} · v{item.version}
-              </strong>
-              <p>
-                Nine stages ·{" "}
-                {item.definition.stages.reduce(
-                  (sum, stage) =>
-                    sum +
-                    stage.sections.filter((section) => section.enabled).length,
-                  0,
-                )}{" "}
-                enabled professional sections
-              </p>
+          <article key={item.id} className="border-b border-border py-5">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <strong className="text-lg text-navy">{item.name}</strong>
+                <p className="mt-1 text-sm text-muted">
+                  Version {item.version} · Revision {item.revision} ·{" "}
+                  {item.definition.stages.reduce(
+                    (sum, stage) =>
+                      sum +
+                      stage.sections.filter((section) => section.enabled)
+                        .length,
+                    0,
+                  )}{" "}
+                  enabled sections
+                  {item.source_template_id ? " · Cloned version" : ""}
+                </p>
+              </div>
+              <Status value={item.status} />
             </div>
-            <Status value={item.status} />
-            <button
-              className={buttonClasses.secondary}
-              disabled={!!draft}
-              onClick={() => setDraft(structuredClone(item.definition))}
-            >
-              Copy to new draft
-            </button>
-            {item.status === "draft" && (
-              <ActionButton
-                scope={org}
-                path={`journey/config/templates/${item.id}/publish`}
-                body={{ approved: true }}
-                confirm="Publish this immutable form version for new patient journeys?"
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                className={buttonClasses.secondary}
+                onClick={() => {
+                  setPreview(item);
+                  setPreviewStage("admission");
+                }}
               >
-                Approve & publish
-              </ActionButton>
+                Preview ledger
+              </button>
+              {item.status === "draft" && (
+                <button
+                  className={buttonClasses.secondary}
+                  disabled={!!editing}
+                  onClick={() => {
+                    setEditing(item);
+                    setPreview(null);
+                  }}
+                >
+                  Edit saved draft
+                </button>
+              )}
+              {!editing && (
+                <ActionButton
+                  scope={org}
+                  path={`journey/config/templates/${item.id}/clone`}
+                  body={{
+                    expected_version: item.revision,
+                    reason: "Create a new draft from this form version",
+                  }}
+                  onSuccess={(result) => {
+                    setEditing(formTemplate.parse(result));
+                    setPreview(null);
+                  }}
+                >
+                  Clone to new draft
+                </ActionButton>
+              )}
+              {item.status === "draft" && !editing && (
+                <>
+                  <ActionButton
+                    scope={org}
+                    path={`journey/config/templates/${item.id}/validate`}
+                  >
+                    Validate for publication
+                  </ActionButton>
+                  <ActionButton
+                    scope={org}
+                    path={`journey/config/templates/${item.id}/publish`}
+                    body={{ approved: true, expected_version: item.revision }}
+                    confirm="Approve and publish this form for new patient journeys? The published version becomes immutable."
+                  >
+                    Approve & publish
+                  </ActionButton>
+                </>
+              )}
+            </div>
+            {!editing && (
+              <details className="mt-4">
+                <summary className="cursor-pointer text-sm text-muted">
+                  {item.active
+                    ? item.status === "published"
+                      ? "Retire version"
+                      : "Archive draft"
+                    : "Restore version"}
+                </summary>
+                <ActionForm
+                  scope={org}
+                  path={`journey/config/templates/${item.id}`}
+                  method="PATCH"
+                  label={
+                    item.active
+                      ? "Archive this version"
+                      : "Restore this version"
+                  }
+                  body={(data) => ({
+                    active: !item.active,
+                    expected_version: item.revision,
+                    reason: value(data, "reason"),
+                  })}
+                >
+                  <Field
+                    name="reason"
+                    label="Reason"
+                    minLength={3}
+                    maxLength={500}
+                  />
+                </ActionForm>
+              </details>
             )}
-          </div>
+          </article>
         ))}
         {templates.data && !templates.data.items.length && (
           <p>
-            No form versions yet. Save a brand, then customize the standard
-            journey.
+            No form versions yet. Create branding and start your first draft.
           </p>
         )}
         <Pager

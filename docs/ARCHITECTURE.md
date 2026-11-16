@@ -38,3 +38,31 @@ The supplied logo informs the navy/teal palette. Dashboards use the full viewpor
 Vercel publishes main at `https://ccu360.health`; the API is `https://api.ccu360.health`. Production uses standalone-compatible Next output and disables demo routes/accounts. Camera/microphone are disabled; geolocation is allowed only for the same origin. No shared server cache stores clinical records.
 
 Unit/contract tests, strict type checks, lint, production build/smoke and real-browser integration cover the implemented boundaries. Browser verification creates a uniquely named disposable local `_test` database, disables email, and removes only its owned fixture resources. Production account testing and clinical operations are separate from those synthetic checks. Backend backups, retention, monitoring and deployment controls remain the backend/operator's responsibility.
+
+## Journey configuration and shared ledger
+
+`features/live/template-editor.tsx` owns transient form-editing state; server drafts,
+versions, care teams and brands remain in TanStack Query. No clinical drafts or
+credentials enter persisted browser storage. Draft saves carry a lifecycle revision;
+conflicts preserve local edits and provide a reload action. A branded preview uses
+illustrative data only. Uploads have a matching 2 MiB limit at the UI, gateway and
+backend; other gateway requests retain their existing limit.
+
+Provider CRUD uses audited archive/restore for historical configuration. Branding
+revisions create immutable versions. Published forms are cloned for changes and
+retired for new admissions without rewriting existing patient encounters. The
+backend's separate lifecycle table preserves original source hashes. Date, time,
+radio and multiple-choice fields supplement the existing schema renderer.
+
+The employee ledger uses pinned facility branding and a nine-stage navigator.
+Shared entries refresh every 15 seconds while the page is visible; the documentation
+form retains its starting ledger version and prompts for review after concurrent
+changes. Unsaved form text is preserved during refresh, and changing sections/areas
+asks before discarding it. Authenticated entries, comments and attestation revisions
+remain individually attributed. Printable branded exports use the same source
+records, include all enabled stages and expose accountability/evidence history.
+
+`npm run smoke:identity` additionally checks provider department editing, role
+creation, real logo upload, draft custom fields and professional sections, preview,
+validation, publication, retirement and desktop/mobile document layout. All accounts
+and records are confined to the runner's disposable local database.

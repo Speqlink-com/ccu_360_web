@@ -8,6 +8,10 @@ export const fieldDefinition = z.object({
     "number",
     "boolean",
     "choice",
+    "radio",
+    "multichoice",
+    "date",
+    "time",
     "datetime",
     "observation_refs",
   ]),
@@ -60,6 +64,9 @@ export const assignment = z.object({
   version: z.number(),
 });
 export const brand = z.object({
+  revision: z.number().default(1),
+  active: z.boolean().default(true),
+  source_brand_id: z.string().nullable().optional(),
   id: z.string(),
   title: z.string(),
   primary_color: z.string(),
@@ -68,6 +75,9 @@ export const brand = z.object({
   logo_id: z.string().nullable(),
 });
 export const formTemplate = z.object({
+  revision: z.number().default(1),
+  active: z.boolean().default(true),
+  source_template_id: z.string().nullable().optional(),
   id: z.string(),
   name: z.string(),
   version: z.number(),
@@ -92,6 +102,7 @@ export const patient = z.object({
   date_of_birth: z.string().nullable(),
 });
 export const caseView = z.object({
+  brand,
   encounter,
   patient,
   template: formTemplate,
@@ -134,6 +145,8 @@ export const caseView = z.object({
   }),
 });
 export const entry = z.object({
+  is_current: z.boolean().default(true),
+  latest_revision: z.number().optional(),
   id: z.string(),
   logical_id: z.string(),
   revision: z.number(),
