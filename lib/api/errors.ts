@@ -21,6 +21,15 @@ export class ApiError extends Error {
 }
 const labels: Record<string, string> = {
   display_name: "Full name",
+  profession_ids: "Facility professions",
+  profession_id: "Employee profession",
+  responsibility_ids: "Facility responsibilities",
+  access_role_ids: "Linked care teams",
+  intake_role_ids: "Intake teams",
+  write_role_ids: "Section writers",
+  attestation_required: "Attestation requirement",
+  base_role: "Protected identity category",
+  query: "Patient search",
   name: "Name",
   code: "Code",
   email: "Email address",
@@ -129,7 +138,7 @@ export function issueMessage(issue: ValidationIssue, path = ""): string {
     case "section_team_unavailable":
       return "Choose an active compatible team in an active department.";
     case "section_team_permissions":
-      return "Assign a team with read, document and attest permissions.";
+      return "Choose a team with writing permission. When attestation is enabled, each writer also needs Attest notes.";
     case "stage_section_required":
       return "Enable at least one professional section in this stage.";
     case "required":

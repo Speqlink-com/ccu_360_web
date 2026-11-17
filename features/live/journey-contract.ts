@@ -19,6 +19,9 @@ export const fieldDefinition = z.object({
   choices: z.array(z.string()),
 });
 export const sectionDefinition = z.object({
+  kind: z.enum(["clinical", "administrative"]).default("clinical"),
+  write_role_ids: z.array(z.string()).nullable().default(null),
+  attestation_required: z.boolean().default(true),
   key: z.string(),
   label: z.string(),
   identity_roles: z.array(z.string()),
@@ -27,6 +30,9 @@ export const sectionDefinition = z.object({
   fields: z.array(fieldDefinition),
 });
 export const definition = z.object({
+  design_version: z.union([z.literal(1), z.literal(2)]).default(1),
+  access_role_ids: z.array(z.string()).default([]),
+  intake_role_ids: z.array(z.string()).default([]),
   stages: z.array(
     z.object({
       key: z.string(),
@@ -45,6 +51,8 @@ export const department = z.object({
   version: z.number(),
 });
 export const teamRole = z.object({
+  profession_ids: z.array(z.string()).default([]),
+  responsibility_ids: z.array(z.string()).default([]),
   id: z.string(),
   name: z.string(),
   code: z.string(),

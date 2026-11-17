@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, ApiError } from "@/lib/api/client";
@@ -9,13 +9,14 @@ import {
   formTemplate,
   teamRole,
   type Definition,
+  type Section,
 } from "./journey-contract";
 import { Notice, Status } from "./shared";
 import { TemplatePreview } from "./template-preview";
-
 type Template = z.infer<typeof formTemplate>;
-type Field = Definition["stages"][number]["sections"][number]["fields"][number];
-const types: [Field["type"], string][] = [
+type Role = z.infer<typeof teamRole>;
+type ClinicalField = Section["fields"][number];
+const types: [ClinicalField["type"], string][] = [
   ["text", "Short text"],
   ["textarea", "Long text"],
   ["number", "Number"],
@@ -26,47 +27,48 @@ const types: [Field["type"], string][] = [
   ["date", "Date"],
   ["time", "Time"],
   ["datetime", "Date and time"],
-  ["observation_refs", "Original observation references"],
+  ["observation_refs", "Shared observation references"],
 ];
-const newKey = (kind: string) =>
+const key = (kind: string) =>
   `${kind}_${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`;
 export function TemplateEditor({
   org,
   initial,
-  baseline,
   brands,
   roles,
+  roleLoader,
+  brandingLoader,
   onClose,
 }: {
   org: string;
   initial: Template;
   baseline: Definition;
   brands: z.infer<typeof brand>[];
-  roles: z.infer<typeof teamRole>[];
+  roles: Role[];
+  roleLoader?: ReactNode;
+  brandingLoader?: ReactNode;
   onClose: () => void;
 }) {
   const client = useQueryClient();
   const formRef = useRef<HTMLFormElement>(null);
-  const [name, setName] = useState(initial.name);
-  const [brandId, setBrandId] = useState(initial.brand_id);
+  const [name, setName] = useState(initial.name),
+    [brandId, setBrandId] = useState(initial.brand_id);
   const [draft, setDraft] = useState<Definition>(() =>
     structuredClone(initial.definition),
   );
-  const [revision, setRevision] = useState(initial.revision);
-  const [reason, setReason] = useState("");
+  const [revision, setRevision] = useState(initial.revision),
+    [reason, setReason] = useState("");
   const [stageKey, setStageKey] = useState(initial.definition.stages[0].key);
-  const [preview, setPreview] = useState(false);
-  const [dirty, setDirty] = useState(false);
+  const [dirty, setDirty] = useState(false),
+    [preview, setPreview] = useState(false);
   useEffect(() => {
     if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-    };
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
   const save = useMutation({
-    mutationFn: async () =>
+    mutationFn: () =>
       apiRequest(
         `/api/v1/journey/config/templates/${initial.id}`,
         formTemplate,
@@ -89,10 +91,11 @@ export function TemplateEditor({
           typeof path[index + 1] === "number"
             ? draft.stages[path[index + 1] as number]
             : undefined;
-        if (index >= 0 && stage) setStageKey(stage.key);
+        if (stage) setStageKey(stage.key);
       }
     },
     onSuccess: async (saved) => {
+      setDraft(saved.definition);
       setRevision(saved.revision);
       setDirty(false);
       setReason("");
@@ -106,79 +109,128 @@ export function TemplateEditor({
         formTemplate,
       ),
     onSuccess: (saved) => {
+      setDraft(saved.definition);
       setName(saved.name);
       setBrandId(saved.brand_id);
-      setDraft(structuredClone(saved.definition));
       setRevision(saved.revision);
-      setReason("");
       setDirty(false);
-      save.reset();
+      setReason("");
     },
   });
-  const stageIndex = draft.stages.findIndex((stage) => stage.key === stageKey);
-  const stage = draft.stages[stageIndex];
-  const change = (update: (next: Definition) => void) => {
-    setDraft((current) => {
-      const next = structuredClone(current);
-      update(next);
+  const change = (fn: (next: Definition) => void) => {
+    setDraft((old) => {
+      const next = structuredClone(old);
+      fn(next);
       return next;
     });
     setDirty(true);
     save.reset();
   };
+  const activeRoles = roles.filter((role) => role.active);
+  const linked = new Set([
+    ...draft.access_role_ids,
+    ...draft.stages.flatMap((stage) =>
+      stage.sections.filter((s) => s.enabled).flatMap((s) => s.role_ids),
+    ),
+  ]);
+  const roleOptions = roles.filter(
+    (role) => role.active || linked.has(role.id),
+  );
+  const stage = draft.stages.find((s) => s.key === stageKey) ?? draft.stages[0];
+  const stageIndex = draft.stages.findIndex((s) => s.key === stage.key);
+  const sectionPath = (index: number) =>
+    `definition.stages.${stageIndex}.sections.${index}`;
+  const update = (index: number, fn: (section: Section) => void) =>
+    change((next) =>
+      fn(next.stages.find((s) => s.key === stage.key)!.sections[index]),
+    );
+  const writable = (role: Role, section: Section) =>
+    section.kind === "administrative"
+      ? (role.capabilities.includes("register") ||
+          role.capabilities.includes("write")) &&
+        role.identity_roles.some((v) => v !== "auditor")
+      : role.identity_roles.some((v) =>
+          ["doctor", "nurse", "allied"].includes(v),
+        ) && role.capabilities.includes("write");
+  const writers = (s: Section) => s.write_role_ids ?? s.role_ids;
+  const warnings = draft.stages.flatMap((s) =>
+    s.sections
+      .filter((x) => x.enabled)
+      .flatMap((x) =>
+        !writers(x).length
+          ? [`${s.label}: choose a team to complete ${x.label}.`]
+          : x.attestation_required &&
+              writers(x).some(
+                (id) =>
+                  !activeRoles.some(
+                    (r) => r.id === id && r.capabilities.includes("attest"),
+                  ),
+              )
+            ? [
+                `${x.label}: every writing team needs Attest notes, or turn off attestation.`,
+              ]
+            : [],
+      ),
+  );
   return (
     <section
-      className="mb-6 overflow-hidden rounded-[14px] border border-border bg-surface"
-      aria-label="Saved draft editor"
+      aria-label="Journey form editor"
+      className="mb-8 rounded-2xl border border-border bg-surface p-5 sm:p-7"
     >
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-teal-dark">
-            Journey design studio
+          <p className="text-sm font-semibold text-teal-dark">
+            FORM DESIGNER · Draft v{initial.version}
           </p>
-          <h2 className="mt-2 text-2xl text-navy">{name}</h2>
-          <p className="mt-1 text-sm text-muted">
-            Form version {initial.version} · Revision {revision} ·{" "}
-            {dirty ? "Unsaved changes" : "Saved draft"}
+          <h2 className="text-2xl">{name}</h2>
+          <p className="mt-2 text-muted">
+            Patient details are captured once. Link the care teams, then give
+            each section its writers.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={buttonClasses.secondary}
-            disabled={save.isPending || reload.isPending}
-            onClick={() => {
-              if (
-                !dirty ||
-                window.confirm(
-                  "Discard unsaved changes and reload the saved draft?",
-                )
-              )
-                reload.mutate();
-            }}
-          >
-            Reload saved draft
-          </button>
-          <button
-            type="button"
-            className={buttonClasses.secondary}
-            onClick={() => setPreview(!preview)}
-          >
-            {preview ? "Edit fields" : "Preview document"}
-          </button>
-          <button
-            type="button"
-            className={buttonClasses.secondary}
-            disabled={save.isPending}
-            onClick={() => {
-              if (!dirty || window.confirm("Discard unsaved form changes?"))
-                onClose();
-            }}
-          >
-            Close editor
-          </button>
-        </div>
+        <Status value={dirty ? "Unsaved changes" : "Saved draft"} />
+        <button
+          className={buttonClasses.secondary}
+          onClick={() => {
+            if (!dirty || window.confirm("Discard unsaved form changes?"))
+              onClose();
+          }}
+        >
+          Close editor
+        </button>
       </div>
+      {draft.design_version === 1 && (
+        <div className="mb-6 rounded-xl border border-border bg-[#f4f8fa] p-5">
+          <h3 className="font-semibold">
+            This draft uses the original predefined sections
+          </h3>
+          <p className="my-3 text-sm text-muted">
+            Enable flexible editing to rename or remove repeated fields and
+            sections. Existing patient journeys keep their original published
+            version.
+          </p>
+          <button
+            className={buttonClasses.secondary}
+            onClick={() =>
+              change((next) => {
+                next.design_version = 2;
+                next.access_role_ids = [...linked];
+                next.intake_role_ids = activeRoles
+                  .filter(
+                    (r) =>
+                      linked.has(r.id) &&
+                      (r.capabilities.includes("admit") ||
+                        (r.identity_roles.includes("receptionist") &&
+                          r.capabilities.includes("register"))),
+                  )
+                  .map((r) => r.id);
+              })
+            }
+          >
+            Enable flexible sections
+          </button>
+        </div>
+      )}
       <form
         ref={formRef}
         onSubmit={(event) => {
@@ -186,18 +238,21 @@ export function TemplateEditor({
           save.mutate();
         }}
       >
-        <fieldset disabled={save.isPending || reload.isPending}>
-          <div className="grid gap-4 border-b border-border p-6 md:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            <p className="mb-3 text-sm font-bold text-teal-dark">
+              1 · DOCUMENT DETAILS
+            </p>
             <label className="live-field">
               Form name
               <input
+                name="name"
                 required
                 minLength={2}
                 maxLength={120}
-                name="name"
                 value={name}
-                onChange={(event) => {
-                  setName(event.target.value);
+                onChange={(e) => {
+                  setName(e.target.value);
                   setDirty(true);
                 }}
               />
@@ -205,518 +260,526 @@ export function TemplateEditor({
             <label className="live-field">
               Facility branding
               <select
-                required
+                aria-label="Facility branding"
                 name="brand_id"
+                required
                 value={brandId}
-                onChange={(event) => {
-                  setBrandId(event.target.value);
+                onChange={(e) => {
+                  setBrandId(e.target.value);
                   setDirty(true);
                 }}
               >
                 {brands
-                  .filter((item) => item.active || item.id === brandId)
-                  .map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.title} · v{item.version}
-                      {!item.active ? " (archived)" : ""}
+                  .filter((b) => b.active || b.id === brandId)
+                  .map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.title} · v{b.version}
                     </option>
                   ))}
               </select>
             </label>
+            {brandingLoader}
           </div>
-          <div className="border-b border-border px-6 py-4">
-            <label className="live-field">
-              Apply a medical team role across all stages
-              <select
-                defaultValue=""
-                onChange={(event) => {
-                  const roleId = event.target.value;
-                  if (!roleId) return;
-                  change((next) => {
-                    for (const item of next.stages)
-                      for (const section of item.sections)
-                        if (
-                          section.identity_roles.length === 1 &&
-                          section.identity_roles[0] === "doctor"
-                        ) {
-                          section.role_ids = [roleId];
-                          section.enabled = true;
-                        }
-                  });
-                }}
+          <fieldset className="rounded-xl border border-border p-5">
+            <legend className="px-2 text-sm font-bold text-teal-dark">
+              2 · LINKED CARE TEAMS
+            </legend>
+            <p className="mb-4 text-sm text-muted">
+              Every linked team reads the entire ledger. Select intake teams who
+              may start it. Writing is configured separately for each section.
+            </p>
+            {roleOptions.map((role) => (
+              <div
+                className="flex flex-wrap justify-between gap-3 border-t border-border py-3"
+                key={role.id}
               >
-                <option value="">Choose a shared medical team</option>
-                {roles
-                  .filter(
-                    (role) =>
-                      role.active &&
-                      role.identity_roles.length === 1 &&
-                      role.identity_roles[0] === "doctor" &&
-                      ["read", "write", "attest"].every((capability) =>
-                        role.capabilities.includes(capability),
-                      ),
-                  )
-                  .map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          </div>
-          <div className="grid lg:grid-cols-[230px_minmax(0,1fr)]">
-            <nav
-              aria-label="Form stages"
-              className="flex gap-2 overflow-x-auto border-b border-border bg-[#f7fafb] p-4 lg:flex-col lg:border-r lg:border-b-0"
-            >
-              {draft.stages.map((item, index) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  aria-current={stageKey === item.key ? "step" : undefined}
-                  className={`shrink-0 rounded-lg border p-3 text-left text-sm ${stageKey === item.key ? "border-teal bg-mint text-teal-dark" : "border-transparent text-muted"}`}
-                  onClick={() => setStageKey(item.key)}
-                >
-                  <span className="mr-2 font-mono text-xs">
-                    {String(index + 1).padStart(2, "0")}
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    aria-label={`Link ${role.name}`}
+                    checked={linked.has(role.id)}
+                    onChange={(e) =>
+                      change((next) => {
+                        if (e.target.checked)
+                          next.access_role_ids = [
+                            ...new Set([...next.access_role_ids, role.id]),
+                          ];
+                        else {
+                          next.access_role_ids = next.access_role_ids.filter(
+                            (id) => id !== role.id,
+                          );
+                          next.intake_role_ids = next.intake_role_ids.filter(
+                            (id) => id !== role.id,
+                          );
+                          for (const st of next.stages)
+                            for (const section of st.sections) {
+                              section.role_ids = section.role_ids.filter(
+                                (id) => id !== role.id,
+                              );
+                              if (section.write_role_ids)
+                                section.write_role_ids =
+                                  section.write_role_ids.filter(
+                                    (id) => id !== role.id,
+                                  );
+                            }
+                        }
+                      })
+                    }
+                  />
+                  <span>
+                    <strong>{role.name}</strong>
+                    <small className="block text-muted">
+                      {role.identity_roles.join(" · ")}
+                    </small>
                   </span>
-                  {item.label}
-                  <small className="mt-1 block lg:ml-6">
-                    {item.sections.filter((section) => section.enabled).length}{" "}
-                    active sections
-                  </small>
-                </button>
-              ))}
-            </nav>
-            <div className="min-w-0 p-5 md:p-6">
-              {preview ? (
-                <TemplatePreview
-                  definition={draft}
-                  branding={brands.find((item) => item.id === brandId)}
-                  stageKey={stageKey}
+                </label>
+                {linked.has(role.id) &&
+                  (role.capabilities.includes("admit") ||
+                    (role.identity_roles.includes("receptionist") &&
+                      role.capabilities.includes("register"))) && (
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={draft.intake_role_ids.includes(role.id)}
+                        onChange={(e) =>
+                          change((next) => {
+                            next.intake_role_ids = e.target.checked
+                              ? [...next.intake_role_ids, role.id]
+                              : next.intake_role_ids.filter(
+                                  (id) => id !== role.id,
+                                );
+                          })
+                        }
+                      />
+                      Can start journey
+                    </label>
+                  )}
+              </div>
+            ))}
+            {roleLoader}
+            {!activeRoles.length && (
+              <p>
+                Create care-team roles under Departments & care teams first.
+              </p>
+            )}
+            {!draft.intake_role_ids.length && draft.design_version === 2 && (
+              <p className="mt-3 text-sm text-amber-800">
+                Choose at least one intake team. A reception team needs
+                “Register patients”; a clinical intake team needs “Open
+                journeys”.
+              </p>
+            )}
+          </fieldset>
+        </div>
+        <div className="my-7 border-t border-border pt-6">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h3 className="text-lg font-semibold">3 · Sections & fields</h3>
+            <button
+              type="button"
+              className={buttonClasses.secondary}
+              onClick={() => setPreview(!preview)}
+            >
+              {preview ? "Back to editing" : "Preview document"}
+            </button>
+          </div>
+          <nav
+            className="mb-5 flex gap-2 overflow-x-auto"
+            aria-label="Form stages"
+          >
+            {draft.stages.map((item) => (
+              <button
+                type="button"
+                key={item.key}
+                className={`shrink-0 rounded-lg border px-4 py-3 text-sm ${stage.key === item.key ? "border-teal bg-mint text-teal-dark" : "border-border"}`}
+                onClick={() => setStageKey(item.key)}
+              >
+                {item.label}
+                <small className="ml-2 text-muted">
+                  {item.sections.filter((s) => s.enabled).length}
+                </small>
+              </button>
+            ))}
+          </nav>
+          {preview ? (
+            <TemplatePreview
+              definition={draft}
+              branding={brands.find((b) => b.id === brandId)}
+              stageKey={stageKey}
+            />
+          ) : (
+            <>
+              <label className="live-field">
+                Stage title
+                <input
+                  name={`definition.stages.${stageIndex}.label`}
+                  value={stage.label}
+                  required
+                  minLength={2}
+                  maxLength={120}
+                  onChange={(e) =>
+                    change((next) => {
+                      next.stages.find((s) => s.key === stage.key)!.label =
+                        e.target.value;
+                    })
+                  }
                 />
-              ) : (
-                <>
-                  <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-xl text-navy">{stage.label}</h3>
-                      <p className="text-sm text-muted">
-                        Standard fields preserve clinical meaning. Add local
-                        fields or a shared professional section.
-                      </p>
-                    </div>
-                    <button
-                      className={buttonClasses.secondary}
-                      type="button"
-                      disabled={stage.sections.length >= 32}
-                      onClick={() =>
-                        change((next) =>
-                          next.stages[stageIndex].sections.push({
-                            key: newKey("section"),
-                            label: "Additional clinical section",
-                            enabled: true,
-                            identity_roles: ["doctor"],
-                            role_ids: [],
-                            fields: [
-                              {
-                                key: "note",
-                                label: "Professional assessment",
-                                type: "textarea",
-                                required: true,
-                                choices: [],
-                              },
-                            ],
-                          }),
-                        )
-                      }
-                    >
-                      Add section
-                    </button>
-                  </div>
-                  {stage.sections.map((section, sectionIndex) => {
-                    const standard = baseline.stages
-                      .find((item) => item.key === stage.key)
-                      ?.sections.find((item) => item.key === section.key);
-                    const editSection = (
-                      update: (item: typeof section) => void,
-                    ) =>
-                      change((next) =>
-                        update(next.stages[stageIndex].sections[sectionIndex]),
-                      );
-                    const eligible = roles.filter(
-                      (role) =>
-                        role.active &&
-                        role.identity_roles.every((identity) =>
-                          section.identity_roles.includes(identity),
-                        ) &&
-                        ["read", "write", "attest"].every((capability) =>
-                          role.capabilities.includes(capability),
-                        ),
-                    );
-                    return (
-                      <details
-                        key={section.key}
-                        open={section.enabled}
-                        className="mb-4 rounded-xl border border-border p-5"
+              </label>
+              {!stage.sections.length && (
+                <p className="my-6 rounded-xl border border-dashed border-border p-6 text-muted">
+                  No section in this stage. Add only what your facility needs.
+                  Empty stages stay out of the employee’s ledger.
+                </p>
+              )}
+              {stage.sections.map((section, index) => (
+                <div
+                  className="my-5 rounded-xl border border-border p-5"
+                  key={section.key}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h4 className="text-lg font-semibold">{section.label}</h4>
+                    <label className="flex gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={section.enabled}
+                        onChange={(e) =>
+                          update(index, (s) => {
+                            s.enabled = e.target.checked;
+                          })
+                        }
+                      />
+                      Include in published document
+                    </label>
+                    {draft.design_version === 2 && (
+                      <button
+                        type="button"
+                        className="text-sm text-red-700 underline"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Remove ${section.label} from this draft?`,
+                            )
+                          )
+                            change((next) => {
+                              next.stages
+                                .find((s) => s.key === stage.key)!
+                                .sections.splice(index, 1);
+                            });
+                        }}
                       >
-                        <summary className="cursor-pointer font-semibold text-navy">
-                          {section.label}{" "}
-                          <Status
-                            value={section.enabled ? "active" : "disabled"}
+                        Remove section
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <label className="live-field">
+                      Section title
+                      <input
+                        required
+                        minLength={2}
+                        maxLength={120}
+                        name={`${sectionPath(index)}.label`}
+                        value={section.label}
+                        onChange={(e) =>
+                          update(index, (s) => {
+                            s.label = e.target.value;
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="live-field">
+                      Section purpose
+                      <select
+                        disabled={draft.design_version === 1}
+                        aria-label="Section purpose"
+                        name={`${sectionPath(index)}.kind`}
+                        value={section.kind}
+                        onChange={(e) =>
+                          update(index, (s) => {
+                            s.kind = e.target.value as Section["kind"];
+                            s.attestation_required = false;
+                            s.write_role_ids = [];
+                            s.role_ids = [];
+                            s.identity_roles =
+                              s.kind === "administrative"
+                                ? ["receptionist"]
+                                : ["doctor", "nurse", "allied"];
+                          })
+                        }
+                      >
+                        <option value="clinical">Clinical care</option>
+                        <option value="administrative">
+                          Reception / administrative intake
+                        </option>
+                      </select>
+                    </label>
+                  </div>
+                  <fieldset className="mb-4 rounded-lg border border-border p-4">
+                    <legend className="px-2 font-semibold">
+                      Teams allowed to complete this section
+                    </legend>
+                    <p className="mb-3 text-sm text-muted">
+                      All linked teams can read it. These teams can also enter
+                      information.
+                    </p>
+                    {activeRoles
+                      .filter((r) => linked.has(r.id))
+                      .map((role) => (
+                        <label
+                          className="mr-6 mb-3 inline-flex items-center gap-2"
+                          key={role.id}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={!writable(role, section)}
+                            name={`${sectionPath(index)}.role_ids`}
+                            checked={writers(section).includes(role.id)}
+                            onChange={(e) =>
+                              update(index, (s) => {
+                                const selected = e.target.checked
+                                  ? [...writers(s), role.id]
+                                  : writers(s).filter((id) => id !== role.id);
+                                s.role_ids = [...new Set(selected)];
+                                s.write_role_ids = s.role_ids;
+                                s.identity_roles = [
+                                  ...new Set(
+                                    roles
+                                      .filter((r) => s.role_ids.includes(r.id))
+                                      .flatMap((r) => r.identity_roles),
+                                  ),
+                                ];
+                                if (!s.identity_roles.length)
+                                  s.identity_roles =
+                                    s.kind === "administrative"
+                                      ? ["receptionist"]
+                                      : ["doctor", "nurse", "allied"];
+                              })
+                            }
                           />
-                        </summary>
-                        <div className="mt-4">
-                          <label className="check-label mb-4">
-                            <input
-                              type="checkbox"
-                              checked={section.enabled}
-                              onChange={(event) =>
-                                editSection((item) => {
-                                  item.enabled = event.target.checked;
-                                })
-                              }
-                            />
-                            Enable this section
-                          </label>
+                          {role.name}
+                          {!writable(role, section) && (
+                            <small className="text-muted">(read only)</small>
+                          )}
+                        </label>
+                      ))}
+                  </fieldset>
+                  {section.kind === "clinical" && (
+                    <label className="mb-5 flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={section.attestation_required}
+                        onChange={(e) =>
+                          update(index, (s) => {
+                            s.attestation_required = e.target.checked;
+                          })
+                        }
+                      />
+                      Require the author’s password-confirmed attestation
+                    </label>
+                  )}
+                  <div className="space-y-4">
+                    {section.fields.map((field, fi) => (
+                      <div
+                        key={field.key}
+                        className="rounded-lg border border-border bg-[#f8fafb] p-4"
+                      >
+                        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
                           <label className="live-field">
-                            Section title
+                            Field label
                             <input
                               required
                               minLength={2}
                               maxLength={120}
-                              name={`definition.stages.${stageIndex}.sections.${sectionIndex}.label`}
-                              value={section.label}
-                              onChange={(event) =>
-                                editSection((item) => {
-                                  item.label = event.target.value;
+                              name={`${sectionPath(index)}.fields.${fi}.label`}
+                              value={field.label}
+                              onChange={(e) =>
+                                update(index, (s) => {
+                                  s.fields[fi].label = e.target.value;
                                 })
                               }
                             />
                           </label>
-                          {!standard && (
-                            <fieldset className="option-grid">
-                              <legend>Eligible professions</legend>
-                              {["doctor", "nurse", "allied"].map(
-                                (profession) => (
-                                  <label
-                                    className="check-label"
-                                    key={profession}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={section.identity_roles.includes(
-                                        profession,
-                                      )}
-                                      onChange={(event) =>
-                                        editSection((item) => {
-                                          item.identity_roles = event.target
-                                            .checked
-                                            ? [
-                                                ...item.identity_roles,
-                                                profession,
-                                              ]
-                                            : item.identity_roles.filter(
-                                                (value) => value !== profession,
-                                              );
-                                          item.role_ids = [];
-                                        })
-                                      }
-                                    />
-                                    {profession}
-                                  </label>
-                                ),
-                              )}
-                            </fieldset>
-                          )}
-                          {section.enabled && (
-                            <>
-                              <fieldset className="option-grid">
-                                <legend>Responsible shared care teams</legend>
-                                {eligible.map((role) => (
-                                  <label className="check-label" key={role.id}>
-                                    <input
-                                      type="checkbox"
-                                      checked={section.role_ids.includes(
-                                        role.id,
-                                      )}
-                                      onChange={(event) =>
-                                        editSection((item) => {
-                                          item.role_ids = event.target.checked
-                                            ? [...item.role_ids, role.id]
-                                            : item.role_ids.filter(
-                                                (id) => id !== role.id,
-                                              );
-                                        })
-                                      }
-                                    />
-                                    {role.name}
-                                  </label>
-                                ))}
-                                {!eligible.length && (
-                                  <p className="text-sm text-muted">
-                                    Create an active compatible team role with
-                                    read, write and attest permissions.
-                                  </p>
-                                )}
-                              </fieldset>
-                              {section.role_ids.some(
-                                (id) =>
-                                  !eligible.some((role) => role.id === id),
-                              ) && (
-                                <p className="mb-3 text-sm text-red-700">
-                                  Some assigned roles are unavailable or
-                                  incompatible. Reassign before publishing.
-                                  <button
-                                    type="button"
-                                    className="mt-2 block font-semibold underline"
-                                    onClick={() =>
-                                      editSection((item) => {
-                                        item.role_ids = item.role_ids.filter(
-                                          (id) =>
-                                            eligible.some(
-                                              (role) => role.id === id,
-                                            ),
-                                        );
-                                      })
-                                    }
-                                  >
-                                    Remove unavailable role mappings
-                                  </button>
-                                </p>
-                              )}
-                              <div className="mt-5 space-y-3">
-                                {section.fields.map((field, fieldIndex) => {
-                                  const canonical = standard?.fields.find(
-                                    (item) => item.key === field.key,
-                                  );
-                                  const editField = (
-                                    update: (item: Field) => void,
-                                  ) =>
-                                    editSection((item) =>
-                                      update(item.fields[fieldIndex]),
-                                    );
-                                  return (
-                                    <div
-                                      key={field.key}
-                                      className="rounded-lg border border-border bg-[#f8fafb] p-4"
-                                    >
-                                      <div className="mb-3 flex flex-wrap justify-between gap-2">
-                                        <small className="font-mono text-muted">
-                                          {field.key} ·{" "}
-                                          {canonical
-                                            ? "Standard field"
-                                            : "Facility field"}
-                                        </small>
-                                        <div className="flex gap-3">
-                                          {[-1, 1].map((direction) => (
-                                            <button
-                                              type="button"
-                                              key={direction}
-                                              disabled={
-                                                fieldIndex + direction < 0 ||
-                                                fieldIndex + direction >=
-                                                  section.fields.length
-                                              }
-                                              className="text-sm text-teal-dark disabled:opacity-30"
-                                              aria-label={`${direction < 0 ? "Move up" : "Move down"} ${field.label}`}
-                                              onClick={() =>
-                                                editSection((item) => {
-                                                  [
-                                                    item.fields[fieldIndex],
-                                                    item.fields[
-                                                      fieldIndex + direction
-                                                    ],
-                                                  ] = [
-                                                    item.fields[
-                                                      fieldIndex + direction
-                                                    ],
-                                                    item.fields[fieldIndex],
-                                                  ];
-                                                })
-                                              }
-                                            >
-                                              {direction < 0
-                                                ? "↑ Up"
-                                                : "↓ Down"}
-                                            </button>
-                                          ))}
-                                          {!canonical && (
-                                            <button
-                                              type="button"
-                                              className="text-sm text-red-700"
-                                              onClick={() =>
-                                                editSection((item) => {
-                                                  item.fields.splice(
-                                                    fieldIndex,
-                                                    1,
-                                                  );
-                                                })
-                                              }
-                                            >
-                                              Remove field
-                                            </button>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="grid gap-3 md:grid-cols-2">
-                                        <label className="live-field">
-                                          Field label
-                                          <input
-                                            required
-                                            minLength={2}
-                                            maxLength={120}
-                                            name={`definition.stages.${stageIndex}.sections.${sectionIndex}.fields.${fieldIndex}.label`}
-                                            value={field.label}
-                                            onChange={(event) =>
-                                              editField((item) => {
-                                                item.label = event.target.value;
-                                              })
-                                            }
-                                          />
-                                        </label>
-                                        <label className="live-field">
-                                          Field type
-                                          <select
-                                            aria-label="Field type"
-                                            name={`definition.stages.${stageIndex}.sections.${sectionIndex}.fields.${fieldIndex}.type`}
-                                            value={field.type}
-                                            disabled={!!canonical}
-                                            onChange={(event) =>
-                                              editField((item) => {
-                                                item.type = event.target
-                                                  .value as Field["type"];
-                                                item.choices = [
-                                                  "choice",
-                                                  "radio",
-                                                  "multichoice",
-                                                ].includes(item.type)
-                                                  ? ["Option one", "Option two"]
-                                                  : [];
-                                              })
-                                            }
-                                          >
-                                            {types.map(([key, label]) => (
-                                              <option key={key} value={key}>
-                                                {label}
-                                              </option>
-                                            ))}
-                                          </select>
-                                        </label>
-                                      </div>
-                                      {[
-                                        "choice",
-                                        "radio",
-                                        "multichoice",
-                                      ].includes(field.type) && (
-                                        <label className="live-field">
-                                          Choices (one per line)
-                                          <textarea
-                                            required
-                                            maxLength={6000}
-                                            name={`definition.stages.${stageIndex}.sections.${sectionIndex}.fields.${fieldIndex}.choices`}
-                                            value={field.choices.join("\n")}
-                                            onChange={(event) =>
-                                              editField((item) => {
-                                                item.choices =
-                                                  event.target.value.split(
-                                                    "\n",
-                                                  );
-                                              })
-                                            }
-                                          />
-                                        </label>
-                                      )}
-                                      <label className="check-label">
-                                        <input
-                                          type="checkbox"
-                                          checked={field.required}
-                                          disabled={!!canonical?.required}
-                                          onChange={(event) =>
-                                            editField((item) => {
-                                              item.required =
-                                                event.target.checked;
-                                            })
-                                          }
-                                        />
-                                        Required, or an explicit reason why
-                                        unavailable
-                                      </label>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                              <button
-                                className={`${buttonClasses.secondary} mt-4`}
-                                type="button"
-                                disabled={section.fields.length >= 30}
-                                onClick={() =>
-                                  editSection((item) =>
-                                    item.fields.push({
-                                      key: newKey("field"),
-                                      label: "Additional information",
-                                      type: "text",
-                                      required: false,
-                                      choices: [],
-                                    }),
-                                  )
-                                }
-                              >
-                                Add custom field
-                              </button>
-                            </>
-                          )}
-                          {!standard && (
-                            <button
-                              type="button"
-                              className="mt-4 block text-sm text-red-700"
-                              onClick={() =>
-                                change((next) => {
-                                  next.stages[stageIndex].sections.splice(
-                                    sectionIndex,
-                                    1,
-                                  );
+                          <label className="live-field">
+                            Field type
+                            <select
+                              aria-label="Field type"
+                              name={`${sectionPath(index)}.fields.${fi}.type`}
+                              value={field.type}
+                              disabled={draft.design_version === 1}
+                              onChange={(e) =>
+                                update(index, (s) => {
+                                  s.fields[fi].type = e.target
+                                    .value as ClinicalField["type"];
+                                  s.fields[fi].choices = [];
                                 })
                               }
                             >
-                              Remove custom section
-                            </button>
-                          )}
+                              {types.map(([kind, label]) => (
+                                <option key={kind} value={kind}>
+                                  {label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
                         </div>
-                      </details>
-                    );
-                  })}
-                </>
-              )}
-            </div>
-          </div>
-          <div className="border-t border-border bg-[#f7fafb] p-6">
-            <label className="live-field">
-              Change reason
-              <input
-                required
-                minLength={3}
-                maxLength={500}
-                name="reason"
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-                placeholder="Describe the change for the configuration audit"
-              />
-            </label>
-            <Notice error={save.error} formRef={formRef} />
-            <Notice error={reload.error} />
-            {save.isSuccess && (
-              <p role="status" className="mb-3 text-teal-dark">
-                Draft saved. Preview and validate it before publication.
-              </p>
-            )}
-            <button
-              className={buttonClasses.primary}
-              disabled={save.isPending || !dirty}
-            >
-              {save.isPending ? "Saving…" : "Save draft changes"}
-            </button>
-          </div>
-        </fieldset>
+                        {["choice", "radio", "multichoice"].includes(
+                          field.type,
+                        ) && (
+                          <label className="live-field">
+                            Choices (one per line)
+                            <textarea
+                              required
+                              name={`${sectionPath(index)}.fields.${fi}.choices`}
+                              value={field.choices.join("\n")}
+                              onChange={(e) =>
+                                update(index, (s) => {
+                                  s.fields[fi].choices =
+                                    e.target.value.split("\n");
+                                })
+                              }
+                            />
+                          </label>
+                        )}
+                        <div className="flex justify-between gap-4">
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={field.required}
+                              onChange={(e) =>
+                                update(index, (s) => {
+                                  s.fields[fi].required = e.target.checked;
+                                })
+                              }
+                            />
+                            Required
+                          </label>
+                          {draft.design_version === 2 &&
+                            section.fields.length > 1 && (
+                              <button
+                                type="button"
+                                className="text-sm text-red-700 underline"
+                                onClick={() =>
+                                  update(index, (s) => {
+                                    s.fields.splice(fi, 1);
+                                  })
+                                }
+                              >
+                                Remove field
+                              </button>
+                            )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className={`${buttonClasses.secondary} mt-4`}
+                    disabled={section.fields.length >= 30}
+                    onClick={() =>
+                      update(index, (s) => {
+                        s.fields.push({
+                          key: key("field"),
+                          label: "New field",
+                          type: "text",
+                          required: false,
+                          choices: [],
+                        });
+                      })
+                    }
+                  >
+                    Add field
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className={buttonClasses.secondary}
+                disabled={stage.sections.length >= 32}
+                onClick={() =>
+                  change((next) => {
+                    next.stages
+                      .find((s) => s.key === stage.key)!
+                      .sections.push({
+                        key: key("section"),
+                        label: "New section",
+                        kind: "clinical",
+                        identity_roles: ["doctor", "nurse", "allied"],
+                        role_ids: [],
+                        write_role_ids: [],
+                        attestation_required: false,
+                        enabled: true,
+                        fields: [
+                          {
+                            key: key("field"),
+                            label: "Professional note",
+                            type: "textarea",
+                            required: true,
+                            choices: [],
+                          },
+                        ],
+                      });
+                  })
+                }
+              >
+                Add section
+              </button>
+            </>
+          )}
+        </div>
+        {warnings.length > 0 && (
+          <details className="mb-5 rounded-lg border border-border p-4">
+            <summary>
+              {warnings.length} section assignment
+              {warnings.length === 1 ? "" : "s"} to review before publishing
+            </summary>
+            <ul className="mt-3 list-disc pl-5 text-sm">
+              {warnings.map((warning, i) => (
+                <li key={i}>{warning}</li>
+              ))}
+            </ul>
+          </details>
+        )}
+        <label className="live-field">
+          Change reason
+          <input
+            name="reason"
+            required
+            minLength={3}
+            maxLength={500}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </label>
+        <Notice error={save.error} formRef={formRef} />
+        <Notice error={reload.error} />
+        {save.isSuccess && !dirty && (
+          <p role="status" className="mb-4 text-teal-dark">
+            Draft saved. Review the preview, then publish from the form list.
+          </p>
+        )}
+        <div className="flex flex-wrap gap-3">
+          <button
+            className={buttonClasses.primary}
+            disabled={save.isPending || !dirty}
+          >
+            {save.isPending ? "Saving…" : "Save draft changes"}
+          </button>
+          <button
+            type="button"
+            className={buttonClasses.secondary}
+            disabled={reload.isPending}
+            onClick={() => {
+              if (
+                !dirty ||
+                window.confirm(
+                  "Discard unsaved changes and load the latest saved draft?",
+                )
+              )
+                reload.mutate();
+            }}
+          >
+            Reload saved draft
+          </button>
+        </div>
       </form>
     </section>
   );

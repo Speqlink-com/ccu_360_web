@@ -13,9 +13,9 @@ const readRoutes = [
   /^auth\/(me|sessions|tenant-context)$/,
   /^identity\/(providers|users|audit|email-deliveries)$/,
   new RegExp(`^identity/providers/${uuid}/members$`),
-  /^workforce\/(departments|roles|assignments|coverage|audit|staff)$/,
+  /^workforce\/(departments|roles|assignments|coverage|audit|staff|professions|responsibilities)$/,
   new RegExp(`^workforce/cases/${uuid}/coverage$`),
-  /^journey\/(inbox|published-templates|team-options|access-audit)$/,
+  /^journey\/(inbox|published-templates|team-options|access-audit|access)$/,
   /^journey\/config\/(baseline|brands|templates)$/,
   new RegExp(`^journey/config/logos/${uuid}$`),
   new RegExp(`^journey/config/(templates|brands)/${uuid}$`),
@@ -30,14 +30,16 @@ const writeRoutes = [
   new RegExp(
     `^identity/(users/${uuid}|ahs/invitations/${uuid}|providers/${uuid}(/invitations(/${uuid})?|/members/${uuid})?)$`,
   ),
-  /^workforce\/(departments|roles|assignments)$/,
-  new RegExp(`^workforce/(departments|roles|assignments)/${uuid}$`),
-  new RegExp(`^workforce/staff/${uuid}/availability$`),
-  /^journey\/(patients(\/search)?|encounters)$/,
+  /^workforce\/(departments|roles|assignments|professions|responsibilities)$/,
+  new RegExp(
+    `^workforce/(departments|roles|assignments|professions|responsibilities)/${uuid}$`,
+  ),
+  new RegExp(`^workforce/staff/${uuid}/(availability|profession)$`),
+  /^journey\/(patients(\/(search|directory))?|encounters)$/,
   /^journey\/config\/(logos|brands|templates)$/,
   new RegExp(`^journey/config/templates/${uuid}/publish$`),
   new RegExp(
-    `^journey/encounters/${uuid}/(entries|comments|care-team|observations(/verify)?|tasks|close|outputs|handover-acknowledgements|entries/${uuid}/attest|tasks/${uuid}/(transitions|reassign))$`,
+    `^journey/encounters/${uuid}/(entries|comments|care-team|observations(/verify)?|tasks|close|outputs|handover-acknowledgements|entries/${uuid}/(attest|takeover)|tasks/${uuid}/(transitions|reassign))$`,
   ),
 ];
 export function allowedGatewayPath(path: string, method: string) {
@@ -96,8 +98,21 @@ export function validGatewayQuery(path: string, query: URLSearchParams) {
   if (path === "communication/events") allowed.add("after_sequence");
   if (new RegExp(`^communication/conversations/${uuid}/messages$`).test(path))
     allowed.add("before_sequence");
+  const entryQuery = new RegExp(
+    `^journey/encounters/${uuid}/records/entries$`,
+  ).test(path);
+  if (entryQuery) {
+    allowed.add("section_key");
+    allowed.add("current_only");
+  }
   return [...query.keys()].every((key) => {
     const value = query.get(key)!;
+    if (entryQuery && key === "section_key")
+      return (
+        query.getAll(key).length === 1 && /^[a-z][a-z0-9_]{1,63}$/.test(value)
+      );
+    if (entryQuery && key === "current_only")
+      return query.getAll(key).length === 1 && /^(0|1|true|false)$/.test(value);
     const maximum = key.endsWith("sequence")
       ? Number.MAX_SAFE_INTEGER
       : 99_999_999;

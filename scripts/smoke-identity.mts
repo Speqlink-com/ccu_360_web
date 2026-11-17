@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { spawn, execFileSync } from "node:child_process";
 import { createHmac, randomBytes } from "node:crypto";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
@@ -57,11 +57,11 @@ function start(
   processes.push(child);
   child.stdout?.on("data", (data) => {
     log.push(String(data));
-    if (log.length > 30) log.shift();
+    if (log.length > 2000) log.shift();
   });
   child.stderr?.on("data", (data) => {
     log.push(String(data));
-    if (log.length > 30) log.shift();
+    if (log.length > 2000) log.shift();
   });
   return child;
 }
@@ -314,7 +314,7 @@ try {
     );
     await chooseFacility(clinical);
     await clinical.goto(base + "/dashboard/patients");
-    const registry = panel(clinical, "Find or register a patient");
+    const registry = panel(clinical, "Facility patient directory");
     await registry
       .getByRole("button", { name: "Register a new patient" })
       .click();
@@ -328,19 +328,22 @@ try {
     await registration
       .getByRole("button", { name: "Register patient", exact: true })
       .click();
-    await registry
+    const admission = panel(clinical, "Start a patient journey");
+    await admission
       .getByText("Synthetic Browser Patient", { exact: true })
       .waitFor();
-    const admission = panel(clinical, "Open a patient journey");
     await admission
       .getByLabel("Journey form", { exact: true })
       .selectOption({ index: 1 });
-    await admission.getByLabel("Unit", { exact: true }).fill("ICU");
-    await admission.getByLabel("Bed (optional)", { exact: true }).fill("B01");
+    await admission
+      .getByLabel("Unit / department", { exact: true })
+      .fill("ICU");
+    await admission
+      .getByLabel("Bed / consultation room (optional)", { exact: true })
+      .fill("B01");
     await admission
       .getByLabel("Admission date & time (local time)")
       .fill("2026-11-12T14:00");
-    await admission.getByLabel("Medical on-duty team", { exact: true }).check();
     await admission
       .getByRole("button", { name: "Open journey", exact: true })
       .click();
@@ -370,7 +373,13 @@ try {
     await expect(
       clinical.getByText("Attest this draft", { exact: true }),
     ).toHaveCount(0);
+    await clinical
+      .getByRole("button", { name: "Show complete revision history" })
+      .click();
     await clinical.getByText("historical", { exact: true }).waitFor();
+    await clinical
+      .getByRole("button", { name: "Hide revision history" })
+      .click();
     await clinical
       .getByRole("button", {
         name: "I have reviewed the latest version",
@@ -474,6 +483,127 @@ try {
     console.log(
       "PASS real patient registration, assigned journey, draft note, password attestation, comment and ledger integrity",
     );
+    const receptionContext = await browser.newContext();
+    const reception = await receptionContext.newPage();
+    reception.setDefaultTimeout(60_000);
+    activePage = reception;
+    await signIn(
+      reception,
+      base,
+      "receptionist-e2e@example.org",
+      clinicianPassword,
+    );
+    await chooseFacility(reception);
+    await reception.goto(base + "/dashboard/patients");
+    const receptionRegistry = panel(reception, "Facility patient directory");
+    await receptionRegistry
+      .getByRole("button", { name: "Register a new patient", exact: true })
+      .click();
+    const receptionForm = receptionRegistry.locator("form").last();
+    await receptionForm
+      .getByLabel("Patient identifier / MRN")
+      .fill("SYNTHETIC-RECEPTION-001");
+    await receptionForm
+      .getByLabel("Patient name")
+      .fill("Synthetic Reception Patient");
+    await receptionForm
+      .getByRole("button", { name: "Register patient", exact: true })
+      .click();
+    const intake = panel(reception, "Start a patient journey");
+    await intake
+      .getByText("Synthetic Reception Patient", { exact: true })
+      .waitFor();
+    await intake
+      .getByLabel("Journey form", { exact: true })
+      .selectOption({ index: 1 });
+    await intake
+      .getByLabel("Unit / department", { exact: true })
+      .fill("Outpatient");
+    await intake
+      .getByRole("button", { name: "Open journey", exact: true })
+      .click();
+    await reception
+      .getByRole("heading", {
+        name: "Synthetic Reception Patient",
+        exact: true,
+      })
+      .waitFor();
+    const sharedUrl = reception.url();
+    await expect(reception.getByLabel(/Professional note/)).toHaveCount(0);
+    await reception
+      .getByLabel("Reason for visit", { exact: false })
+      .fill("Synthetic reception intake for shared care.");
+    await reception
+      .getByRole("button", { name: "Post section information", exact: true })
+      .click();
+    const sharedIntake = reception.getByRole("region", {
+      name: "Reception & patient intake ledger section",
+      exact: true,
+    });
+    await sharedIntake.scrollIntoViewIfNeeded();
+    await sharedIntake
+      .getByText("Synthetic reception intake for shared care.", { exact: true })
+      .waitFor();
+    await reception.setViewportSize({ width: 390, height: 844 });
+    await expect
+      .poll(() =>
+        reception.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      )
+      .toBe(true);
+    await reception.screenshot({
+      path: "/tmp/ccu360-reception-ledger-mobile.png",
+      fullPage: true,
+    });
+    const alliedContext = await browser.newContext();
+    const allied = await alliedContext.newPage();
+    allied.setDefaultTimeout(60_000);
+    activePage = allied;
+    await signIn(allied, base, "allied-e2e@example.org", clinicianPassword);
+    await chooseFacility(allied);
+    await allied.goto(base + "/dashboard/patients");
+    await expect(
+      allied.getByRole("button", {
+        name: "Register a new patient",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await allied
+      .getByText("Standard clinical journey", { exact: true })
+      .waitFor();
+    await allied.goto(sharedUrl);
+    await allied
+      .getByRole("heading", {
+        name: "Synthetic Reception Patient",
+        exact: true,
+      })
+      .waitFor();
+    const complete = allied.getByRole("region", {
+      name: "Complete shared patient ledger",
+    });
+    await expect(complete.getByRole("region")).toHaveCount(10);
+    await expect(
+      complete.getByRole("button", { name: "Complete section", exact: true }),
+    ).toHaveCount(0);
+    const alliedIntake = allied.getByRole("region", {
+      name: "Reception & patient intake ledger section",
+    });
+    await alliedIntake.scrollIntoViewIfNeeded();
+    await alliedIntake
+      .getByText("Synthetic reception intake for shared care.", { exact: true })
+      .waitFor();
+    await allied.setViewportSize({ width: 1440, height: 1000 });
+    await allied.screenshot({
+      path: "/tmp/ccu360-shared-ledger-desktop.png",
+      fullPage: true,
+    });
+    await receptionContext.close();
+    await alliedContext.close();
+    activePage = clinical;
+    console.log(
+      "PASS reception initializes a journey, completes only intake, all linked teams read the complete ledger, and registration is hidden without permission",
+    );
     await clinicalContext.clearCookies({ name: "ccu-access" });
     const secondTab = await clinicalContext.newPage();
     secondTab.setDefaultTimeout(60_000);
@@ -551,6 +681,7 @@ try {
   console.error(
     error instanceof Error ? error.message : "Integration verification failed",
   );
+  writeFileSync("/tmp/ccu360-browser-diagnostics.log",log.join(""),{mode:0o600});
   console.error(log.slice(-12).join(""));
   process.exitCode = 1;
 } finally {

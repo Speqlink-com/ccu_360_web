@@ -21,6 +21,11 @@ import {
   value,
 } from "./shared";
 import { useChoices, ChoiceLoader } from "./choices";
+import {
+  VocabularyPanel,
+  AttributeChoices,
+  workforceAttribute,
+} from "./workforce-vocabulary";
 const localInputTime = (stamp: string) => {
   const date = new Date(stamp);
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
@@ -86,6 +91,9 @@ export function WorkforcePage() {
         display_name: z.string(),
         email: z.string(),
         role: z.string(),
+        profession_id: z.string().nullable(),
+        profession_name: z.string().nullable(),
+        designation_version: z.number(),
         availability: z.string(),
         version: z.number(),
       }),
@@ -94,6 +102,19 @@ export function WorkforcePage() {
   const deptChoices = useChoices(org, "workforce/departments", department);
   const roleChoices = useChoices(org, "workforce/roles", teamRole);
   const people = useChoices(org, `identity/providers/${org}/members`, employee);
+  const professions = useChoices(
+    org,
+    "workforce/professions",
+    workforceAttribute,
+  );
+  const responsibilities = useChoices(
+    org,
+    "workforce/responsibilities",
+    workforceAttribute,
+  );
+  const allProfessions = professions.data?.pages.flatMap((p) => p.items) ?? [];
+  const allResponsibilities =
+    responsibilities.data?.pages.flatMap((p) => p.items) ?? [];
   const allRoles = roleChoices.data?.pages.flatMap((page) => page.items) ?? [];
   const allPeople = people.data?.pages.flatMap((page) => page.items) ?? [];
   return (
@@ -102,6 +123,15 @@ export function WorkforcePage() {
         title="Departments & care teams"
         detail="Responsibility belongs to a team role. Named employees work through dated assignments, so shifts and staff changes retain a clear audit trail."
       />
+      <VocabularyPanel org={org} />
+      <ChoiceLoader query={professions} />
+      <ChoiceLoader query={responsibilities} />
+      <p className="mb-5 rounded-xl border border-border bg-mint p-4 text-sm">
+        Team roles represent shared duties, not employee names. Creating a role
+        does not assign an employee to it. Use a dated assignment so multiple
+        employees can cover the same role across shifts. Reception needs
+        Register patients and inclusion as an intake team on the published form.
+      </p>
       <div className="live-grid grid grid-cols-2 items-start gap-6 max-[760px]:grid-cols-1 max-[760px]:gap-0">
         <Panel title="Departments">
           <QueryState query={departments} />
@@ -225,6 +255,8 @@ export function WorkforcePage() {
               name: value(data, "name"),
               code: value(data, "code"),
               identity_roles: data.getAll("identity_roles"),
+              profession_ids: data.getAll("profession_ids"),
+              responsibility_ids: data.getAll("responsibility_ids"),
               capabilities: data.getAll("capabilities"),
             })}
           >
@@ -269,6 +301,11 @@ export function WorkforcePage() {
                 </label>
               ))}
             </fieldset>
+            <AttributeChoices items={allProfessions} name="profession_ids" />
+            <AttributeChoices
+              items={allResponsibilities}
+              name="responsibility_ids"
+            />
             <fieldset className="option-grid">
               <legend>Responsibilities</legend>
               {capabilities.map((capability) => (
@@ -323,6 +360,8 @@ export function WorkforcePage() {
                   name: value(data, "name"),
                   code: value(data, "code"),
                   capabilities: data.getAll("capabilities"),
+                  profession_ids: data.getAll("profession_ids"),
+                  responsibility_ids: data.getAll("responsibility_ids"),
                   reason: value(data, "reason"),
                 })}
               >
@@ -339,6 +378,16 @@ export function WorkforcePage() {
                   defaultValue={role.code}
                   pattern="[a-z][a-z0-9_]{1,39}"
                   maxLength={40}
+                />
+                <AttributeChoices
+                  items={allProfessions}
+                  name="profession_ids"
+                  selected={role.profession_ids}
+                />
+                <AttributeChoices
+                  items={allResponsibilities}
+                  name="responsibility_ids"
+                  selected={role.responsibility_ids}
                 />
                 <fieldset className="option-grid">
                   <legend>Responsibilities</legend>
@@ -553,8 +602,96 @@ export function WorkforcePage() {
             <div>
               <strong>{item.display_name}</strong>
               <small>{item.email}</small>
+              <p className="text-sm text-muted">
+                {item.profession_name ?? memberLabels[item.role as MemberRole]}
+              </p>
               <Status value={item.availability} />
             </div>
+            {item.role !== "provider_admin" && (
+              <details>
+                <summary>Profession & team assignment</summary>
+                <ActionForm
+                  scope={org}
+                  path={`workforce/staff/${item.membership_id}/profession`}
+                  method="PUT"
+                  label="Set employee profession"
+                  body={(data) => ({
+                    profession_id: value(data, "profession_id"),
+                    expected_version: item.designation_version,
+                    reason: value(data, "reason"),
+                  })}
+                >
+                  <Field
+                    name="profession_id"
+                    label="Facility profession"
+                    defaultValue={item.profession_id ?? ""}
+                  >
+                    <option value="">Select profession</option>
+                    {allProfessions
+                      .filter((p) => p.active && p.base_role === item.role)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                  </Field>
+                  <Field
+                    name="reason"
+                    label="Designation reason"
+                    minLength={3}
+                    maxLength={500}
+                  />
+                </ActionForm>
+                <ActionForm
+                  scope={org}
+                  path="workforce/assignments"
+                  label="Assign employee to team"
+                  body={(data) => ({
+                    membership_id: item.membership_id,
+                    role_id: value(data, "role_id"),
+                    starts_at: new Date(value(data, "starts_at")).toISOString(),
+                    ends_at: value(data, "ends_at")
+                      ? new Date(value(data, "ends_at")).toISOString()
+                      : null,
+                  })}
+                >
+                  <Field name="role_id" label="Compatible care-team role">
+                    <option value="">Select shared team</option>
+                    {allRoles
+                      .filter(
+                        (r) =>
+                          r.active &&
+                          r.identity_roles.includes(item.role) &&
+                          (!r.profession_ids.length ||
+                            (item.profession_id
+                              ? r.profession_ids.includes(item.profession_id)
+                              : allProfessions.some(
+                                  (p) =>
+                                    p.code === item.role &&
+                                    r.profession_ids.includes(p.id),
+                                ))),
+                      )
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                  </Field>
+                  <Field
+                    name="starts_at"
+                    label="Assignment starts"
+                    type="datetime-local"
+                    defaultValue={localInputTime(new Date().toISOString())}
+                  />
+                  <Field
+                    name="ends_at"
+                    label="Assignment ends (optional)"
+                    type="datetime-local"
+                    required={false}
+                  />
+                </ActionForm>
+              </details>
+            )}
             <details>
               <summary>Update availability</summary>
               <ActionForm

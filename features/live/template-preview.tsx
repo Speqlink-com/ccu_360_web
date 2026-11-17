@@ -114,14 +114,14 @@ export function TemplatePreview({
               </div>
               <p className="mt-5 border-t border-border pt-3 text-xs text-muted">
                 Accountability · Actual employee, professional role, recording
-                time and authenticated attestation appear on the saved record.
+                time and any required attestation appear on the saved record.
               </p>
             </section>
           ))}
         {!stage.sections.some((section) => section.enabled) && (
           <p className="rounded-lg bg-white p-5">
-            No enabled section. Enable a section and assign an eligible
-            care-team role before publishing.
+            No section in this stage. Empty stages do not appear in the
+            employee’s ledger.
           </p>
         )}
       </div>

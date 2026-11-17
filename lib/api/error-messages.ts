@@ -1,4 +1,37 @@
 export const descriptions: Record<string, string> = {
+  patient_registration_permission_required:
+    "Your team cannot register patients. Reception or a team with Register patients can create the patient record.",
+  journey_initialization_permission_required:
+    "You need a current intake team assignment to start a journey. Ask your administrator to assign you to a team on the published form.",
+  template_intake_role_required:
+    "This form has a different intake team. Select a form your team can start, or ask your administrator to review its intake teams.",
+  template_requires_intake_team_and_sections:
+    "Link a team, enable Can start journey for an intake team, and add at least one section before publishing.",
+  intake_teams_must_be_linked:
+    "Link each intake team to the form before allowing it to start journeys.",
+  intake_team_requires_registration_or_admission:
+    "An intake team needs Register patients for reception, or Open journeys for clinical intake.",
+  active_template_team_required:
+    "A linked team or its department is inactive. Restore it or remove it from this draft before publishing.",
+  section_writers_must_be_linked_teams:
+    "Link each section writer to its section before saving.",
+  profession_required:
+    "Choose a protected identity category or a facility profession for this team.",
+  responsibility_required: "Choose at least one responsibility for this team.",
+  profession_requires_a_protected_identity_category:
+    "Choose the protected identity category for this profession. Set actions on responsibilities and teams.",
+  responsibility_requires_platform_actions:
+    "Choose at least one system action for this responsibility.",
+  active_profession_required: "Choose an active facility profession.",
+  active_responsibility_required: "Choose an active facility responsibility.",
+  profession_must_match_employee_identity_category:
+    "Choose a profession matching the employee’s identity category. Change the employee’s identity role first if their job has changed.",
+  audit_roles_are_read_only:
+    "Audit teams may read and export covered records. Choose a clinical or reception category for writing responsibilities.",
+  staff_unavailable:
+    "Your availability or profession is inactive. Ask your facility administrator to review Staff availability and your profession designation.",
+  only_another_authors_current_draft_can_be_taken_over:
+    "Only another employee’s current unsigned draft can be taken over. Refresh the ledger to review its latest version.",
   worksite_location_required:
     "Verify your location at the facility to continue.",
   outside_facility_geofence:
@@ -111,7 +144,7 @@ Object.assign(descriptions, {
   enabled_section_requires_a_responsible_team_role:
     "Assign at least one responsible care-team role to every enabled section before publishing.",
   enabled_section_requires_a_role_that_can_write_and_attest:
-    "Every enabled section needs a care-team role with read, document and attest permissions. Update the role or select another team.",
+    "Each enabled section needs an authorized writing team. If attestation is enabled, every writing team also needs Attest notes.",
   section_role_profession_mismatch_or_inactive:
     "An assigned team is archived, belongs to an archived department or has incompatible professions. Remove its mapping and choose an active compatible team.",
   active_brand_required:

@@ -52,6 +52,7 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
   await createRole.getByLabel("Role code").fill("intensive_medical");
   await createRole.getByLabel("Doctor / clinician", { exact: true }).check();
   for (const label of [
+    "Open journeys",
     "Read assigned journeys",
     "Document & comment",
     "Attest notes",
@@ -93,7 +94,7 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
   await start
     .getByRole("button", { name: "Create & open draft", exact: true })
     .click();
-  const editor = page.getByRole("region", { name: "Saved draft editor" });
+  const editor = page.getByRole("region", { name: "Journey form editor" });
   await editor.waitFor();
   await editor
     .getByRole("button", { name: "Close editor", exact: true })
@@ -107,11 +108,7 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
     .getByRole("button", { name: "Approve & publish", exact: true })
     .click();
   const publicationError = initialVersion.getByRole("alert");
-  await publicationError
-    .getByText("Admission 360 · Section 1 · Responsible care teams", {
-      exact: true,
-    })
-    .waitFor();
+  await publicationError.waitFor();
   await expect(publicationError).not.toContainText("password");
   await expect(
     publicationError.getByText("Support details", { exact: true }),
@@ -140,12 +137,17 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
     .click();
   await editor.waitFor();
 
+  const linked = editor.getByRole("group", { name: "2 · LINKED CARE TEAMS" });
+  await linked
+    .getByLabel("Link Intensive medical cover", { exact: true })
+    .check();
+  await linked.getByLabel("Can start journey", { exact: true }).check();
+  await editor.getByLabel("Section purpose").selectOption("clinical");
   await editor
-    .getByLabel("Apply a medical team role across all stages")
-    .selectOption({ label: "Intensive medical cover" });
-  await editor
-    .getByRole("button", { name: "Add custom field", exact: true })
-    .click();
+    .getByRole("group", { name: "Teams allowed to complete this section" })
+    .getByLabel("Intensive medical cover", { exact: true })
+    .check();
+  await editor.getByRole("button", { name: "Add field", exact: true }).click();
   await editor
     .getByLabel("Field label", { exact: true })
     .last()
@@ -159,21 +161,15 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
     .last()
     .fill("Routine\nUrgent");
   await editor
-    .getByRole("button", { name: "Add section", exact: true })
-    .click();
-  const custom = editor.locator("details").last();
-  await custom
-    .getByLabel("Section title", { exact: true })
-    .fill("Specialist review");
-  await custom.getByLabel("Intensive medical cover", { exact: true }).check();
-  await editor
     .getByLabel("Change reason", { exact: true })
     .fill("Synthetic multidisciplinary form configuration");
   await editor
     .getByRole("button", { name: "Save draft changes", exact: true })
     .click();
   await editor
-    .getByText("Draft saved. Preview and validate it before publication.")
+    .getByText(
+      "Draft saved. Review the preview, then publish from the form list.",
+    )
     .waitFor();
   await editor
     .getByRole("button", { name: "Preview document", exact: true })

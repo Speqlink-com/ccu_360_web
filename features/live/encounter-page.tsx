@@ -1,6 +1,6 @@
 "use client";
 import { buttonClasses } from "@/lib/presentation";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState, useRef, type CSSProperties } from "react";
 import Link from "next/link";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
@@ -224,13 +224,20 @@ function DocumentationForm({
   );
   const roles = data.effective_roles.filter(
     (role) =>
-      section.role_ids.includes(role.id) && role.capabilities.includes("write"),
+      (section.write_role_ids ?? section.role_ids).includes(role.id) &&
+      (role.capabilities.includes("write") ||
+        (section.kind === "administrative" &&
+          role.capabilities.includes("register"))),
   );
   const changed = version !== data.encounter.version;
   return (
     <Panel
       title={amendment ? "Amend recorded information" : section.label}
-      detail="Entries retain their original author. Notes are saved as drafts until the author attests them; comments are posted directly."
+      detail={
+        section.kind === "administrative" || !section.attestation_required
+          ? "Information is posted with your identity and recording time. Earlier versions are retained."
+          : "Notes are saved as drafts until their author attests them. Comments are posted directly."
+      }
     >
       {changed && (
         <div
@@ -258,7 +265,10 @@ function DocumentationForm({
             ? "Save amendment"
             : kind === "comment"
               ? "Post comment"
-              : "Save draft note"
+              : section.kind === "administrative" ||
+                  !section.attestation_required
+                ? "Post section information"
+                : "Save draft note"
         }
         body={(form) => {
           if (changed)
@@ -304,7 +314,13 @@ function DocumentationForm({
               value={kind}
               onChange={(event) => setKind(event.target.value)}
             >
-              <option value="note">Clinical note (draft, then attest)</option>
+              <option value="note">
+                {section.kind === "administrative"
+                  ? "Intake information"
+                  : section.attestation_required
+                    ? "Clinical note (draft, then attest)"
+                    : "Professional note"}
+              </option>
               <option value="comment">Professional comment</option>
             </select>
           </label>
@@ -398,6 +414,164 @@ function DocumentationForm({
     </Panel>
   );
 }
+function LedgerSection({
+  data,
+  item,
+  select,
+  amend,
+}: {
+  data: Case;
+  item: Case["responsibilities"][number];
+  select: (key: string) => void;
+  amend: (record: Entry) => void;
+}) {
+  const org = useIdentity().data!.organization_id!;
+  const host = useRef<HTMLElement>(null);
+  const [visible, setVisible] = useState(false),
+    [offset, setOffset] = useState(0);
+  useEffect(() => {
+    if (!host.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setVisible(entries.some((e) => e.isIntersecting));
+      },
+      { rootMargin: "300px" },
+    );
+    observer.observe(host.current);
+    return () => observer.disconnect();
+  }, []);
+  const records = useLiveQuery(
+    org,
+    `journey/encounters/${data.encounter.id}/records/entries?section_key=${item.section.key}&current_only=1&offset=${offset}&limit=20`,
+    pageOf(entry).extend({ encounter_version: z.number() }),
+    visible,
+    15_000,
+  );
+  return (
+    <section
+      ref={host}
+      id={`ledger-${item.section.key}`}
+      className="mb-5 scroll-mt-5 rounded-xl border border-border bg-white p-5"
+      aria-label={`${item.section.label} ledger section`}
+    >
+      <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h4 className="text-lg font-semibold text-[var(--document-primary)]">
+            {item.section.label}
+          </h4>
+          <p className="mt-1 text-sm text-muted">
+            {item.can_write
+              ? "Your team can complete this section"
+              : "Read only · completed by the responsible team"}
+            {item.coverage_gap ? " · No current staff coverage" : ""}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            {(item.section.write_role_ids ?? item.section.role_ids)
+              .map(
+                (id) =>
+                  data.care_roles.find((r) => r.id === id)?.name ?? "Care team",
+              )
+              .join(" · ")}
+          </p>
+        </div>
+        {item.can_write && data.encounter.status === "active" && (
+          <button
+            className={buttonClasses.secondary}
+            onClick={() => select(item.section.key)}
+          >
+            Complete section
+          </button>
+        )}
+      </header>
+      <dl className="grid gap-4 rounded-lg bg-[#f6f9fa] p-4 sm:grid-cols-2">
+        {item.section.fields.map((field) => (
+          <div key={field.key}>
+            <dt className="text-sm font-semibold">
+              {field.label}
+              {field.required ? " *" : ""}
+            </dt>
+            <dd className="mt-1 text-sm text-muted">
+              {!records.data
+                ? "Review recorded information below"
+                : records.data.items.some(
+                      (record) => field.key in record.values,
+                    )
+                  ? "Recorded below"
+                  : "Awaiting documentation"}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {visible && <QueryState query={records} />}{" "}
+      {records.data?.items.map((record) => (
+        <EntryCard
+          key={record.id}
+          data={{
+            ...data,
+            encounter: {
+              ...data.encounter,
+              version: Math.max(
+                data.encounter.version,
+                records.data?.encounter_version ?? 0,
+              ),
+            },
+          }}
+          record={record}
+          amend={() => amend(record)}
+        />
+      ))}
+      {records.data && (
+        <Pager
+          offset={offset}
+          count={records.data.items.length}
+          change={setOffset}
+        />
+      )}
+    </section>
+  );
+}
+function FullLedger({
+  data,
+  select,
+  amend,
+}: {
+  data: Case;
+  select: (key: string) => void;
+  amend: (record: Entry) => void;
+}) {
+  return (
+    <section aria-label="Complete shared patient ledger" className="mb-6">
+      <h2 className="mb-2 text-2xl text-[var(--document-primary)]">
+        Complete patient ledger
+      </h2>
+      <p className="mb-6 text-muted">
+        One shared document. Every linked care team can read the full layout.
+        Contributions keep their author, team and time.
+      </p>
+      {data.template.definition.stages
+        .filter((stage) => stage.sections.some((s) => s.enabled))
+        .map((stage) => (
+          <div key={stage.key} className="mb-8">
+            <h3 className="mb-4 border-b-2 border-[var(--document-accent)] pb-3 text-xl text-[var(--document-primary)]">
+              {stage.label}
+            </h3>
+            {data.responsibilities
+              .filter((item) => item.stage === stage.key)
+              .map((item) => (
+                <LedgerSection
+                  key={item.section.key}
+                  data={data}
+                  item={item}
+                  select={select}
+                  amend={amend}
+                />
+              ))}
+          </div>
+        ))}
+    </section>
+  );
+}
+
 function EntryCard({
   record,
   data,
@@ -415,8 +589,11 @@ function EntryCard({
   );
   const roles = data.effective_roles.filter(
     (role) =>
-      responsibility?.section.role_ids.includes(role.id) &&
-      role.capabilities.includes("attest"),
+      (
+        responsibility?.section.write_role_ids ??
+        responsibility?.section.role_ids ??
+        []
+      ).includes(role.id) && role.capabilities.includes("attest"),
   );
   return (
     <article className="record-card my-4 rounded-[10px] border border-border border-l-[3px] border-l-teal p-5">
@@ -461,13 +638,66 @@ function EntryCard({
       </small>
       {actionable &&
         responsibility?.can_write &&
-        (mine || record.status !== "draft") && (
+        (mine ||
+          (record.status !== "draft" &&
+            data.effective_roles.some(
+              (role) =>
+                (
+                  responsibility.section.write_role_ids ??
+                  responsibility.section.role_ids
+                ).includes(role.id) && role.capabilities.includes("correct"),
+            ))) && (
           <button
             className="text-button border-0 bg-transparent px-0 py-2 text-left font-semibold text-teal-dark"
             onClick={amend}
           >
             Create an attributed amendment
           </button>
+        )}
+      {actionable &&
+        !mine &&
+        record.status === "draft" &&
+        responsibility?.can_write && (
+          <details className="mt-4">
+            <summary>Take over this draft for my shift</summary>
+            <ActionForm
+              scope={org}
+              path={`journey/encounters/${data.encounter.id}/entries/${record.id}/takeover`}
+              label="Take over draft"
+              body={(form) => ({
+                expected_version: data.encounter.version,
+                acting_role_id: value(form, "acting_role_id"),
+                reason: value(form, "reason"),
+              })}
+            >
+              <p className="mb-3 text-sm text-muted">
+                Creates a new revision in your name. The previous author and
+                their work remain in the history. Review the contents before
+                attesting.
+              </p>
+              <Field name="acting_role_id" label="Acting care-team role">
+                {data.effective_roles
+                  .filter(
+                    (r) =>
+                      (
+                        responsibility.section.write_role_ids ??
+                        responsibility.section.role_ids
+                      ).includes(r.id) && r.capabilities.includes("write"),
+                  )
+                  .map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+              </Field>
+              <Field
+                name="reason"
+                label="Shift / takeover reason"
+                minLength={3}
+                maxLength={500}
+              />
+            </ActionForm>
+          </details>
         )}
       {actionable &&
         mine &&
@@ -572,6 +802,7 @@ export function EncounterPage({ id }: { id: string }) {
   const [offset, setOffset] = useState(0);
   const [amendment, setAmendment] = useState<Entry | undefined>();
   const [unsaved, setUnsaved] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   useEffect(() => {
     if (!unsaved) return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -590,14 +821,14 @@ export function EncounterPage({ id }: { id: string }) {
   const entries = useLiveQuery(
     org,
     `journey/encounters/${id}/records/entries?offset=${offset}&limit=20`,
-    pageOf(entry),
-    tab === "documentation",
+    pageOf(entry).extend({ encounter_version: z.number() }),
+    tab === "documentation" && showHistory,
     15_000,
   );
   const tasks = useLiveQuery(
     org,
     `journey/encounters/${id}/records/tasks?offset=${offset}&limit=20`,
-    pageOf(task),
+    pageOf(task).extend({ encounter_version: z.number() }),
     tab === "actions",
   );
   const observations = useLiveQuery(
@@ -653,8 +884,13 @@ export function EncounterPage({ id }: { id: string }) {
     roles.some((role) => role.capabilities.includes(capability));
   const responsibility =
     data.responsibilities.find((item) => item.section.key === sectionKey) ??
-    data.responsibilities.find((item) => item.can_write);
+    data.responsibilities.find((item) => item.can_write) ??
+    data.responsibilities[0];
   const isActive = data.encounter.status === "active";
+  const actionVersion = Math.max(
+    data.encounter.version,
+    tasks.data?.encounter_version ?? 0,
+  );
   const activeStage =
     data.template.definition.stages.find((stage) =>
       stage.sections.some(
@@ -848,7 +1084,7 @@ export function EncounterPage({ id }: { id: string }) {
                     ))}
                 </div>
               </div>
-              <div onChangeCapture={() => setUnsaved(true)}>
+              <div id="journey-editor" onChangeCapture={() => setUnsaved(true)}>
                 {amendment ? (
                   <DocumentationForm
                     key={amendment.id}
@@ -882,30 +1118,70 @@ export function EncounterPage({ id }: { id: string }) {
                   </Panel>
                 )}
               </div>
+              <FullLedger
+                data={data}
+                select={(key) => {
+                  selectSection(key);
+                  document
+                    .getElementById("journey-editor")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                amend={(record) => {
+                  if (
+                    unsaved &&
+                    !window.confirm("Discard unsaved documentation?")
+                  )
+                    return;
+                  setUnsaved(false);
+                  setAmendment(record);
+                  setSectionKey(record.section_key);
+                  document
+                    .getElementById("journey-editor")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                }}
+              />
               <Panel
                 title="Recorded notes & comments"
                 detail="Shared notes and comments from every stage, with original authors and revisions retained. Attestation is a separate, password-confirmed action."
               >
-                <QueryState query={entries} />
-                {entries.data?.items.map((record) => (
-                  <EntryCard
-                    key={record.id}
-                    record={record}
-                    data={data}
-                    amend={() => {
-                      setAmendment(record);
-                      setSectionKey(record.section_key);
-                    }}
-                  />
-                ))}
-                {entries.data && !entries.data.items.length && (
-                  <p>No documentation has been recorded yet.</p>
+                <button
+                  className={buttonClasses.secondary}
+                  onClick={() => setShowHistory(!showHistory)}
+                >
+                  {showHistory
+                    ? "Hide revision history"
+                    : "Show complete revision history"}
+                </button>
+                {showHistory && (
+                  <>
+                    <QueryState query={entries} />
+                    {entries.data?.items.map((record) => (
+                      <EntryCard
+                        key={record.id}
+                        record={record}
+                        data={{
+                          ...data,
+                          encounter: {
+                            ...data.encounter,
+                            version: Math.max(
+                              data.encounter.version,
+                              entries.data?.encounter_version ?? 0,
+                            ),
+                          },
+                        }}
+                        amend={() => {
+                          setAmendment(record);
+                          setSectionKey(record.section_key);
+                        }}
+                      />
+                    ))}
+                    <Pager
+                      offset={offset}
+                      count={entries.data?.items.length ?? 0}
+                      change={setOffset}
+                    />
+                  </>
                 )}
-                <Pager
-                  offset={offset}
-                  count={entries.data?.items.length ?? 0}
-                  change={setOffset}
-                />
               </Panel>
             </div>
           </div>
@@ -938,7 +1214,7 @@ export function EncounterPage({ id }: { id: string }) {
                       path={`journey/encounters/${id}/tasks/${item.id}/transitions`}
                       label="Record action update"
                       body={(form) => ({
-                        expected_version: data.encounter.version,
+                        expected_version: actionVersion,
                         status: value(form, "status"),
                         reason: value(form, "reason"),
                       })}
@@ -984,7 +1260,7 @@ export function EncounterPage({ id }: { id: string }) {
                 path={`journey/encounters/${id}/tasks`}
                 label="Create action"
                 body={(form) => ({
-                  expected_version: data.encounter.version,
+                  expected_version: actionVersion,
                   owner_role_id: value(form, "owner_role_id"),
                   title: value(form, "title"),
                   due_at: value(form, "due_at")

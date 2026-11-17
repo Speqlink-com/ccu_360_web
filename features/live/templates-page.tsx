@@ -202,136 +202,139 @@ export function TemplatesPage() {
           </div>
         ))}
       </div>
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <Panel
-          title="Facility identity"
-          detail="Create reusable branding for the final journey ledger."
-        >
-          <details>
-            <summary className="mb-4 cursor-pointer font-semibold text-teal-dark">
-              Add facility branding
-            </summary>
-            <BrandForm org={org} />
-          </details>
-          <QueryState query={brandsPage} />
-          {brandsPage.data?.items.map((item) => (
-            <div key={item.id} className="border-t border-border py-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <strong>{item.title}</strong>
-                  <p className="text-sm text-muted">
-                    Brand v{item.version}
-                    {item.source_brand_id ? " · Revised identity" : ""}
-                  </p>
+      {!editing && (
+        <div className="grid items-start gap-6 lg:grid-cols-2">
+          <Panel
+            title="Facility identity"
+            detail="Create reusable branding for the final journey ledger."
+          >
+            <details>
+              <summary className="mb-4 cursor-pointer font-semibold text-teal-dark">
+                Add facility branding
+              </summary>
+              <BrandForm org={org} />
+            </details>
+            <QueryState query={brandsPage} />
+            {brandsPage.data?.items.map((item) => (
+              <div key={item.id} className="border-t border-border py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <strong>{item.title}</strong>
+                    <p className="text-sm text-muted">
+                      Brand v{item.version}
+                      {item.source_brand_id ? " · Revised identity" : ""}
+                    </p>
+                  </div>
+                  <div className="flex gap-2" aria-label="Brand colours">
+                    <span
+                      className="h-7 w-7 rounded-full border border-border"
+                      style={{ backgroundColor: item.primary_color }}
+                    />
+                    <span
+                      className="h-7 w-7 rounded-full border border-border"
+                      style={{ backgroundColor: item.accent_color }}
+                    />
+                  </div>
+                  <Status value={item.active ? "active" : "archived"} />
                 </div>
-                <div className="flex gap-2" aria-label="Brand colours">
-                  <span
-                    className="h-7 w-7 rounded-full border border-border"
-                    style={{ backgroundColor: item.primary_color }}
-                  />
-                  <span
-                    className="h-7 w-7 rounded-full border border-border"
-                    style={{ backgroundColor: item.accent_color }}
-                  />
-                </div>
-                <Status value={item.active ? "active" : "archived"} />
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-sm font-semibold text-teal-dark">
+                    Revise branding
+                  </summary>
+                  <div className="mt-4">
+                    <BrandForm org={org} existing={item} />
+                  </div>
+                </details>
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-sm text-muted">
+                    {item.active ? "Archive branding" : "Restore branding"}
+                  </summary>
+                  <ActionForm
+                    scope={org}
+                    path={`journey/config/brands/${item.id}`}
+                    method="PATCH"
+                    label={
+                      item.active
+                        ? "Archive branding version"
+                        : "Restore branding version"
+                    }
+                    body={(data) => ({
+                      active: !item.active,
+                      expected_version: item.revision,
+                      reason: value(data, "reason"),
+                    })}
+                  >
+                    <Field
+                      name="reason"
+                      label="Reason"
+                      minLength={3}
+                      maxLength={500}
+                    />
+                  </ActionForm>
+                </details>
               </div>
-              <details className="mt-3">
-                <summary className="cursor-pointer text-sm font-semibold text-teal-dark">
-                  Revise branding
-                </summary>
-                <div className="mt-4">
-                  <BrandForm org={org} existing={item} />
-                </div>
-              </details>
-              <details className="mt-3">
-                <summary className="cursor-pointer text-sm text-muted">
-                  {item.active ? "Archive branding" : "Restore branding"}
-                </summary>
-                <ActionForm
-                  scope={org}
-                  path={`journey/config/brands/${item.id}`}
-                  method="PATCH"
-                  label={
-                    item.active
-                      ? "Archive branding version"
-                      : "Restore branding version"
-                  }
-                  body={(data) => ({
-                    active: !item.active,
-                    expected_version: item.revision,
-                    reason: value(data, "reason"),
-                  })}
-                >
-                  <Field
-                    name="reason"
-                    label="Reason"
-                    minLength={3}
-                    maxLength={500}
-                  />
-                </ActionForm>
-              </details>
-            </div>
-          ))}
-          <Pager
-            offset={brandOffset}
-            count={brandsPage.data?.items.length ?? 0}
-            change={setBrandOffset}
-          />
-        </Panel>
-        <Panel
-          title="Start a journey form"
-          detail="Start from the standard nine-stage ledger. Existing versions can be cloned below."
-        >
-          <QueryState query={base} />
-          <ChoiceLoader query={brands} />
-          <ChoiceLoader query={roles} />
-          {base.data && (
-            <ActionForm
-              disabled={!!editing}
-              scope={org}
-              path="journey/config/templates"
-              label="Create & open draft"
-              body={(data) => ({
-                name: value(data, "name"),
-                brand_id: value(data, "brand_id"),
-                definition: base.data,
-              })}
-              onSuccess={(result) => {
-                setEditing(formTemplate.parse(result));
-                setPreview(null);
-              }}
-            >
-              <Field
-                name="name"
-                label="Form name"
-                minLength={2}
-                maxLength={120}
-              />
-              <Field name="brand_id" label="Facility branding">
-                <option value="">Choose active branding</option>
-                {allBrands
-                  .filter((item) => item.active)
-                  .map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.title} · v{item.version}
-                    </option>
-                  ))}
-              </Field>
-              {editing && (
-                <p className="mb-4 text-sm text-muted">
-                  Close the open editor before starting another draft.
-                </p>
-              )}
-            </ActionForm>
-          )}
-          <p className="mt-4 text-sm text-muted">
-            Create departments and compatible care-team roles before publishing.
-            Each enabled section needs a team with reading, documentation and
-            attestation permissions.
-          </p>
-        </Panel>
-      </div>
+            ))}
+            <Pager
+              offset={brandOffset}
+              count={brandsPage.data?.items.length ?? 0}
+              change={setBrandOffset}
+            />
+          </Panel>
+          <Panel
+            title="Start a journey form"
+            detail="Start from the standard nine-stage ledger. Existing versions can be cloned below."
+          >
+            <QueryState query={base} />
+            <ChoiceLoader query={brands} />
+            <ChoiceLoader query={roles} />
+            {base.data && (
+              <ActionForm
+                disabled={!!editing}
+                scope={org}
+                path="journey/config/templates"
+                label="Create & open draft"
+                body={(data) => ({
+                  name: value(data, "name"),
+                  brand_id: value(data, "brand_id"),
+                  definition: base.data,
+                })}
+                onSuccess={(result) => {
+                  setEditing(formTemplate.parse(result));
+                  setPreview(null);
+                }}
+              >
+                <Field
+                  name="name"
+                  label="Form name"
+                  minLength={2}
+                  maxLength={120}
+                />
+                <Field name="brand_id" label="Facility branding">
+                  <option value="">Choose active branding</option>
+                  {allBrands
+                    .filter((item) => item.active)
+                    .map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.title} · v{item.version}
+                      </option>
+                    ))}
+                </Field>
+                {editing && (
+                  <p className="mb-4 text-sm text-muted">
+                    Close the open editor before starting another draft.
+                  </p>
+                )}
+              </ActionForm>
+            )}
+            <p className="mt-4 text-sm text-muted">
+              Create departments and compatible care-team roles before
+              publishing. Link the participating teams, select an intake team,
+              then assign writers to each section. Attestation is optional for
+              clinical sections.
+            </p>
+          </Panel>
+        </div>
+      )}
       {editing && base.data && (
         <TemplateEditor
           key={editing.id}
@@ -340,6 +343,8 @@ export function TemplatesPage() {
           baseline={base.data}
           brands={allBrands}
           roles={allRoles}
+          roleLoader={<ChoiceLoader query={roles} />}
+          brandingLoader={<ChoiceLoader query={brands} />}
           onClose={() => setEditing(null)}
         />
       )}

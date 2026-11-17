@@ -65,14 +65,20 @@ function Home() {
           title={`Welcome, ${user.display_name.split(" ")[0]}.`}
           detail="Your platform workspace for facility onboarding, accountable administration and network access."
         />
-        <section className="mb-7 grid overflow-hidden border border-teal-dark bg-teal-dark text-white lg:grid-cols-[minmax(0,1.65fr)_minmax(240px,.75fr)]" aria-label="Platform overview">
+        <section
+          className="mb-7 grid overflow-hidden border border-teal-dark bg-teal-dark text-white lg:grid-cols-[minmax(0,1.65fr)_minmax(240px,.75fr)]"
+          aria-label="Platform overview"
+        >
           <div className="px-7 py-8 sm:px-9">
-            <p className="text-[11px] font-semibold tracking-[.14em] text-white/75">AHS PLATFORM</p>
+            <p className="text-[11px] font-semibold tracking-[.14em] text-white/75">
+              AHS PLATFORM
+            </p>
             <h2 className="mt-4 max-w-[620px] text-[clamp(26px,2.5vw,36px)] leading-[1.18] font-semibold tracking-[-.035em] text-white">
               One platform. Every facility in focus.
             </h2>
             <p className="mt-4 max-w-[650px] text-sm leading-6 text-white/85">
-              Independent workspaces, accountable administrators and connected care teams.
+              Independent workspaces, accountable administrators and connected
+              care teams.
             </p>
           </div>
           <div className="flex flex-col justify-between border-t border-white/25 bg-navy px-7 py-7 lg:border-t-0 lg:border-l">
@@ -83,35 +89,83 @@ function Home() {
           </div>
         </section>
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,.75fr)]">
-          <section aria-labelledby="platform-actions" className="border border-border bg-surface">
+          <section
+            aria-labelledby="platform-actions"
+            className="border border-border bg-surface"
+          >
             <div className="border-b border-border px-6 py-5">
-              <h2 id="platform-actions" className="text-[19px] font-semibold text-navy">Platform workspaces</h2>
-              <p className="mt-1 text-sm text-muted">The next step is always one clear action away.</p>
+              <h2
+                id="platform-actions"
+                className="text-[19px] font-semibold text-navy"
+              >
+                Platform workspaces
+              </h2>
+              <p className="mt-1 text-sm text-muted">
+                The next step is always one clear action away.
+              </p>
             </div>
-            {([
-              ["01", "facilities", "Onboard facilities", "Create providers and invite their first administrators."],
-              ["02", "administrators", "Manage AHS accounts", "Give each platform administrator their own secure identity."],
-              ["03", "audit", "Review accountability", "Inspect access events and email delivery status."],
-            ] as const).map(([number, path, title, detail]) => (
+            {(
+              [
+                [
+                  "01",
+                  "facilities",
+                  "Onboard facilities",
+                  "Create providers and invite their first administrators.",
+                ],
+                [
+                  "02",
+                  "administrators",
+                  "Manage AHS accounts",
+                  "Give each platform administrator their own secure identity.",
+                ],
+                [
+                  "03",
+                  "audit",
+                  "Review accountability",
+                  "Inspect access events and email delivery status.",
+                ],
+              ] as const
+            ).map(([number, path, title, detail]) => (
               <Link
                 key={path}
                 href={`/dashboard/${path}`}
                 className="group grid grid-cols-[34px_minmax(0,1fr)_20px] items-center gap-4 border-b border-border px-6 py-5 last:border-b-0 hover:bg-mint/45 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-teal-dark"
               >
-                <span className="self-start pt-0.5 text-xs font-semibold tabular-nums text-teal-dark">{number}</span>
-                <span className="min-w-0">
-                  <strong className="block text-[15px] font-semibold text-navy">{title}</strong>
-                  <span className="mt-1 block text-sm leading-5 text-muted">{detail}</span>
+                <span className="self-start pt-0.5 text-xs font-semibold tabular-nums text-teal-dark">
+                  {number}
                 </span>
-                <span className="text-lg text-teal-dark transition-transform group-hover:translate-x-0.5" aria-hidden="true">→</span>
+                <span className="min-w-0">
+                  <strong className="block text-[15px] font-semibold text-navy">
+                    {title}
+                  </strong>
+                  <span className="mt-1 block text-sm leading-5 text-muted">
+                    {detail}
+                  </span>
+                </span>
+                <span
+                  className="text-lg text-teal-dark transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                >
+                  →
+                </span>
               </Link>
             ))}
           </section>
-          <section aria-labelledby="platform-network" className="border border-border bg-surface px-6 py-5">
+          <section
+            aria-labelledby="platform-network"
+            className="border border-border bg-surface px-6 py-5"
+          >
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold tracking-[.12em] text-teal-dark">NETWORK</p>
-                <h2 id="platform-network" className="mt-2 text-[19px] font-semibold text-navy">Your facility network</h2>
+                <p className="text-[11px] font-semibold tracking-[.12em] text-teal-dark">
+                  NETWORK
+                </p>
+                <h2
+                  id="platform-network"
+                  className="mt-2 text-[19px] font-semibold text-navy"
+                >
+                  Your facility network
+                </h2>
               </div>
             </div>
             <QueryState query={providers} />
@@ -122,8 +176,14 @@ function Home() {
                   : "No facilities have been onboarded yet. Start by creating your first facility."}
               </p>
             )}
-            <Link href="/dashboard/facilities" className="mt-5 inline-flex min-h-10 items-center border-b border-teal-dark text-sm font-semibold text-teal-dark hover:text-navy focus-visible:outline-2 focus-visible:outline-teal-dark">
-              Open facility directory <span className="ml-2" aria-hidden="true">→</span>
+            <Link
+              href="/dashboard/facilities"
+              className="mt-5 inline-flex min-h-10 items-center border-b border-teal-dark text-sm font-semibold text-teal-dark hover:text-navy focus-visible:outline-2 focus-visible:outline-teal-dark"
+            >
+              Open facility directory{" "}
+              <span className="ml-2" aria-hidden="true">
+                →
+              </span>
             </Link>
           </section>
         </div>
@@ -218,7 +278,9 @@ function Home() {
           >
             <h3 className="mb-3 text-[19px] text-navy">{title}</h3>
             <p className="mb-5 min-h-[60px] text-muted">{detail}</p>
-            <span className="text-[13px] font-semibold text-teal-dark">Open workspace →</span>
+            <span className="text-[13px] font-semibold text-teal-dark">
+              Open workspace →
+            </span>
           </Link>
         ))}
       </div>
@@ -282,12 +344,7 @@ export function LivePage({
     if (section === "worksite") return <WorksiteSettingsPage />;
     return <Denied />;
   }
-  if (encounterId)
-    return member.role === "receptionist" ? (
-      <Denied />
-    ) : (
-      <EncounterPage id={encounterId} />
-    );
+  if (encounterId) return <EncounterPage id={encounterId} />;
   if (section === "patients") return <PatientsPage />;
   return <Denied />;
 }

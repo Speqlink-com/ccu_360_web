@@ -6,6 +6,7 @@ import {
   mutationOriginAllowed,
   upstreamOrigin,
   allowedGatewayPath,
+  validGatewayQuery,
 } from "../lib/server/identity-gateway";
 import { authCookieNames } from "../lib/server/auth-cookies";
 import { collectEntryValues } from "../features/live/entry-values";
@@ -230,6 +231,9 @@ test("origin validation uses the actual Host authority when Next normalizes loca
 });
 test("entry serialization retains false and zero, omits optional unknown values, and requires explicit missing-data reasons", () => {
   const section: Section = {
+    kind: "clinical",
+    write_role_ids: null,
+    attestation_required: true,
     key: "medical",
     label: "Medical",
     enabled: true,
@@ -310,6 +314,9 @@ test("configuration lifecycle endpoints pass through the authenticated gateway",
 
 test("multiple choice and radio answers retain structured values and reject invented choices", () => {
   const section: Section = {
+    kind: "clinical",
+    write_role_ids: null,
+    attestation_required: true,
     key: "local_section",
     label: "Local section",
     enabled: true,
@@ -389,5 +396,45 @@ test("logo uploads use the backend's 2 MiB limit without expanding other request
       )
     ).status,
     413,
+  );
+});
+
+test("shared-ledger gateway accepts bounded section pages and keeps demographic searches out of URL queries", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  assert.equal(allowedGatewayPath("journey/access", "GET"), true);
+  assert.equal(allowedGatewayPath("journey/patients/directory", "POST"), true);
+  assert.equal(allowedGatewayPath("journey/patients/directory", "GET"), false);
+  assert.equal(
+    allowedGatewayPath(
+      `journey/encounters/${id}/entries/${id}/takeover`,
+      "POST",
+    ),
+    true,
+  );
+  for (const kind of ["professions", "responsibilities"]) {
+    assert.equal(allowedGatewayPath(`workforce/${kind}`, "GET"), true);
+    assert.equal(allowedGatewayPath(`workforce/${kind}/${id}`, "PATCH"), true);
+  }
+  const path = `journey/encounters/${id}/records/entries`;
+  assert.equal(
+    validGatewayQuery(
+      path,
+      new URLSearchParams(
+        "section_key=reception_intake&current_only=1&limit=20",
+      ),
+    ),
+    true,
+  );
+  for (const query of [
+    "section_key=../patient",
+    "section_key=intake&section_key=doctor",
+    "current_only=999",
+    "patient_name=Sensitive",
+  ]) {
+    assert.equal(validGatewayQuery(path, new URLSearchParams(query)), false);
+  }
+  assert.equal(
+    validGatewayQuery("journey/inbox", new URLSearchParams("current_only=1")),
+    false,
   );
 });
