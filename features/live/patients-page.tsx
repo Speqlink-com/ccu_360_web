@@ -63,6 +63,7 @@ export function PatientsPage() {
       encounter.extend({
         patient_name: z.string(),
         patient_identifier: z.string(),
+        patient_ccu360_number: z.string().nullable().optional(),
       }),
     ),
   );
@@ -112,7 +113,12 @@ export function PatientsPage() {
                 <tr key={item.id}>
                   <td>
                     <strong>{item.patient_name}</strong>
-                    <small>{item.patient_identifier}</small>
+                    <small>
+                      {item.patient_ccu360_number
+                        ? `CCU360 ${item.patient_ccu360_number} · `
+                        : ""}
+                      IP {item.patient_identifier}
+                    </small>
                   </td>
                   <td>
                     {item.unit} · {item.bed ?? "Unassigned"}

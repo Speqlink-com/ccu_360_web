@@ -1,4 +1,31 @@
 export const descriptions: Record<string, string> = {
+  patient_ip_number_exists:
+    "This IP number is already assigned or retained as a previous number. Search for the existing patient before registering or correcting a profile.",
+  reception_workspace_required:
+    "This workspace is for reception employees. Use Patient journeys for your clinical team’s work.",
+  patient_profile_not_found:
+    "This patient profile is unavailable in the selected facility. Return to the directory and search again.",
+  possible_patient_duplicate_review_required:
+    "An existing patient may match these details. Review possible matches before creating another record.",
+  patient_profile_version_conflict:
+    "The patient profile changed. Reload the profile, review the latest details and try again.",
+  reception_request_reused:
+    "This submission was already used for different details. Reload the saved record before starting a new action.",
+  patient_number_capacity_reached:
+    "New patient numbers are temporarily unavailable. Contact CCU360 support; existing patients and their records remain available.",
+  arrival_not_found:
+    "This arrival is unavailable in the selected facility. Return to the patient’s history and reload.",
+  arrival_cannot_be_in_future:
+    "The arrival time cannot be in the future. Check the date, time and device timezone.",
+  cancelled_arrival_cannot_start_journey:
+    "This arrival was cancelled. Record a new arrival before starting another form.",
+  form_already_started_for_arrival:
+    "This version of the form already exists for this arrival. Open it from the patient’s history.",
+  arrival_already_cancelled:
+    "This arrival has already been cancelled. Reload its history.",
+  arrival_with_journey_requires_clinical_review:
+    "A journey has already started. Ask the clinical team to review or close it; reception cannot cancel its clinical record.",
+
   patient_registration_permission_required:
     "Your team cannot register patients. Reception or a team with Register patients can create the patient record.",
   journey_initialization_permission_required:

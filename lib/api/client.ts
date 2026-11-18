@@ -100,6 +100,17 @@ export async function apiRequest<T>(
           : JSON.stringify(options.body)
         : undefined,
   };
+  // These POST endpoints only search data; a transport failure cannot have saved a change.
+  const readOnly =
+    init.method === "GET" ||
+    (init.method === "POST" &&
+      new Set([
+        "/api/v1/journey/reception/patients/search",
+        "/api/v1/journey/reception/patients/duplicates",
+        "/api/v1/journey/reception/arrivals/search",
+        "/api/v1/journey/patients/search",
+        "/api/v1/journey/patients/directory",
+      ]).has(path));
   return withRequestDeadline(async (signal) => {
     const checkCancellation = () => {
       if (options.signal?.aborted)
@@ -112,7 +123,7 @@ export async function apiRequest<T>(
           "request_timeout",
           [],
           undefined,
-          init.method !== "GET",
+          !readOnly,
           path,
         );
     };
@@ -142,7 +153,7 @@ export async function apiRequest<T>(
           timedOut ? "request_timeout" : "network_error",
           [],
           undefined,
-          init.method !== "GET",
+          !readOnly,
           path,
         );
       }
@@ -206,7 +217,7 @@ export async function apiRequest<T>(
         data.error,
         issues,
         retryAfter,
-        response.status >= 500 && init.method !== "GET",
+        response.status >= 500 && !readOnly,
         path,
       );
     }
@@ -222,7 +233,7 @@ export async function apiRequest<T>(
         "invalid_response",
         [],
         undefined,
-        init.method !== "GET",
+        !readOnly,
         path,
       );
     }
@@ -235,7 +246,7 @@ export async function apiRequest<T>(
         "invalid_response",
         [],
         undefined,
-        init.method !== "GET",
+        !readOnly,
         path,
       );
     return parsed.data;

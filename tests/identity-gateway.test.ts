@@ -438,3 +438,49 @@ test("shared-ledger gateway accepts bounded section pages and keeps demographic 
     false,
   );
 });
+
+test("reception gateway keeps patient searches in POST bodies and limits profile mutation paths", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  for (const path of [
+    "access",
+    `patients/${id}`,
+    `patients/${id}/visits`,
+    `patients/${id}/journeys`,
+    `patients/${id}/revisions`,
+    `arrivals/${id}`,
+  ])
+    assert.equal(allowedGatewayPath(`journey/reception/${path}`, "GET"), true);
+  for (const path of [
+    "patients",
+    "patients/search",
+    "patients/duplicates",
+    "arrivals",
+    "arrivals/search",
+    `arrivals/${id}/forms`,
+    `arrivals/${id}/cancel`,
+  ])
+    assert.equal(allowedGatewayPath(`journey/reception/${path}`, "POST"), true);
+  assert.equal(
+    allowedGatewayPath(`journey/reception/patients/${id}`, "PATCH"),
+    true,
+  );
+  assert.equal(
+    allowedGatewayPath(`journey/reception/patients/${id}`, "DELETE"),
+    false,
+  );
+  assert.equal(
+    allowedGatewayPath("journey/reception/patients/search", "GET"),
+    false,
+  );
+  assert.equal(
+    allowedGatewayPath(`journey/reception/arrivals/${id}`, "PATCH"),
+    false,
+  );
+  assert.equal(
+    validGatewayQuery(
+      "journey/reception/patients/search",
+      new URLSearchParams("query=Sensitive"),
+    ),
+    false,
+  );
+});

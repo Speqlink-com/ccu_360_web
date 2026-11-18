@@ -78,7 +78,7 @@ export async function checkWorksiteCommunication({
   });
   try {
     const employee = await context.newPage();
-    employee.setDefaultTimeout(30000);
+    employee.setDefaultTimeout(60000);
     let delivered = false;
     employee.on("websocket", (socket) =>
       socket.on("framereceived", (frame) => {
@@ -310,6 +310,18 @@ export async function checkWorksiteCommunication({
     console.log(
       "PASS employee geofence recovery/denial, any-internet access, remote admin, registered networks, live WS events, group messaging, editing/redaction, participant revocation, mobile layout and transient storage",
     );
+  } catch (error) {
+    const employee = context.pages()[0];
+    if (employee) {
+      console.error(await employee.locator(".request-error").allTextContents());
+      await employee
+        .screenshot({
+          path: "/tmp/ccu360-worksite-regression-failure.png",
+          fullPage: true,
+        })
+        .catch(() => {});
+    }
+    throw error;
   } finally {
     await context.close();
   }

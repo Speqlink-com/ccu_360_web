@@ -59,6 +59,11 @@ export function allowedGatewayPath(path: string, method: string) {
 export function featureGatewayPath(path: string, method: string) {
   const routes: Record<string, RegExp[]> = {
     GET: [
+      /^journey\/reception\/access$/,
+      new RegExp(
+        `^journey/reception/patients/${uuid}(/(visits|journeys|revisions))?$`,
+      ),
+      new RegExp(`^journey/reception/arrivals/${uuid}$`),
       /^worksite\/(status|policy|sites|networks)$/,
       /^communication\/(colleagues|conversations|events)$/,
       new RegExp(
@@ -66,6 +71,8 @@ export function featureGatewayPath(path: string, method: string) {
       ),
     ],
     POST: [
+      /^journey\/reception\/(patients(\/(search|duplicates))?|arrivals(\/search)?)$/,
+      new RegExp(`^journey/reception/arrivals/${uuid}/(forms|cancel)$`),
       new RegExp(`^journey/config/templates/${uuid}/(clone|validate)$`),
       new RegExp(`^journey/config/brands/${uuid}/revisions$`),
       /^worksite\/(sites|networks|location\/(challenges|attestations))$/,
@@ -83,6 +90,7 @@ export function featureGatewayPath(path: string, method: string) {
       ),
     ],
     PATCH: [
+      new RegExp(`^journey/reception/patients/${uuid}$`),
       new RegExp(`^journey/config/(templates|brands)/${uuid}$`),
       new RegExp(`^worksite/networks/${uuid}$`),
       new RegExp(`^communication/conversations/${uuid}/messages/${uuid}$`),

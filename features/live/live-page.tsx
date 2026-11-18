@@ -27,6 +27,9 @@ const WorkforcePage = dynamic(() =>
 const TemplatesPage = dynamic(() =>
   import("./templates-page").then((module) => module.TemplatesPage),
 );
+const ReceptionPage = dynamic(() =>
+  import("@/features/reception/page").then((module) => module.ReceptionPage),
+);
 const PatientsPage = dynamic(() =>
   import("./patients-page").then((module) => module.PatientsPage),
 );
@@ -345,6 +348,11 @@ export function LivePage({
     return <Denied />;
   }
   if (encounterId) return <EncounterPage id={encounterId} />;
+  if (
+    (section === "patients" || section === "reception") &&
+    member.role === "receptionist"
+  )
+    return <ReceptionPage />;
   if (section === "patients") return <PatientsPage />;
   return <Denied />;
 }

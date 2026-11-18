@@ -21,6 +21,20 @@ export class ApiError extends Error {
 }
 const labels: Record<string, string> = {
   display_name: "Full name",
+  ip_number: "Facility IP number",
+  ccu360_number: "CCU360 number",
+  sex: "Sex",
+  phone: "Telephone number",
+  arrival_source: "Arrival source",
+  arrived_at: "Arrival time",
+  referring_facility: "Referring facility",
+  referral_reference: "Referral reference",
+  intake_note: "Reception note",
+  expected_profile_version: "Patient profile revision",
+  registered_from: "Registration start date",
+  registered_to: "Registration end date",
+  arrived_from: "Arrival start date",
+  arrived_to: "Arrival end date",
   profession_ids: "Facility professions",
   profession_id: "Employee profession",
   responsibility_ids: "Facility responsibilities",
@@ -125,6 +139,16 @@ export function issueLabel(issue: ValidationIssue) {
   return segments.join(" · ") || "Form";
 }
 export function issueMessage(issue: ValidationIssue, path = ""): string {
+  if (issue.code === "timezone_invalid")
+    return "Choose a valid time zone for date filters.";
+  if (issue.code === "referring_facility_required")
+    return "Enter the referring facility for this arrival.";
+  if (issue.code === "referral_details_invalid")
+    return "Select Referral before entering referral details.";
+  if (issue.code === "date_interval_invalid")
+    return "The start date must be on or before the end date.";
+  if (issue.code === "telephone_invalid")
+    return "Enter a telephone number with 7–18 digits.";
   const key = issue.path.at(-1);
   if (["token", "challenge_token", "refresh_token"].includes(String(key)))
     return "This security link or verification is invalid. Open the complete email link or sign in again.";

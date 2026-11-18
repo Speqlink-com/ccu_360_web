@@ -17,13 +17,21 @@ const nextConfig: NextConfig = {
     if (dev && process.env.CCU360_BUILD_DIR) config.cache = false;
     return config;
   },
-  // No shared server caching of clinical data. The phase-one UI uses synthetic client state.
+  // Clinical data uses no-store requests and tenant-scoped in-memory queries.
   cacheComponents: false,
   async headers() {
     return [
       {
         source: "/:path*",
         headers: [
+          ...(/^[0-9a-f]{40}$/i.test(process.env.VERCEL_GIT_COMMIT_SHA ?? "")
+            ? [
+                {
+                  key: "X-CCU360-Revision",
+                  value: process.env.VERCEL_GIT_COMMIT_SHA!,
+                },
+              ]
+            : []),
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "no-referrer" },

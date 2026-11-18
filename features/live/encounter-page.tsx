@@ -942,7 +942,7 @@ export function EncounterPage({ id }: { id: string }) {
       <Heading
         eyebrow="PATIENT JOURNEY RECORD"
         title={data.patient.display_name}
-        detail={`${data.patient.identifier} · ${data.encounter.unit} · Bed ${data.encounter.bed ?? "unassigned"} · Admitted ${stamp(data.encounter.admitted_at)}`}
+        detail={`${data.patient.ccu360_number ? `CCU360 ${data.patient.ccu360_number} · ` : ""}IP ${data.patient.ip_number ?? data.patient.identifier} · ${data.encounter.unit}${data.encounter.bed ? ` · Bed ${data.encounter.bed}` : ""} · Started ${stamp(data.encounter.admitted_at)}`}
         actions={
           <>
             <Status value={data.encounter.status} />

@@ -221,3 +221,21 @@ test("request deadlines support parent cancellation without modern AbortSignal h
     if (timeout) Object.defineProperty(AbortSignal, "timeout", timeout);
   }
 });
+
+test("reception search failures are read-only and never imply saved demographic changes", async () => {
+  const original = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => {
+      throw new TypeError("synthetic disconnect");
+    };
+    await assert.rejects(
+      apiRequest("/api/v1/journey/reception/patients/search", z.unknown(), {
+        method: "POST",
+        body: { query: "Synthetic" },
+      }),
+      (error) => error instanceof ApiError && error.outcomeUnknown === false,
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});

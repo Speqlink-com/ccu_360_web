@@ -132,7 +132,8 @@ export function productionNavigationFor(role?: Role): NavigationItem[] {
     overview,
     {
       href: "/dashboard/patients",
-      title: "Patient journeys",
+      title:
+        role === "receptionist" ? "Reception & patients" : "Patient journeys",
       icon: "patients",
     },
     {

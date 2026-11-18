@@ -104,6 +104,11 @@ export const encounter = z.object({
   head_hash: z.string(),
 });
 export const patient = z.object({
+  ccu360_number: z
+    .string()
+    .regex(/^[0-9]{6}$/)
+    .optional(),
+  ip_number: z.string().optional(),
   id: z.string(),
   identifier: z.string(),
   display_name: z.string(),
