@@ -1,4 +1,21 @@
 import { z } from "zod";
+export const tableColumn = z.object({
+  key: z.string(),
+  label: z.string(),
+  type: z.enum(["text", "number", "boolean", "choice", "date", "time"]),
+  required: z.boolean().default(false),
+  choices: z.array(z.string()).default([]),
+});
+export const documentLayout = z.object({
+  engine: z.literal("pdfme"),
+  version: z.literal(1),
+  basePdf: z.object({
+    width: z.number(),
+    height: z.number(),
+    padding: z.array(z.number()),
+  }),
+  schemas: z.array(z.array(z.record(z.string(), z.unknown()))),
+});
 export const fieldDefinition = z.object({
   key: z.string(),
   label: z.string(),
@@ -14,7 +31,12 @@ export const fieldDefinition = z.object({
     "time",
     "datetime",
     "observation_refs",
+    "table",
+    "attachment",
+    "link",
   ]),
+  columns: z.array(tableColumn).optional(),
+  max_rows: z.number().optional(),
   required: z.boolean(),
   choices: z.array(z.string()),
 });
@@ -30,6 +52,7 @@ export const sectionDefinition = z.object({
   fields: z.array(fieldDefinition),
 });
 export const definition = z.object({
+  document: documentLayout.nullable().optional(),
   design_version: z.union([z.literal(1), z.literal(2)]).default(1),
   access_role_ids: z.array(z.string()).default([]),
   intake_role_ids: z.array(z.string()).default([]),

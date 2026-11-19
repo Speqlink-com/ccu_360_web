@@ -1,6 +1,23 @@
 import { z } from "zod";
 // Public schema vocabulary only. Arbitrary dictionary keys and submitted values are never forwarded.
 export const publicProblemFields = new Set<string>([
+  "document",
+  "engine",
+  "version",
+  "basePdf",
+  "schemas",
+  "width",
+  "height",
+  "padding",
+  "columns",
+  "max_rows",
+  "section_key",
+  "field_key",
+  "filename",
+  "media_type",
+  "content_base64",
+  "on_shift",
+  "action",
   "accent_color",
   "timezone",
   "ip_number",

@@ -136,6 +136,7 @@ export function productionNavigationFor(role?: Role): NavigationItem[] {
         role === "receptionist" ? "Reception & patients" : "Patient journeys",
       icon: "patients",
     },
+    { href: "/dashboard/queue", title: "Team work queue", icon: "actions" },
     {
       href: "/dashboard/connect",
       title: "Connect 360",

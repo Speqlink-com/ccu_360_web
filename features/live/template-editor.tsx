@@ -12,6 +12,15 @@ import {
   type Section,
 } from "./journey-contract";
 import { Notice, Status } from "./shared";
+import dynamic from "next/dynamic";
+import { TableColumns } from "@/features/document-studio/table-columns";
+const DocumentDesigner = dynamic(
+  () =>
+    import("@/features/document-studio/designer").then(
+      (m) => m.DocumentDesigner,
+    ),
+  { ssr: false },
+);
 import { TemplatePreview } from "./template-preview";
 type Template = z.infer<typeof formTemplate>;
 type Role = z.infer<typeof teamRole>;
@@ -27,6 +36,9 @@ const types: [ClinicalField["type"], string][] = [
   ["date", "Date"],
   ["time", "Time"],
   ["datetime", "Date and time"],
+  ["table", "Repeating table"],
+  ["attachment", "Clinical images / files"],
+  ["link", "External HTTPS link"],
   ["observation_refs", "Shared observation references"],
 ];
 const key = (kind: string) =>
@@ -49,6 +61,8 @@ export function TemplateEditor({
   brandingLoader?: ReactNode;
   onClose: () => void;
 }) {
+  const [studio, setStudio] = useState(false);
+  const [canvasDirty, setCanvasDirty] = useState(false);
   const client = useQueryClient();
   const formRef = useRef<HTMLFormElement>(null);
   const [name, setName] = useState(initial.name),
@@ -230,6 +244,62 @@ export function TemplateEditor({
             Enable flexible sections
           </button>
         </div>
+      )}
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          className={buttonClasses.secondary}
+          onClick={() => {
+            if (
+              !studio ||
+              !canvasDirty ||
+              window.confirm("Discard unapplied canvas changes?")
+            ) {
+              setStudio(!studio);
+              setCanvasDirty(false);
+            }
+          }}
+        >
+          {studio ? "Close page designer" : "Design document pages"}
+        </button>
+        <span className="text-sm text-muted">
+          {draft.document
+            ? `${draft.document.schemas.length} designed pages`
+            : "Automatic paper layout"}
+        </span>
+        {draft.document && (
+          <button
+            type="button"
+            className="text-sm underline"
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Remove the custom layout? Structured fields and permissions will remain.",
+                )
+              )
+                change((next) => {
+                  next.document = null;
+                });
+            }}
+          >
+            Use automatic layout
+          </button>
+        )}
+      </div>
+      {studio && (
+        <DocumentDesigner
+          definition={draft}
+          title={name}
+          onPending={(value) => {
+            setCanvasDirty(value);
+            if (value) setDirty(true);
+          }}
+          onApply={(document) =>
+            change((next) => {
+              next.document = document;
+            })
+          }
+        />
       )}
       <form
         ref={formRef}
@@ -610,6 +680,19 @@ export function TemplateEditor({
                                   s.fields[fi].type = e.target
                                     .value as ClinicalField["type"];
                                   s.fields[fi].choices = [];
+                                  s.fields[fi].columns =
+                                    e.target.value === "table"
+                                      ? [
+                                          {
+                                            key: "column_one",
+                                            label: "Details",
+                                            type: "text",
+                                            required: false,
+                                            choices: [],
+                                          },
+                                        ]
+                                      : [];
+                                  s.fields[fi].max_rows = 20;
                                 })
                               }
                             >
@@ -621,6 +704,16 @@ export function TemplateEditor({
                             </select>
                           </label>
                         </div>
+                        {field.type === "table" && (
+                          <TableColumns
+                            field={field}
+                            onChange={(field) =>
+                              update(index, (s) => {
+                                s.fields[fi] = field;
+                              })
+                            }
+                          />
+                        )}
                         {["choice", "radio", "multichoice"].includes(
                           field.type,
                         ) && (
@@ -749,6 +842,11 @@ export function TemplateEditor({
             onChange={(e) => setReason(e.target.value)}
           />
         </label>
+        {canvasDirty && (
+          <p role="status" className="my-3 text-sm text-amber-800">
+            Apply the page layout before saving this draft.
+          </p>
+        )}
         <Notice error={save.error} formRef={formRef} />
         <Notice error={reload.error} />
         {save.isSuccess && !dirty && (
@@ -759,7 +857,7 @@ export function TemplateEditor({
         <div className="flex flex-wrap gap-3">
           <button
             className={buttonClasses.primary}
-            disabled={save.isPending || !dirty}
+            disabled={save.isPending || !dirty || canvasDirty}
           >
             {save.isPending ? "Saving…" : "Save draft changes"}
           </button>

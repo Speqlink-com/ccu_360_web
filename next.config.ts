@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import type { NextConfig } from "next";
 import { verifyProductionMode } from "./lib/deployment";
 
@@ -9,11 +10,22 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/**": ["./lib/server/.demo-session-key"],
   },
-  turbopack: {},
+  turbopack: {
+    resolveAlias: {
+      "@pdfme/converter": "./features/document-studio/blank-paper-converter.ts",
+    },
+  },
   experimental: process.env.CCU360_BUILD_DIR
     ? { cpus: 2, turbopackFileSystemCacheForBuild: false }
     : {},
   webpack(config, { dev }) {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@pdfme/converter$": resolve(
+        process.cwd(),
+        "features/document-studio/blank-paper-converter.ts",
+      ),
+    };
     if (dev && process.env.CCU360_BUILD_DIR) config.cache = false;
     return config;
   },

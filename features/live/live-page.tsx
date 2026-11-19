@@ -27,6 +27,9 @@ const WorkforcePage = dynamic(() =>
 const TemplatesPage = dynamic(() =>
   import("./templates-page").then((module) => module.TemplatesPage),
 );
+const WorkQueuePage = dynamic(() =>
+  import("@/features/work-queue/page").then((m) => m.WorkQueuePage),
+);
 const ReceptionPage = dynamic(() =>
   import("@/features/reception/page").then((module) => module.ReceptionPage),
 );
@@ -354,6 +357,7 @@ export function LivePage({
   )
     return <ReceptionPage />;
   if (section === "patients") return <PatientsPage />;
+  if (section === "queue") return <WorkQueuePage />;
   return <Denied />;
 }
 function Denied() {

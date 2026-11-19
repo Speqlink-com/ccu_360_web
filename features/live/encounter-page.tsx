@@ -1,4 +1,17 @@
 "use client";
+import dynamic from "next/dynamic";
+import {
+  RepeatingTable,
+  AttachmentInput,
+  StructuredValue,
+} from "@/features/document-studio/clinical-inputs";
+const CurrentDocument = dynamic(
+  () =>
+    import("@/features/document-studio/current-document").then(
+      (m) => m.CurrentDocument,
+    ),
+  { ssr: false },
+);
 import { buttonClasses } from "@/lib/presentation";
 import { useEffect, useState, useRef, type CSSProperties } from "react";
 import Link from "next/link";
@@ -54,9 +67,18 @@ function ClinicalField({
   field,
   previous,
   observations,
+  context,
 }: {
   field: Section["fields"][number];
   previous?: Entry["values"][string];
+  context: {
+    encounterId: string;
+    sectionKey: string;
+    org: string;
+    version: number;
+    onVersion: (version: number) => void;
+    onPending: (pending: boolean) => void;
+  };
   observations: z.infer<typeof observation>[];
 }) {
   const [status, setStatus] = useState(previous?.status ?? "present");
@@ -90,6 +112,10 @@ function ClinicalField({
           defaultValue={previous?.reason ?? ""}
           placeholder="Explain why this information is unavailable"
         />
+      ) : field.type === "table" ? (
+        <RepeatingTable field={field} old={old} />
+      ) : field.type === "attachment" ? (
+        <AttachmentInput field={field} old={old} {...context} />
       ) : field.type === "observation_refs" ? (
         <select
           id={id}
@@ -183,7 +209,9 @@ function ClinicalField({
                 ? "number"
                 : field.type === "date" || field.type === "time"
                   ? field.type
-                  : "text"
+                  : field.type === "link"
+                    ? "url"
+                    : "text"
           }
           step={field.type === "number" ? "any" : undefined}
           maxLength={8000}
@@ -216,6 +244,8 @@ function DocumentationForm({
   const org = useIdentity().data!.organization_id!;
   const id = data.encounter.id;
   const [version, setVersion] = useState(data.encounter.version);
+  const [uploads, setUploads] = useState(0);
+  const [formRevision, setFormRevision] = useState(0);
   const [kind, setKind] = useState(amendment?.kind ?? "note");
   const observations = useChoices(
     org,
@@ -229,7 +259,7 @@ function DocumentationForm({
         (section.kind === "administrative" &&
           role.capabilities.includes("register"))),
   );
-  const changed = version !== data.encounter.version;
+  const changed = version < data.encounter.version;
   return (
     <Panel
       title={amendment ? "Amend recorded information" : section.label}
@@ -258,6 +288,7 @@ function DocumentationForm({
         </div>
       )}
       <ActionForm
+        disabled={uploads > 0}
         scope={org}
         path={`journey/encounters/${id}/${kind === "comment" ? "comments" : "entries"}`}
         label={
@@ -303,6 +334,7 @@ function DocumentationForm({
         onSuccess={(result) => {
           const parsed = z.object({ version: z.number() }).parse(result);
           setVersion(parsed.version);
+          setFormRevision((value) => value + 1);
           onSaved?.();
           close?.();
         }}
@@ -357,8 +389,19 @@ function DocumentationForm({
             />
             {section.fields.map((field) => (
               <ClinicalField
-                key={field.key}
+                key={`${field.key}:${formRevision}`}
                 field={field}
+                context={{
+                  encounterId: id,
+                  sectionKey: section.key,
+                  org,
+                  version,
+                  onVersion: setVersion,
+                  onPending: (pending) =>
+                    setUploads((value) =>
+                      Math.max(0, value + (pending ? 1 : -1)),
+                    ),
+                }}
                 previous={amendment?.values[field.key]}
                 observations={
                   observations.data?.pages.flatMap((page) => page.items) ?? []
@@ -628,7 +671,24 @@ function EntryCard({
                     (field) => field.key === key,
                   )?.label ?? key)}
             </dt>
-            <dd>{displayValue(item)}</dd>
+            <dd>
+              {item.status === "present" &&
+              responsibility?.section.fields.some(
+                (f) =>
+                  f.key === key &&
+                  ["table", "attachment", "link"].includes(f.type),
+              ) ? (
+                <StructuredValue
+                  field={
+                    responsibility.section.fields.find((f) => f.key === key)!
+                  }
+                  value={item.value}
+                  encounterId={data.encounter.id}
+                />
+              ) : (
+                displayValue(item)
+              )}
+            </dd>
           </div>
         ))}
       </dl>
@@ -939,6 +999,7 @@ export function EncounterPage({ id }: { id: string }) {
           />
         )}
       </div>
+      <CurrentDocument encounterId={id} org={org} />
       <Heading
         eyebrow="PATIENT JOURNEY RECORD"
         title={data.patient.display_name}

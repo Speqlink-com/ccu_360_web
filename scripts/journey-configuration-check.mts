@@ -160,6 +160,48 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
     .getByLabel("Choices (one per line)")
     .last()
     .fill("Routine\nUrgent");
+  await editor.getByRole("button", { name: "Add field", exact: true }).click();
+  await editor
+    .getByLabel("Field label", { exact: true })
+    .last()
+    .fill("Results table");
+  await editor
+    .getByLabel("Field type", { exact: true })
+    .last()
+    .selectOption("table");
+  const columns = editor.getByRole("group", {
+    name: "Table columns",
+    exact: true,
+  });
+  await columns.getByLabel("Column label", { exact: true }).fill("Test name");
+  await columns
+    .getByRole("button", { name: "Add column", exact: true })
+    .click();
+  await columns
+    .getByLabel("Column label", { exact: true })
+    .last()
+    .fill("Measured result");
+  await columns
+    .getByLabel("Input type", { exact: true })
+    .last()
+    .selectOption("number");
+  await editor
+    .getByRole("button", { name: "Design document pages", exact: true })
+    .click();
+  const studio = editor.getByRole("region", { name: "Document design studio" });
+  await expect(
+    studio.getByRole("button", { name: "Apply page layout", exact: true }),
+  ).toBeEnabled({ timeout: 120_000 });
+  await page.screenshot({
+    path: "/tmp/ccu360-document-studio-desktop.png",
+    fullPage: true,
+  });
+  await studio
+    .getByRole("button", { name: "Apply page layout", exact: true })
+    .click();
+  await editor
+    .getByRole("button", { name: "Close page designer", exact: true })
+    .click();
   await editor
     .getByLabel("Change reason", { exact: true })
     .fill("Synthetic multidisciplinary form configuration");

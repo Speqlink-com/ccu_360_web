@@ -17,6 +17,15 @@ export function collectEntryValues(section: Section, data: FormData) {
       continue;
     }
     const raw = String(data.get(field.key) ?? "").trim();
+    if (field.type === "table" || field.type === "attachment") {
+      const raw = String(data.get(field.key) ?? "[]");
+      const value: unknown = JSON.parse(raw);
+      if (!Array.isArray(value))
+        throw new Error(`${field.label} has invalid data.`);
+      if (value.length) result[field.key] = { status, value };
+      else if (field.required) throw new Error(`${field.label} is required.`);
+      continue;
+    }
     if (field.type === "observation_refs" || field.type === "multichoice") {
       const refs = data.getAll(field.key).map(String);
       if (

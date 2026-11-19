@@ -1,4 +1,54 @@
 export const descriptions: Record<string, string> = {
+  section_claimed_by_another_employee:
+    "A colleague is handling this section. Open the team queue to review or take over with a handover reason.",
+  start_shift_before_claiming:
+    "Start your shift in Team work queue before claiming a patient section.",
+  shift_version_conflict:
+    "Your shift changed in another session. Refresh the queue and try again.",
+  work_item_version_conflict:
+    "This section was updated by a colleague. Refresh the queue before choosing another action.",
+  posted_or_attested_section_required:
+    "Record the section first. If it requires attestation, the author must attest the latest note before completing the section.",
+  reopen_completed_section_first:
+    "Reopen this completed section in the work queue before claiming it again.",
+  only_completed_sections_can_reopen:
+    "This section is already open. Refresh the queue to see its current status.",
+  claim_owner_required: "Claim this section before marking it complete.",
+  claim_owner_or_care_manager_required:
+    "Only the employee handling this section or a care manager may release it.",
+  active_care_team_assignment_required:
+    "A current care-team assignment and available staff status are needed to start a shift.",
+  attachment_content_not_accepted:
+    "This file could not be accepted. Use a valid PNG, JPEG or non-interactive PDF up to 2 MB. PDFs with scripts, links, forms or embedded files are rejected.",
+  attachment_not_in_pinned_field:
+    "Link a file uploaded for this field in the same patient journey.",
+  attachment_not_found:
+    "This clinical file is unavailable in the selected journey.",
+  attachment_integrity_failed:
+    "This file failed its integrity check. Contact your facility administrator.",
+  encounter_attachment_limit_reached:
+    "This journey has reached its attachment allowance. Ask your facility administrator to review document retention.",
+  document_fields_missing_from_layout:
+    "The page layout is missing fields. Open the page designer and rebuild from the current fields, then apply the layout and save.",
+  document_field_not_in_definition:
+    "A page field is not linked to a section. Keep linked field names unchanged; name decorative elements with display_ at the beginning.",
+  document_field_names_invalid:
+    "Page field names must be unique. Keep the generated names for linked fields.",
+  document_field_type_mismatch:
+    "A linked page field has the wrong type. Rebuild the page layout from the current sections and fields.",
+  document_table_columns_mismatch:
+    "Table headings have changed. Rebuild the page layout from the current table columns.",
+  document_geometry_invalid:
+    "Move each page element fully inside its A4 page before saving.",
+  document_schema_not_supported:
+    "Use supported text, table, image, line, rectangle or ellipse elements in the page designer.",
+  document_content_invalid:
+    "Use plain text and local PNG or JPEG diagrams. Formulas, scripts and remote content are not supported in document layouts.",
+  document_layout_limit_exceeded:
+    "Reduce the page layout to at most 30 pages and 1,200 elements (150 per page).",
+  document_font_not_supported:
+    "Choose Inter for document text and table fonts.",
+
   patient_ip_number_exists:
     "This IP number is already assigned or retained as a previous number. Search for the existing patient before registering or correcting a profile.",
   reception_workspace_required:

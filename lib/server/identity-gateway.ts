@@ -59,6 +59,9 @@ export function allowedGatewayPath(path: string, method: string) {
 export function featureGatewayPath(path: string, method: string) {
   const routes: Record<string, RegExp[]> = {
     GET: [
+      /^journey\/(queue|shift)$/,
+      new RegExp(`^journey/encounters/${uuid}/document$`),
+      new RegExp(`^journey/encounters/${uuid}/attachments/${uuid}$`),
       /^journey\/reception\/access$/,
       new RegExp(
         `^journey/reception/patients/${uuid}(/(visits|journeys|revisions))?$`,
@@ -71,6 +74,10 @@ export function featureGatewayPath(path: string, method: string) {
       ),
     ],
     POST: [
+      new RegExp(`^journey/encounters/${uuid}/attachments$`),
+      new RegExp(
+        `^journey/encounters/${uuid}/sections/[a-z][a-z0-9_]{1,49}/work$`,
+      ),
       /^journey\/reception\/(patients(\/(search|duplicates))?|arrivals(\/search)?)$/,
       new RegExp(`^journey/reception/arrivals/${uuid}/(forms|cancel)$`),
       new RegExp(`^journey/config/templates/${uuid}/(clone|validate)$`),
@@ -82,6 +89,7 @@ export function featureGatewayPath(path: string, method: string) {
       ),
     ],
     PUT: [
+      /^journey\/shift$/,
       new RegExp(`^journey/config/templates/${uuid}$`),
       /^worksite\/policy$/,
       new RegExp(`^worksite/sites/${uuid}$`),
@@ -103,6 +111,10 @@ export function featureGatewayPath(path: string, method: string) {
 }
 export function validGatewayQuery(path: string, query: URLSearchParams) {
   const allowed = new Set(["offset", "limit"]);
+  const queue = path === "journey/queue";
+  if (queue)
+    for (const key of ["mine", "state", "department_id", "encounter_id"])
+      allowed.add(key);
   if (path === "communication/events") allowed.add("after_sequence");
   if (new RegExp(`^communication/conversations/${uuid}/messages$`).test(path))
     allowed.add("before_sequence");
@@ -115,6 +127,18 @@ export function validGatewayQuery(path: string, query: URLSearchParams) {
   }
   return [...query.keys()].every((key) => {
     const value = query.get(key)!;
+    if (
+      queue &&
+      ["mine", "state", "department_id", "encounter_id"].includes(key)
+    ) {
+      if (query.getAll(key).length !== 1) return false;
+      if (key === "mine") return /^(0|1|true|false)$/.test(value);
+      if (key === "state")
+        return ["ready", "claimed", "completed"].includes(value);
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        value,
+      );
+    }
     if (entryQuery && key === "section_key")
       return (
         query.getAll(key).length === 1 && /^[a-z][a-z0-9_]{1,63}$/.test(value)
@@ -256,7 +280,11 @@ export async function identityGateway(
     if (request.method !== "GET") {
       const raw = await boundedBody(
         request,
-        path === "journey/config/logos" ? 2_097_152 : 600_000,
+        path === "journey/config/logos"
+          ? 2_097_152
+          : /journey\/encounters\/[^/]+\/attachments$/.test(path)
+            ? 2_900_000
+            : 600_000,
       );
       if (path === "journey/config/logos") body = raw;
       else {

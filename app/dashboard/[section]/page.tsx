@@ -38,6 +38,7 @@ export default async function Page({
         "workforce",
         "templates",
         "patients",
+        "queue",
         "audit",
         "security",
         "connect",

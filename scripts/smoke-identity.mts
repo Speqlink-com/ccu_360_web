@@ -203,6 +203,9 @@ try {
     },
   );
   await ready(base);
+  await fetch(base + "/api/v1/auth/me", {
+    signal: AbortSignal.timeout(120_000),
+  });
   console.log("Isolated web ready");
   browser = await chromium.launch({
     headless: true,
@@ -360,12 +363,35 @@ try {
       .getByLabel(/Professional note/)
       .fill("Synthetic browser clinical note for integration verification.");
     await clinical
+      .getByRole("button", { name: "Add row", exact: true })
+      .click();
+    await clinical
+      .getByLabel("Test name, row 1", { exact: true })
+      .fill("Synthetic result");
+    await clinical.getByLabel("Result, row 1", { exact: true }).fill("0");
+    const fileRequest = clinical.waitForResponse(
+      (response) =>
+        response.url().endsWith("/attachments") &&
+        response.request().method() === "POST",
+    );
+    await clinical
+      .getByLabel("Attach a clinical image or document", { exact: true })
+      .setInputFiles(resolve("public/ccu360-logo.png"));
+    expect((await fileRequest).status()).toBe(201);
+    await clinical.getByText("ccu360-logo.png", { exact: true }).waitFor();
+    await clinical
       .getByRole("button", { name: "Save draft note", exact: true })
       .click();
     const note = clinical.locator("article.record-card").filter({
       hasText: "Synthetic browser clinical note for integration verification.",
     });
     await note.waitFor();
+    await expect(
+      clinical.locator('input[name="monitoring_table"]'),
+    ).toHaveValue("[]");
+    await expect(clinical.locator('input[name="clinical_files"]')).toHaveValue(
+      "[]",
+    );
     await note.getByText("Attest this draft", { exact: true }).click();
     await note.getByLabel("Re-enter your password").fill(clinicianPassword);
     await note.getByRole("checkbox").check();
@@ -488,6 +514,80 @@ try {
     });
     console.log(
       "PASS real patient registration, assigned journey, draft note, password attestation, comment and ledger integrity",
+    );
+    const caseUrl = clinical.url();
+    await clinical
+      .getByRole("button", { name: "Open document view", exact: true })
+      .click();
+    await expect(
+      clinical.getByRole("button", {
+        name: "Download current PDF",
+        exact: true,
+      }),
+    ).toBeEnabled({ timeout: 120_000 });
+    const pdfDownload = clinical.waitForEvent("download", { timeout: 120_000 });
+    await clinical
+      .getByRole("button", { name: "Download current PDF", exact: true })
+      .click();
+    await (await pdfDownload).saveAs("/tmp/ccu360-shared-journey-browser.pdf");
+    await clinical.goto(base + "/dashboard/queue");
+    await clinical
+      .getByRole("heading", { name: "Team work queue", exact: true })
+      .waitFor();
+    clinical.once("dialog", (dialog) =>
+      dialog.accept("Synthetic scheduled shift"),
+    );
+    await clinical
+      .getByRole("button", { name: "Start shift", exact: true })
+      .click();
+    await clinical
+      .getByRole("heading", { name: "You are on shift", exact: true })
+      .waitFor();
+    const work = clinical
+      .locator("article")
+      .filter({ hasText: "Synthetic Browser Patient" })
+      .first();
+    await work
+      .getByRole("button", { name: "Manage section", exact: true })
+      .click();
+    const workDialog = clinical.getByRole("dialog");
+    await workDialog
+      .getByLabel("Reason / handover context")
+      .fill("Synthetic queue ownership rehearsal");
+    await workDialog
+      .getByRole("button", { name: "Confirm action", exact: true })
+      .click();
+    await expect(workDialog).toHaveCount(0);
+    await clinical.getByText("Claimed by you", { exact: true }).waitFor();
+    await clinical.screenshot({
+      path: "/tmp/ccu360-team-queue-desktop.png",
+      fullPage: true,
+    });
+    await clinical.setViewportSize({ width: 390, height: 844 });
+    await expect
+      .poll(() =>
+        clinical.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      )
+      .toBe(true);
+    await clinical.screenshot({
+      path: "/tmp/ccu360-team-queue-mobile.png",
+      fullPage: true,
+    });
+    await clinical.setViewportSize({ width: 1440, height: 1000 });
+    clinical.once("dialog", (dialog) =>
+      dialog.accept("Synthetic shift handover complete"),
+    );
+    await clinical
+      .getByRole("button", { name: "End shift", exact: true })
+      .click();
+    await clinical
+      .getByRole("heading", { name: "Start your care shift", exact: true })
+      .waitFor();
+    await clinical.goto(caseUrl);
+    console.log(
+      "PASS shared document preview, generated PDF, team queue, claim and shift handover on desktop/mobile",
     );
     await checkReception({
       browser,
