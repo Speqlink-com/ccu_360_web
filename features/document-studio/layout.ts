@@ -62,7 +62,7 @@ export function createPaper(definition: Definition, title: string): Template {
       if (y > 240) start();
       page.push(
         text(
-          `display_section_${sequence++}`,
+          `display_section_${section.key}_${sequence++}`,
           section.label,
           15,
           y,
@@ -79,7 +79,7 @@ export function createPaper(definition: Definition, title: string): Template {
           start();
           page.push(
             text(
-              `display_section_${sequence++}`,
+              `display_section_${section.key}_${sequence++}`,
               `${section.label} (continued)`,
               15,
               y,
@@ -92,7 +92,7 @@ export function createPaper(definition: Definition, title: string): Template {
         }
         page.push(
           text(
-            `display_label_${sequence++}`,
+            `display_label_${fieldName(section.key, field.key)}`,
             field.label + (field.required ? " *" : ""),
             15,
             y,

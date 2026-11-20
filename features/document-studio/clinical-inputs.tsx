@@ -18,7 +18,7 @@ export function RepeatingTable({ field, old }: { field: Field; old: unknown }) {
   return (
     <div>
       <input type="hidden" name={field.key} value={JSON.stringify(rows)} />
-      <div className="overflow-x-auto rounded-lg border border-border">
+      <div className="relative overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[580px] text-sm">
           <thead className="bg-slate-50">
             <tr>

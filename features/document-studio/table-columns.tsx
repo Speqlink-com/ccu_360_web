@@ -87,23 +87,22 @@ export function TableColumns({
                 }
               />
             </label>
-          ) : (
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={column.required}
-                onChange={(e) =>
-                  onChange({
-                    ...field,
-                    columns: columns.map((c, i) =>
-                      i === index ? { ...c, required: e.target.checked } : c,
-                    ),
-                  })
-                }
-              />
-              Required cell
-            </label>
-          )}
+          ) : null}
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={column.required}
+              onChange={(e) =>
+                onChange({
+                  ...field,
+                  columns: columns.map((c, i) =>
+                    i === index ? { ...c, required: e.target.checked } : c,
+                  ),
+                })
+              }
+            />
+            Required cell
+          </label>
           <button
             type="button"
             className={buttonClasses.secondary}

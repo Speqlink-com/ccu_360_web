@@ -18,7 +18,12 @@ import {
 } from "./shared";
 import { useChoices, ChoiceLoader } from "./choices";
 import { TemplateEditor } from "./template-editor";
-import { TemplatePreview } from "./template-preview";
+import dynamic from "next/dynamic";
+import "@/features/form-studio/studio.css";
+const FormPreview = dynamic(
+  () => import("@/features/form-studio/preview").then((m) => m.FormPreview),
+  { ssr: false },
+);
 
 type Brand = z.infer<typeof brand>;
 type Template = z.infer<typeof formTemplate>;
@@ -152,7 +157,8 @@ export function TemplatesPage() {
   const [brandOffset, setBrandOffset] = useState(0);
   const [editing, setEditing] = useState<Template | null>(null);
   const [preview, setPreview] = useState<Template | null>(null);
-  const [previewStage, setPreviewStage] = useState("admission");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const base = useLiveQuery(org, "journey/config/baseline", definition);
   const templates = useLiveQuery(
     org,
@@ -168,39 +174,59 @@ export function TemplatesPage() {
   const roles = useChoices(org, "workforce/roles", teamRole);
   const allBrands = brands.data?.pages.flatMap((page) => page.items) ?? [];
   const allRoles = roles.data?.pages.flatMap((page) => page.items) ?? [];
+  if (editing && base.data)
+    return (
+      <TemplateEditor
+        key={editing.id}
+        org={org}
+        initial={editing}
+        baseline={base.data}
+        brands={allBrands}
+        roles={allRoles}
+        roleLoader={<ChoiceLoader query={roles} />}
+        brandingLoader={<ChoiceLoader query={brands} />}
+        onClose={() => setEditing(null)}
+      />
+    );
+  const shown = templates.data?.items.filter(
+    (item) =>
+      item.name.toLowerCase().includes(search.toLowerCase()) &&
+      (statusFilter === "all" || item.status === statusFilter),
+  );
   return (
     <>
       <Heading
-        title="Journey forms & branding"
-        detail="Design your facility’s shared patient document. Publish reviewed form versions, preserve existing encounters, and give every professional team a clear place to contribute."
+        title="Form Studio & branding"
+        detail="Create digital patient-journey forms with a visual builder and a connected PDF designer. Customize the document, define team responsibilities, test the experience and publish an approved version."
       />
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
-        {[
-          [
-            "01",
-            "Define the facility",
-            "Set the document title, colours and logo.",
-          ],
-          [
-            "02",
-            "Design the journey",
-            "Customize fields and assign shared care teams.",
-          ],
-          [
-            "03",
-            "Review & publish",
-            "Preview, validate and approve a pinned version.",
-          ],
-        ].map(([number, title, detail]) => (
-          <div
-            key={number}
-            className="rounded-xl border border-border bg-surface p-5"
-          >
-            <span className="font-mono text-sm text-teal-dark">{number}</span>
-            <h2 className="mt-2 font-semibold text-navy">{title}</h2>
-            <p className="mt-2 text-sm text-muted">{detail}</p>
-          </div>
-        ))}
+      <div className="mb-7 flex flex-wrap items-center justify-between gap-6 rounded-2xl border border-[#cadfd2] bg-[#f1f7f3] p-7">
+        <div>
+          <p className="text-[11px] font-bold tracking-widest text-teal-dark">
+            YOUR FACILITY. YOUR DOCUMENTS.
+          </p>
+          <h2 className="my-3 text-2xl tracking-tight text-navy">
+            Design once. Collaborate throughout care.
+          </h2>
+          <p className="max-w-3xl text-sm text-muted">
+            A single shared record, from reception to handover. Add fields,
+            repeating tables, images and files; control who can write each
+            section; create the PDF your teams recognize.
+          </p>
+        </div>
+        <button
+          type="button"
+          className={buttonClasses.primary}
+          onClick={() => {
+            document
+              .getElementById("new-form")
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            document
+              .querySelector<HTMLInputElement>('#new-form input[name="name"]')
+              ?.focus({ preventScroll: true });
+          }}
+        >
+          + Create a digital form
+        </button>
       </div>
       {!editing && (
         <div className="grid items-start gap-6 lg:grid-cols-2">
@@ -280,73 +306,79 @@ export function TemplatesPage() {
               change={setBrandOffset}
             />
           </Panel>
-          <Panel
-            title="Start a journey form"
-            detail="Start from the standard nine-stage ledger. Existing versions can be cloned below."
-          >
-            <QueryState query={base} />
-            <ChoiceLoader query={brands} />
-            <ChoiceLoader query={roles} />
-            {base.data && (
-              <ActionForm
-                disabled={!!editing}
-                scope={org}
-                path="journey/config/templates"
-                label="Create & open draft"
-                body={(data) => ({
-                  name: value(data, "name"),
-                  brand_id: value(data, "brand_id"),
-                  definition: base.data,
-                })}
-                onSuccess={(result) => {
-                  setEditing(formTemplate.parse(result));
-                  setPreview(null);
-                }}
-              >
-                <Field
-                  name="name"
-                  label="Form name"
-                  minLength={2}
-                  maxLength={120}
-                />
-                <Field name="brand_id" label="Facility branding">
-                  <option value="">Choose active branding</option>
-                  {allBrands
-                    .filter((item) => item.active)
-                    .map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.title} · v{item.version}
-                      </option>
-                    ))}
-                </Field>
-                {editing && (
-                  <p className="mb-4 text-sm text-muted">
-                    Close the open editor before starting another draft.
-                  </p>
-                )}
-              </ActionForm>
-            )}
-            <p className="mt-4 text-sm text-muted">
-              Create departments and compatible care-team roles before
-              publishing. Link the participating teams, select an intake team,
-              then assign writers to each section. Attestation is optional for
-              clinical sections.
-            </p>
-          </Panel>
+          <div id="new-form">
+            <Panel
+              title="Start a journey form"
+              detail="Start with a small editable intake form or an empty canvas. Every form keeps the shared journey stages; your facility defines its sections and fields."
+            >
+              <QueryState query={base} />
+              <ChoiceLoader query={brands} />
+              <ChoiceLoader query={roles} />
+              {base.data && (
+                <ActionForm
+                  disabled={!!editing}
+                  scope={org}
+                  path="journey/config/templates"
+                  label="Create & open draft"
+                  body={(data) => ({
+                    name: value(data, "name"),
+                    brand_id: value(data, "brand_id"),
+                    definition:
+                      value(data, "starting_point") === "blank"
+                        ? {
+                            ...base.data,
+                            design_version: 2,
+                            access_role_ids: [],
+                            intake_role_ids: [],
+                            document: null,
+                            stages: base.data!.stages.map((stage) => ({
+                              ...stage,
+                              sections: [],
+                            })),
+                          }
+                        : base.data,
+                  })}
+                  onSuccess={(result) => {
+                    setEditing(formTemplate.parse(result));
+                    setPreview(null);
+                  }}
+                >
+                  <Field
+                    name="name"
+                    label="Form name"
+                    minLength={2}
+                    maxLength={120}
+                  />
+                  <Field name="starting_point" label="Starting point">
+                    <option value="intake">Reception intake starter</option>
+                    <option value="blank">Blank form canvas</option>
+                  </Field>
+                  <Field name="brand_id" label="Facility branding">
+                    <option value="">Choose active branding</option>
+                    {allBrands
+                      .filter((item) => item.active)
+                      .map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.title} · v{item.version}
+                        </option>
+                      ))}
+                  </Field>
+                  {editing && (
+                    <p className="mb-4 text-sm text-muted">
+                      Close the open editor before starting another draft.
+                    </p>
+                  )}
+                </ActionForm>
+              )}
+              <p className="mt-4 text-sm text-muted">
+                Create departments and compatible care-team roles before
+                publishing. Link the participating teams, select an intake team,
+                then assign writers to each section. Attestation is optional for
+                clinical sections.
+              </p>
+            </Panel>
+          </div>
         </div>
-      )}
-      {editing && base.data && (
-        <TemplateEditor
-          key={editing.id}
-          org={org}
-          initial={editing}
-          baseline={base.data}
-          brands={allBrands}
-          roles={allRoles}
-          roleLoader={<ChoiceLoader query={roles} />}
-          brandingLoader={<ChoiceLoader query={brands} />}
-          onClose={() => setEditing(null)}
-        />
       )}
       {preview && (
         <Panel
@@ -354,17 +386,6 @@ export function TemplatesPage() {
           detail={`Version ${preview.version} · ${preview.status} · Illustrative data only`}
         >
           <div className="mb-4 flex flex-wrap gap-3">
-            <select
-              aria-label="Preview stage"
-              value={previewStage}
-              onChange={(event) => setPreviewStage(event.target.value)}
-            >
-              {preview.definition.stages.map((stage) => (
-                <option key={stage.key} value={stage.key}>
-                  {stage.label}
-                </option>
-              ))}
-            </select>
             <button
               type="button"
               className={buttonClasses.secondary}
@@ -373,10 +394,10 @@ export function TemplatesPage() {
               Close preview
             </button>
           </div>
-          <TemplatePreview
+          <FormPreview
+            title={preview.name}
             definition={preview.definition}
             branding={allBrands.find((item) => item.id === preview.brand_id)}
-            stageKey={previewStage}
           />
         </Panel>
       )}
@@ -385,7 +406,28 @@ export function TemplatesPage() {
         detail="Published versions are immutable. Clone a version for changes; retiring a form prevents new admissions while existing patient journeys retain it."
       >
         <QueryState query={templates} />
-        {templates.data?.items.map((item) => (
+        <div className="studio-library-toolbar">
+          <input
+            aria-label="Search forms on this page"
+            placeholder="Search forms on this page…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <select
+            aria-label="Filter form status"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All statuses</option>
+            <option value="draft">Drafts</option>
+            <option value="published">Published</option>
+            <option value="retired">Retired</option>
+          </select>
+          <span className="studio-library-count">
+            {shown?.length ?? 0} forms on this page
+          </span>
+        </div>
+        {shown?.map((item) => (
           <article key={item.id} className="border-b border-border py-5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -400,6 +442,9 @@ export function TemplatesPage() {
                     0,
                   )}{" "}
                   enabled sections
+                  {item.definition.document
+                    ? ` · ${item.definition.document.schemas.length} designed PDF pages`
+                    : " · Automatic PDF layout"}
                   {item.source_template_id ? " · Cloned version" : ""}
                 </p>
               </div>
@@ -410,7 +455,6 @@ export function TemplatesPage() {
                 className={buttonClasses.secondary}
                 onClick={() => {
                   setPreview(item);
-                  setPreviewStage("admission");
                 }}
               >
                 Preview ledger
@@ -497,6 +541,11 @@ export function TemplatesPage() {
             )}
           </article>
         ))}
+        {templates.data &&
+          !shown?.length &&
+          templates.data.items.length > 0 && (
+            <p>No forms on this page match the filters.</p>
+          )}
         {templates.data && !templates.data.items.length && (
           <p>
             No form versions yet. Create branding and start your first draft.

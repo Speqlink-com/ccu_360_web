@@ -122,6 +122,23 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
+  if (
+    await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)
+  )
+    console.log(
+      "Mobile layout diagnostics",
+      await page.evaluate(() =>
+        [...document.querySelectorAll("*")]
+          .map((e) => ({
+            tag: e.tagName,
+            cls: e.className,
+            right: Math.round(e.getBoundingClientRect().right),
+            width: Math.round(e.getBoundingClientRect().width),
+          }))
+          .filter((e) => e.right > innerWidth + 1)
+          .slice(0, 15),
+      ),
+    );
   await expect
     .poll(() =>
       page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
@@ -137,39 +154,42 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
     .click();
   await editor.waitFor();
 
-  const linked = editor.getByRole("group", { name: "2 · LINKED CARE TEAMS" });
-  await linked
+  await editor
+    .getByRole("button", { name: "Teams & permissions", exact: false })
+    .click();
+  await editor
     .getByLabel("Link Intensive medical cover", { exact: true })
     .check();
-  await linked.getByLabel("Can start journey", { exact: true }).check();
-  await editor.getByLabel("Section purpose").selectOption("clinical");
   await editor
-    .getByRole("group", { name: "Teams allowed to complete this section" })
-    .getByLabel("Intensive medical cover", { exact: true })
+    .getByLabel("Intake Intensive medical cover", { exact: true })
     .check();
-  await editor.getByRole("button", { name: "Add field", exact: true }).click();
   await editor
+    .getByRole("button", { name: "Build form", exact: false })
+    .click();
+  const properties = editor.getByRole("complementary", {
+    name: "Component properties",
+  });
+  await properties.getByLabel("Section purpose").selectOption("clinical");
+  await properties
+    .getByLabel("Write Intensive medical cover", { exact: true })
+    .check();
+  const palette = editor.getByRole("complementary", {
+    name: "Component library",
+  });
+  await palette
+    .getByRole("button", { name: "Single choice", exact: false })
+    .click();
+  await properties
     .getByLabel("Field label", { exact: true })
-    .last()
     .fill("Referral reason");
-  await editor
-    .getByLabel("Field type", { exact: true })
-    .last()
-    .selectOption("radio");
-  await editor
-    .getByLabel("Choices (one per line)")
-    .last()
-    .fill("Routine\nUrgent");
-  await editor.getByRole("button", { name: "Add field", exact: true }).click();
-  await editor
+  await properties.getByLabel("Choices (one per line)").fill("Routine\nUrgent");
+  await palette
+    .getByRole("button", { name: "Repeating table", exact: false })
+    .click();
+  await properties
     .getByLabel("Field label", { exact: true })
-    .last()
     .fill("Results table");
-  await editor
-    .getByLabel("Field type", { exact: true })
-    .last()
-    .selectOption("table");
-  const columns = editor.getByRole("group", {
+  const columns = properties.getByRole("group", {
     name: "Table columns",
     exact: true,
   });
@@ -185,22 +205,32 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
     .getByLabel("Input type", { exact: true })
     .last()
     .selectOption("number");
-  await editor
-    .getByRole("button", { name: "Design document pages", exact: true })
-    .click();
+  await expect(
+    editor.getByRole("button", { name: "Undo form change" }),
+  ).toBeEnabled();
+  await editor.getByRole("button", { name: "Undo form change" }).click();
+  await expect(
+    columns.getByLabel("Input type", { exact: true }).last(),
+  ).toHaveValue("text");
+  await editor.getByRole("button", { name: "Redo form change" }).click();
+  await expect(
+    columns.getByLabel("Input type", { exact: true }).last(),
+  ).toHaveValue("number");
+  await page.screenshot({
+    path: "/tmp/ccu360-form-builder-desktop.png",
+    fullPage: true,
+  });
+  await editor.getByRole("button", { name: "PDF pages", exact: false }).click();
   const studio = editor.getByRole("region", { name: "Document design studio" });
   await expect(
     studio.getByRole("button", { name: "Apply page layout", exact: true }),
-  ).toBeEnabled({ timeout: 120_000 });
+  ).toBeEnabled({ timeout: 120000 });
   await page.screenshot({
     path: "/tmp/ccu360-document-studio-desktop.png",
     fullPage: true,
   });
   await studio
     .getByRole("button", { name: "Apply page layout", exact: true })
-    .click();
-  await editor
-    .getByRole("button", { name: "Close page designer", exact: true })
     .click();
   await editor
     .getByLabel("Change reason", { exact: true })
@@ -210,23 +240,40 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
     .click();
   await editor
     .getByText(
-      "Draft saved. Review the preview, then publish from the form list.",
+      "Draft saved. Review the preview, then validate for publication.",
+      { exact: true },
     )
     .waitFor();
   await editor
-    .getByRole("button", { name: "Preview document", exact: true })
+    .getByRole("button", { name: "Preview & test", exact: false })
     .click();
   await editor.getByText("Referral reason", { exact: true }).waitFor();
+  await editor.getByRole("radio", { name: "Urgent", exact: true }).check();
   await page.screenshot({
     path: "/tmp/ccu360-journey-form-desktop.png",
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
+  if (
+    await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)
+  )
+    console.log(
+      "Mobile layout diagnostics",
+      await page.evaluate(() =>
+        [...document.querySelectorAll("*")]
+          .map((e) => ({
+            tag: e.tagName,
+            cls: e.className,
+            right: Math.round(e.getBoundingClientRect().right),
+            width: Math.round(e.getBoundingClientRect().width),
+          }))
+          .filter((e) => e.right > innerWidth + 1)
+          .slice(0, 15),
+      ),
+    );
   await expect
     .poll(() =>
-      page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth,
-      ),
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     )
     .toBe(true);
   await page.screenshot({
@@ -246,24 +293,42 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
     .getByRole("button", { name: "Edit saved draft", exact: true })
     .click();
   await editor
-    .getByRole("button", { name: "Preview document", exact: true })
+    .getByRole("button", { name: "Preview & test", exact: false })
     .click();
   await editor.getByText("Referral reason", { exact: true }).waitFor();
   await editor
-    .getByRole("button", { name: "Close editor", exact: true })
+    .getByRole("button", { name: "PDF document", exact: true })
     .click();
+  await expect(
+    editor.getByRole("button", { name: "Download preview PDF", exact: true }),
+  ).toBeEnabled({ timeout: 120000 });
+  const pdf = page.waitForEvent("download");
+  await editor
+    .getByRole("button", { name: "Download preview PDF", exact: true })
+    .click();
+  await (await pdf).saveAs("/tmp/ccu360-studio-template-preview.pdf");
+  await editor
+    .getByRole("button", { name: "Review & publish", exact: false })
+    .click();
+  await expect(
+    editor.getByRole("button", { name: "Approve & publish", exact: true }),
+  ).toBeDisabled();
   const validated = page.waitForResponse(
     (response) =>
       response.url().endsWith("/validate") &&
       response.request().method() === "POST",
   );
-  await version
+  await editor
     .getByRole("button", { name: "Validate for publication", exact: true })
     .click();
   expect((await validated).status()).toBe(200);
-  page.once("dialog", (dialog) => dialog.accept());
-  await version
+  await editor
     .getByRole("button", { name: "Approve & publish", exact: true })
+    .click();
+  const approval = editor.getByRole("dialog");
+  await approval.getByRole("checkbox").check();
+  await approval
+    .getByRole("button", { name: "Publish approved version", exact: true })
     .click();
   await version.getByText("published", { exact: true }).waitFor();
   await version.getByText("Retire version", { exact: true }).click();

@@ -111,7 +111,7 @@ export function productionNavigationFor(role?: Role): NavigationItem[] {
       },
       {
         href: "/dashboard/templates",
-        title: "Journey forms & branding",
+        title: "Form Studio & branding",
         icon: "handover",
       },
       { href: "/dashboard/audit", title: "Access audit", icon: "shield" },
