@@ -159,11 +159,13 @@ export function ArrivalForm({
           outpatient care or release. Reception records arrival and initiates
           forms; no admission category or bed is assigned here.
         </p>
-        {!canStart && (
+        {(!canStart || available.length === 0) && (
           <p className="mb-4 text-sm text-amber-800">
-            You can record this arrival. To start a form, your administrator
-            must give you an active intake-team assignment on a published
-            template.
+            No published intake form matches your current roles yet. Your
+            facility administrator can apply a reception role to all matching
+            employees, or give you an individual assignment, and select that
+            role as an intake team on the form. You can record this arrival and
+            attach the approved form later.
           </p>
         )}
       </fieldset>

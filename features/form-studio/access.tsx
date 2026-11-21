@@ -29,6 +29,62 @@ export function TeamAccess({
         intake team starts each patient journey; section permissions control who
         can write.
       </p>
+      <p className="studio-info">
+        A profession-wide role applies to every available matching employee,
+        including future hires. Individual roles require dated staff
+        assignments. Registration teams are selected as intake teams when
+        linked; review the intake checkbox before publishing.
+      </p>
+      <div
+        className="flex flex-wrap gap-2 my-5"
+        aria-label="Add teams by profession"
+      >
+        {[
+          ["receptionist", "Reception"],
+          ["doctor", "Doctor / clinician"],
+          ["nurse", "Nurse"],
+          ["allied", "Allied health"],
+          ["auditor", "Clinical auditor"],
+        ].map(([category, label]) => (
+          <button
+            type="button"
+            className="rounded-lg border border-border px-3 py-2 text-sm"
+            key={category}
+            disabled={
+              !roles.some(
+                (r) => r.active && r.identity_roles.includes(category),
+              )
+            }
+            onClick={() =>
+              edit((d) => {
+                const ids = roles
+                  .filter(
+                    (r) => r.active && r.identity_roles.includes(category),
+                  )
+                  .map((r) => r.id);
+                d.definition.access_role_ids = [
+                  ...new Set([...d.definition.access_role_ids, ...ids]),
+                ];
+                if (category === "receptionist")
+                  d.definition.intake_role_ids = [
+                    ...new Set([
+                      ...d.definition.intake_role_ids,
+                      ...roles
+                        .filter(
+                          (r) =>
+                            ids.includes(r.id) &&
+                            r.capabilities.includes("register"),
+                        )
+                        .map((r) => r.id),
+                    ]),
+                  ];
+              })
+            }
+          >
+            Add all visible {label} teams
+          </button>
+        ))}
+      </div>
       <div className="studio-access-grid">
         {roles
           .filter((r) => r.active || linked.has(r.id))
@@ -50,11 +106,18 @@ export function TeamAccess({
                     onChange={(e) =>
                       edit((d) => {
                         const f = d.definition;
-                        if (e.target.checked)
+                        if (e.target.checked) {
                           f.access_role_ids = [
                             ...new Set([...f.access_role_ids, role.id]),
                           ];
-                        else {
+                          if (
+                            role.identity_roles.includes("receptionist") &&
+                            role.capabilities.includes("register")
+                          )
+                            f.intake_role_ids = [
+                              ...new Set([...f.intake_role_ids, role.id]),
+                            ];
+                        } else {
                           f.access_role_ids = f.access_role_ids.filter(
                             (id) => id !== role.id,
                           );
@@ -83,6 +146,11 @@ export function TeamAccess({
                     </small>
                   </span>
                 </label>
+                <p className="text-xs">
+                  {role.membership_mode === "profession"
+                    ? "All matching employees inherit this role"
+                    : "Requires individual staff assignments"}
+                </p>
                 <p>
                   {linked.has(role.id)
                     ? "Reads the complete patient journey"

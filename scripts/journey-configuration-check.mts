@@ -53,7 +53,7 @@ export async function checkJourneyConfiguration(page: Page, base: string) {
   await createRole.getByLabel("Doctor / clinician", { exact: true }).check();
   for (const label of [
     "Open journeys",
-    "Read assigned journeys",
+    "Read linked journeys",
     "Document & comment",
     "Attest notes",
   ])

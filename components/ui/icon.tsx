@@ -27,6 +27,8 @@ import {
   UserRoundPlus,
   TrendingUp,
   CircleUserRound,
+  Settings,
+  MapPin,
 } from "lucide-react";
 const icons = {
   overview: LayoutDashboard,
@@ -56,13 +58,30 @@ const icons = {
   addUser: UserRoundPlus,
   growth: TrendingUp,
   profile: CircleUserRound,
+  team: Users,
+  form: FileText,
+  location: MapPin,
+  settings: Settings,
 };
 export type IconName = keyof typeof icons;
 // Supplied PNG/WebP artwork retains its original colours and alpha transparency.
 const approvedAssets: Partial<Record<IconName, string>> = {
   profile: "/icons/profile-icon.webp",
   addUser: "/icons/add-user.png",
-  shield: "/icons/verified-check-icon.webp",
+  shield: "/icons/shield-icon.webp",
+  facilities: "/icons/facility-icon.webp",
+  bed: "/icons/icu-bed.png",
+  patients: "/icons/team-icon.png",
+  team: "/icons/team-icon.png",
+  form: "/icons/form-icon.png",
+  connect: "/icons/message-icon.webp",
+  bell: "/icons/notification-icon.webp",
+  search: "/icons/search-icon.webp",
+  settings: "/icons/settings-icon.webp",
+  location: "/icons/location-icon.webp",
+  collapse: "/icons/sidebar-toggler-icon.webp",
+  menu: "/icons/sidebar-toggler-icon.webp",
+  logout: "/icons/logout-icon.png",
   outputs: "/icons/invoice-icon.png",
   growth: "/icons/progress-bar.webp",
   left: "/icons/left-chevron.webp",
@@ -86,7 +105,14 @@ export function Icon({
         style={{ width: size, height: size }}
         aria-hidden="true"
       >
-        <Image unoptimized src={approvedAssets[name]!} alt="" width={size} height={size} />
+        <Image
+          unoptimized
+          src={approvedAssets[name]!}
+          alt=""
+          width={size}
+          height={size}
+          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+        />
       </span>
     );
   return (

@@ -238,47 +238,124 @@ export async function checkReception({
         exact: true,
       })
       .waitFor();
-    const alliedContext = await browser.newContext();
-    const allied = await alliedContext.newPage();
-    allied.setDefaultTimeout(60_000);
-    try {
-      await signIn(allied, base, "allied-e2e@example.org", password);
-      await chooseFacility(allied);
-      await allied.goto(base + "/dashboard/patients");
-      await expect(
-        allied.getByRole("button", {
-          name: "Register a new patient",
+    for (const category of ["allied", "nurse"]) {
+      const staffContext = await browser.newContext();
+      const staff = await staffContext.newPage();
+      staff.setDefaultTimeout(60_000);
+      try {
+        await signIn(staff, base, category + "-e2e@example.org", password);
+        await chooseFacility(staff);
+        await staff.goto(base + "/dashboard/patients");
+        await expect(
+          staff.getByRole("button", {
+            name: "Register a new patient",
+            exact: true,
+          }),
+        ).toHaveCount(0);
+        const directory = staff.locator("section.live-panel").filter({
+          has: staff.getByRole("heading", {
+            name: "Facility patient directory",
+            exact: true,
+          }),
+        });
+        // No search or individually dated assignment is needed to discover the patient.
+        const patient = directory
+          .locator("tbody tr")
+          .filter({ hasText: number });
+        await patient
+          .getByRole("button", { name: "Open patient", exact: true })
+          .click();
+        await expect(
+          staff.getByRole("button", {
+            name: "Correct patient details",
+            exact: true,
+          }),
+        ).toHaveCount(0);
+        const ledgerLink = staff.getByRole("link", {
+          name: "Open ledger",
           exact: true,
-        }),
-      ).toHaveCount(0);
-      await allied.goto(sharedUrl);
-      await allied
-        .getByRole("heading", {
-          name: "Synthetic Reception Patient",
+        });
+        await expect(ledgerLink).toHaveCount(1);
+        await expect(ledgerLink).toHaveAttribute(
+          "href",
+          sharedUrl.slice(base.length),
+        );
+        await ledgerLink.click();
+        await staff
+          .getByRole("heading", {
+            name: "Synthetic Reception Patient",
+            exact: true,
+          })
+          .waitFor();
+        const complete = staff.getByRole("region", {
+          name: "Complete shared patient ledger",
+        });
+        await expect(complete.getByRole("region")).toHaveCount(11);
+        await expect(
+          complete.getByRole("button", {
+            name: "Complete section",
+            exact: true,
+          }),
+        ).toHaveCount(category === "nurse" ? 1 : 0);
+        const section = staff.getByRole("region", {
+          name: "Reception & patient intake ledger section",
           exact: true,
-        })
-        .waitFor();
-      const complete = allied.getByRole("region", {
-        name: "Complete shared patient ledger",
-      });
-      await expect(complete.getByRole("region")).toHaveCount(10);
-      await expect(
-        complete.getByRole("button", { name: "Complete section", exact: true }),
-      ).toHaveCount(0);
-      const section = allied.getByRole("region", {
-        name: "Reception & patient intake ledger section",
-      });
-      await section.scrollIntoViewIfNeeded();
-      await section
-        .getByText("Synthetic reception intake for shared care.", {
-          exact: true,
-        })
-        .waitFor();
-    } finally {
-      await alliedContext.close();
+        });
+        await section.scrollIntoViewIfNeeded();
+        await section
+          .getByText("Synthetic reception intake for shared care.", {
+            exact: true,
+          })
+          .waitFor();
+        if (category === "nurse") {
+          await complete
+            .getByRole("button", { name: "Complete section", exact: true })
+            .click();
+          await staff
+            .getByLabel(/Professional note/)
+            .fill("Synthetic shared nursing assessment.");
+          await expect(
+            staff.getByLabel("Admission reason", { exact: false }),
+          ).toHaveCount(0);
+          const saved = staff.waitForResponse(
+            (response) =>
+              response.url().endsWith("/entries") &&
+              response.request().method() === "POST",
+          );
+          await staff
+            .getByRole("button", { name: "Save draft note", exact: true })
+            .click();
+          expect((await saved).status()).toBe(201);
+          const nursingSection = staff.getByRole("region", {
+            name: "Admission 360 · Nursing ledger section",
+            exact: true,
+          });
+          await nursingSection.scrollIntoViewIfNeeded();
+          await nursingSection
+            .getByText("Synthetic shared nursing assessment.", { exact: true })
+            .waitFor();
+          await staff.screenshot({
+            path: "/tmp/ccu360-shared-nurse-ledger.png",
+            fullPage: true,
+          });
+        }
+      } catch (error) {
+        await staff.screenshot({
+          path: "/tmp/ccu360-shared-" + category + "-failure.png",
+          fullPage: true,
+        });
+        console.error(
+          await staff
+            .locator(".request-error, .inline-error, [role=alert]")
+            .allTextContents(),
+        );
+        throw error;
+      } finally {
+        await staffContext.close();
+      }
     }
     console.log(
-      "PASS reception profile registration, unique CCU360 number, referral first visit, returning walk-in, correction audit, number search, queue filters, duplicate prevention, mobile layout and complete shared ledger",
+      "PASS reception profile registration, unique CCU360 number, referral first visit, returning walk-in, correction audit, number search, queue filters, duplicate prevention, mobile layout, profession-wide reception/nursing roles, patient browsing and section-gated shared ledger",
     );
   } catch (error) {
     await page

@@ -47,8 +47,16 @@ export function ReceptionPage() {
   return (
     <>
       <Heading
-        title="Reception & patient registry"
-        detail="One patient profile. Every visit connected. Find the patient, record how they arrived and start their care journey."
+        title={
+          access.data?.can_register
+            ? "Reception & patient registry"
+            : "Facility patients & journeys"
+        }
+        detail={
+          access.data?.can_register
+            ? "One patient profile. Every visit connected. Find the patient, record how they arrived and start their care journey."
+            : "Browse your facility’s patients, search names or patient numbers, and open the shared journey documents your roles can access."
+        }
       />
       <QueryState query={access} />
       {access.data && (
@@ -74,45 +82,30 @@ export function ReceptionPage() {
                     </button>
                   ))}
                 </nav>
-                <button
-                  className={buttonClasses.primary}
-                  onClick={() => setCreating(true)}
-                >
-                  Register a new patient
-                </button>
-              </div>
-              <div className="mb-6 grid gap-3 md:grid-cols-3">
-                {[
-                  [
-                    "01",
-                    "Find the patient",
-                    "Search names, IP numbers and CCU360 numbers before registration.",
-                  ],
-                  [
-                    "02",
-                    "Record the arrival",
-                    "A walk-in or referral can be a new or returning patient.",
-                  ],
-                  [
-                    "03",
-                    "Start the journey",
-                    "Use an approved form. Clinical disposition stays with the clinician.",
-                  ],
-                ].map(([number, title, detail]) => (
-                  <div
-                    key={number}
-                    className="rounded-xl border border-border bg-surface p-5"
+                {access.data.can_register && (
+                  <button
+                    className={buttonClasses.primary}
+                    onClick={() => setCreating(true)}
                   >
-                    <p className="text-xs font-bold tracking-widest text-teal-dark">
-                      {number}
-                    </p>
-                    <h2 className="mt-2 font-semibold text-navy">{title}</h2>
-                    <p className="mt-2 text-sm leading-6 text-muted">
-                      {detail}
-                    </p>
-                  </div>
-                ))}
+                    Register a new patient
+                  </button>
+                )}
               </div>
+              <nav className="patient-workflow" aria-label="Patient workflow">
+                <span>
+                  <b>01</b> Find patient
+                </span>
+                <span aria-hidden="true">→</span>
+                <span>
+                  <b>02</b>{" "}
+                  {access.data.can_register ? "Record arrival" : "Open profile"}
+                </span>
+                <span aria-hidden="true">→</span>
+                <span>
+                  <b>03</b>{" "}
+                  {access.data.can_register ? "Start journey" : "Open ledger"}
+                </span>
+              </nav>
               {area === "directory" && (
                 <Panel
                   title="Facility patient directory"
@@ -447,6 +440,7 @@ export function ReceptionPage() {
               key={`${org}:${selected}`}
               patientId={selected}
               canStart={access.data.can_start_journey}
+              canRegister={access.data.can_register}
               onClose={() => setSelected(null)}
               onSelect={select}
             />

@@ -403,6 +403,7 @@ export function TemplatesPage() {
       )}
       <Panel
         title="Form version library"
+        scroll
         detail="Published versions are immutable. Clone a version for changes; retiring a form prevents new admissions while existing patient journeys retain it."
       >
         <QueryState query={templates} />

@@ -42,6 +42,7 @@ export function FacilitiesPage() {
       <div className="live-grid live-grid-wide grid items-start gap-6 [grid-template-columns:minmax(0,1.8fr)_minmax(320px,1fr)] max-[1440px]:grid-cols-1 max-[760px]:gap-0">
         <Panel
           title="Provider network"
+          scroll
           detail="Facility suspension immediately revokes selected sessions and clinical access."
         >
           <QueryState query={query} />
@@ -156,6 +157,7 @@ export function AdministratorsPage() {
       <div className="live-grid live-grid-wide grid items-start gap-6 [grid-template-columns:minmax(0,1.8fr)_minmax(320px,1fr)] max-[1440px]:grid-cols-1 max-[760px]:gap-0">
         <Panel
           title="Account directory"
+          scroll
           detail="The current administrator and the last administrator of any facility cannot be disabled."
         >
           <QueryState query={query} />
@@ -278,7 +280,7 @@ export function EmployeesPage() {
         }
       />
       <div className="live-grid live-grid-wide grid items-start gap-6 [grid-template-columns:minmax(0,1.8fr)_minmax(320px,1fr)] max-[1440px]:grid-cols-1 max-[760px]:gap-0">
-        <Panel title="Facility members">
+        <Panel title="Facility members" scroll>
           <QueryState query={query} />
           <div className="live-table-wrap w-full overflow-x-auto">
             <table className="live-table">
@@ -485,7 +487,10 @@ export function AuditPage() {
         >
           <QueryState query={delivery} />
           {delivery.data?.items.map((item) => (
-            <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={item.id}>
+            <div
+              className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4"
+              key={item.id}
+            >
               <span>
                 {stamp(item.created_at)} · {item.attempts} attempts
               </span>

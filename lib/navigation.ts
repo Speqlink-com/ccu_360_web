@@ -107,18 +107,18 @@ export function productionNavigationFor(role?: Role): NavigationItem[] {
       {
         href: "/dashboard/workforce",
         title: "Departments & care teams",
-        icon: "profile",
+        icon: "team",
       },
       {
         href: "/dashboard/templates",
         title: "Form Studio & branding",
-        icon: "handover",
+        icon: "form",
       },
       { href: "/dashboard/audit", title: "Access audit", icon: "shield" },
       {
         href: "/dashboard/worksite",
         title: "Facility access",
-        icon: "facilities",
+        icon: "location",
       },
       {
         href: "/dashboard/connect",

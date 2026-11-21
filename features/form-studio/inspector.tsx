@@ -322,6 +322,18 @@ export function Inspector({
                         s.role_ids = checked
                           ? [...new Set([...s.role_ids, role.id])]
                           : s.role_ids.filter((id) => id !== role.id);
+                        if (
+                          checked &&
+                          role.identity_roles.includes("receptionist") &&
+                          role.capabilities.includes("register") &&
+                          s.kind === "administrative"
+                        )
+                          d.definition.intake_role_ids = [
+                            ...new Set([
+                              ...d.definition.intake_role_ids,
+                              role.id,
+                            ]),
+                          ];
                         if (checked)
                           d.definition.access_role_ids = [
                             ...new Set([

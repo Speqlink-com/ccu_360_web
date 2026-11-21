@@ -74,6 +74,7 @@ export const department = z.object({
   version: z.number(),
 });
 export const teamRole = z.object({
+  membership_mode: z.enum(["individual", "profession"]).default("individual"),
   profession_ids: z.array(z.string()).default([]),
   responsibility_ids: z.array(z.string()).default([]),
   id: z.string(),

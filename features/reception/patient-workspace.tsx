@@ -20,17 +20,19 @@ import { PatientIdentity, ReceptionPager, VisitCard } from "./shared";
 export function PatientWorkspace({
   patientId,
   canStart,
+  canRegister,
   onClose,
   onSelect,
 }: {
   patientId: string;
   canStart: boolean;
+  canRegister: boolean;
   onClose: () => void;
   onSelect: (id: string) => void;
 }) {
   const org = useIdentity().data!.organization_id!;
   const client = useQueryClient();
-  const [tab, setTab] = useState("intake"),
+  const [tab, setTab] = useState(canRegister ? "intake" : "journeys"),
     [offset, setOffset] = useState(0),
     [editing, setEditing] = useState(false);
   const [recorded, setRecorded] = useState<z.infer<typeof visitResult> | null>(
@@ -65,7 +67,9 @@ export function PatientWorkspace({
     <section aria-label="Selected patient workspace" className="mt-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs font-bold uppercase tracking-widest text-teal-dark">
-          PATIENT PROFILE / RECEPTION
+          {canRegister
+            ? "PATIENT PROFILE / RECEPTION"
+            : "PATIENT PROFILE / SHARED CARE"}
         </p>
         <button className={buttonClasses.secondary} onClick={onClose}>
           Back to directory
@@ -86,12 +90,14 @@ export function PatientWorkspace({
                 {detail.data!.journey_count === 1 ? "" : "s"}
               </span>
               <span>Profile revision {patient.version}</span>
-              <button
-                className="ml-auto font-semibold text-teal-dark underline"
-                onClick={() => setEditing(!editing)}
-              >
-                {editing ? "Close correction" : "Correct patient details"}
-              </button>
+              {canRegister && (
+                <button
+                  className="ml-auto font-semibold text-teal-dark underline"
+                  onClick={() => setEditing(!editing)}
+                >
+                  {editing ? "Close correction" : "Correct patient details"}
+                </button>
+              )}
             </div>
             {patient.legacy_ip_review_required && (
               <p className="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">
@@ -125,21 +131,23 @@ export function PatientWorkspace({
               ["history", "Arrival history"],
               ["journeys", "Clinical journey history"],
               ["changes", "Profile changes"],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                className={`rounded-lg border px-4 py-3 text-sm font-semibold ${key === tab ? "border-teal bg-mint text-teal-dark" : "border-border bg-surface text-muted"}`}
-                aria-pressed={key === tab}
-                onClick={() => {
-                  setTab(key);
-                  setOffset(0);
-                }}
-              >
-                {label}
-              </button>
-            ))}
+            ]
+              .filter(([key]) => canRegister || key !== "intake")
+              .map(([key, label]) => (
+                <button
+                  key={key}
+                  className={`rounded-lg border px-4 py-3 text-sm font-semibold ${key === tab ? "border-teal bg-mint text-teal-dark" : "border-border bg-surface text-muted"}`}
+                  aria-pressed={key === tab}
+                  onClick={() => {
+                    setTab(key);
+                    setOffset(0);
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
           </nav>
-          {tab === "intake" && (
+          {tab === "intake" && canRegister && (
             <Panel
               title="Record patient arrival"
               detail="Use this existing profile for every visit. Walk-in and referral describe arrival, not clinical admission."

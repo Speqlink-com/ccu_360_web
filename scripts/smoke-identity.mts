@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { chromium, expect, type Page } from "@playwright/test";
+import { checkDashboard } from "./dashboard-check.mjs";
 import { checkReception } from "./reception-check.mjs";
 import { checkJourneyConfiguration } from "./journey-configuration-check.mjs";
 import { checkWorksiteCommunication } from "./worksite-communication-check.mjs";
@@ -262,6 +263,23 @@ try {
     console.log(
       "PASS first AHS password, QR/TOTP enrollment, HttpOnly session, facility onboarding and administrator invitation",
     );
+    // Populate a genuinely scrollable preview through the authenticated API, only in this owned fixture.
+    for (let index = 1; index <= 5; index++) {
+      const created = await owner.request.post(
+        base + "/api/v1/identity/providers",
+        {
+          headers: { Origin: base },
+          data: {
+            name: `Synthetic Dashboard Facility ${index}`,
+            code: `DASH_E2E_${index}`,
+            admin_name: `Synthetic Dashboard Admin ${index}`,
+            admin_email: `dashboard-admin-${index}@example.org`,
+          },
+        },
+      );
+      expect(created.status()).toBe(201);
+    }
+    await checkDashboard(owner, base, "ahs");
     const invitedContext = await browser.newContext();
     invited = await invitedContext.newPage();
     activePage = invited;
@@ -308,6 +326,7 @@ try {
       "PASS provider invitation acceptance, mandatory MFA, tenant selection, employee invitation and department creation",
     );
     if (!networkMismatch) await checkJourneyConfiguration(invited, base);
+    await checkDashboard(invited, base, "facility-admin");
   }
   // Focused network regression keeps the separate clinical-mutation scenario optional.
   if (!networkMismatch) {
@@ -323,39 +342,44 @@ try {
     );
     await chooseFacility(clinical);
     await clinical.goto(base + "/dashboard/patients");
-    const registry = panel(clinical, "Facility patient directory");
-    await registry
-      .getByRole("button", { name: "Register a new patient" })
-      .click();
-    const registration = registry.locator("form").last();
-    await registration
-      .getByLabel("Patient identifier / MRN")
-      .fill("SYNTHETIC-E2E-001");
-    await registration
-      .getByLabel("Patient name")
-      .fill("Synthetic Browser Patient");
-    await registration
-      .getByRole("button", { name: "Register patient", exact: true })
-      .click();
-    const admission = panel(clinical, "Start a patient journey");
-    await admission
-      .getByText("Synthetic Browser Patient", { exact: true })
-      .waitFor();
-    await admission
-      .getByLabel("Journey form", { exact: true })
-      .selectOption({ index: 1 });
-    await admission
-      .getByLabel("Unit / department", { exact: true })
-      .fill("ICU");
-    await admission
-      .getByLabel("Bed / consultation room (optional)", { exact: true })
-      .fill("B01");
-    await admission
-      .getByLabel("Admission date & time (local time)")
-      .fill("2026-11-12T14:00");
-    await admission
-      .getByRole("button", { name: "Open journey", exact: true })
-      .click();
+    await expect(
+      clinical.getByRole("button", {
+        name: "Register a new patient",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    // Reception's UI is exercised below; seed this clinician's case through its existing authorized API.
+    const callClinical = async (path: string, body?: unknown) => {
+      const response = await clinical.request.fetch(base + "/api/v1/" + path, {
+        method: body === undefined ? "GET" : "POST",
+        headers: { Origin: base },
+        ...(body === undefined ? {} : { data: body }),
+      });
+      assert.ok(
+        response.ok(),
+        `Clinical fixture request failed: ${path} ${response.status()}`,
+      );
+      return response.json();
+    };
+    const fixturePatient = await callClinical("journey/patients", {
+      identifier: "SYNTHETIC-E2E-001",
+      display_name: "Synthetic Browser Patient",
+    });
+    const fixtureTemplates = await callClinical(
+      "journey/published-templates?limit=50",
+    );
+    const fixtureTemplate = fixtureTemplates.items.find(
+      (item: { can_initiate: boolean }) => item.can_initiate,
+    );
+    assert.ok(fixtureTemplate, "Missing clinical fixture template");
+    const prepared = await callClinical("journey/encounters", {
+      patient_id: fixturePatient.id,
+      template_id: fixtureTemplate.id,
+      unit: "ICU",
+      bed: "B01",
+      admitted_at: new Date().toISOString(),
+    });
+    await clinical.goto(base + "/dashboard/patients/" + prepared.id);
     await clinical
       .getByRole("heading", { name: "Synthetic Browser Patient", exact: true })
       .waitFor();
@@ -589,6 +613,7 @@ try {
     console.log(
       "PASS shared document preview, generated PDF, team queue, claim and shift handover on desktop/mobile",
     );
+    await checkDashboard(clinical, base, "clinical");
     await checkReception({
       browser,
       base,

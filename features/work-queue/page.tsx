@@ -109,7 +109,7 @@ export function WorkQueuePage() {
           <p className="mt-2 text-sm text-muted">
             {current?.on_shift
               ? `Claims expire at ${stamp(current.ends_at!)}. Ending your shift makes your sections available to your team.`
-              : "Starting a shift makes you available to claim work for up to 12 hours. Patient access still follows your current assignments."}
+              : "Starting a shift makes you available to claim work for up to 12 hours. Patient access still follows your active shared or individual roles."}
           </p>
         </div>
         <button
@@ -171,6 +171,21 @@ export function WorkQueuePage() {
           >
             Refresh queue
           </button>
+          {(filters.mine || filters.state) && (
+            <button
+              type="button"
+              className={buttonClasses.secondary}
+              onClick={() => {
+                filters.set({ mine: false, state: "" });
+                setOffset(0);
+              }}
+            >
+              Show all team work
+            </button>
+          )}
+          <Link className={buttonClasses.secondary} href="/dashboard/patients">
+            Browse facility patients
+          </Link>
         </div>
         <QueryState query={query} />
         <div className="space-y-3">

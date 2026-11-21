@@ -1,5 +1,6 @@
 "use client";
 import { buttonClasses } from "@/lib/presentation";
+import { Icon } from "@/components/ui/icon";
 import {
   useId,
   useRef,
@@ -30,7 +31,7 @@ export function Heading({
   eyebrow?: string;
 }) {
   return (
-    <header className="mt-1 mb-7 flex items-start justify-between gap-6 max-[760px]:flex-col">
+    <header className="workspace-heading mt-1 mb-7 flex items-start justify-between gap-6 max-[760px]:flex-col">
       <div>
         <p className="text-[11px] font-bold tracking-[.13em] text-teal-dark">
           {eyebrow}
@@ -38,7 +39,15 @@ export function Heading({
         <h1 className="mt-2 mb-3 text-[clamp(26px,2.3vw,36px)] leading-[1.15] tracking-[-.035em] text-navy">
           {title}
         </h1>
-        <p className="m-0 max-w-[860px] text-[15px] text-muted">{detail}</p>
+        {detail && (
+          <details className="workspace-guide">
+            <summary>
+              <Icon name="help" size={15} />
+              Page guide
+            </summary>
+            <p>{detail}</p>
+          </details>
+        )}
       </div>
       {actions && (
         <div className="flex flex-wrap items-center gap-[10px]">{actions}</div>
@@ -50,20 +59,36 @@ export function Panel({
   title,
   detail,
   children,
+  scroll = false,
 }: {
   title: string;
   detail?: string;
   children: ReactNode;
+  scroll?: boolean;
 }) {
   return (
-    <section className="live-panel mb-6 min-w-0 rounded-[14px] border border-border bg-surface p-6 max-[760px]:p-[18px] [&_p]:wrap-anywhere">
-      <header className="mb-5">
-        <h2 className="mb-2 text-xl leading-[inherit] tracking-[-.02em] text-navy">
+    <section className="live-panel mb-6 min-w-0 rounded-[14px] border border-border bg-surface [&_p]:wrap-anywhere">
+      <header className="live-panel-header">
+        <h2 className="text-xl leading-[inherit] tracking-[-.02em] text-navy">
           {title}
         </h2>
-        {detail && <p className="m-0 max-w-[850px] text-muted">{detail}</p>}
+        {detail && (
+          <details className="panel-context">
+            <summary aria-label={`About ${title}`} title={`About ${title}`}>
+              <Icon name="help" size={18} />
+            </summary>
+            <p>{detail}</p>
+          </details>
+        )}
       </header>
-      {children}
+      <div
+        className={`live-panel-body${scroll ? " live-panel-scroll" : ""}`}
+        tabIndex={scroll ? 0 : undefined}
+        role={scroll ? "region" : undefined}
+        aria-label={scroll ? `${title} contents` : undefined}
+      >
+        {children}
+      </div>
     </section>
   );
 }

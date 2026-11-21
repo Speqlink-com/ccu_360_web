@@ -17,7 +17,7 @@ export const descriptions: Record<string, string> = {
   claim_owner_or_care_manager_required:
     "Only the employee handling this section or a care manager may release it.",
   active_care_team_assignment_required:
-    "A current care-team assignment and available staff status are needed to start a shift.",
+    "An active shared or individually assigned care-team role and available staff status are needed to start a shift.",
   attachment_content_not_accepted:
     "This file could not be accepted. Use a valid PNG, JPEG or non-interactive PDF up to 2 MB. PDFs with scripts, links, forms or embedded files are rejected.",
   attachment_not_in_pinned_field:
@@ -79,7 +79,7 @@ export const descriptions: Record<string, string> = {
   patient_registration_permission_required:
     "Your team cannot register patients. Reception or a team with Register patients can create the patient record.",
   journey_initialization_permission_required:
-    "You need a current intake team assignment to start a journey. Ask your administrator to assign you to a team on the published form.",
+    "An active intake role on this published form is required. Your administrator can apply the role to your profession or assign it to you individually.",
   template_intake_role_required:
     "This form has a different intake team. Select a form your team can start, or ask your administrator to review its intake teams.",
   template_requires_intake_team_and_sections:
@@ -171,9 +171,9 @@ export const descriptions: Record<string, string> = {
   invitation_must_be_accepted:
     "This invitation must be accepted before access can be changed.",
   current_admitting_or_reading_team_role_required:
-    "Your facility administrator needs to assign you to an active care team.",
+    "Your facility administrator can apply an active care-team role to your profession or assign it to you individually.",
   current_team_role_required:
-    "Your facility administrator needs to assign you to an active care team.",
+    "Your facility administrator can apply an active care-team role to your profession or assign it to you individually.",
   mfa_enrollment_expired: "MFA setup expired. Sign in again to restart.",
   ledger_version_conflict:
     "Another team member updated this journey. Refresh it and review the latest information before saving again.",

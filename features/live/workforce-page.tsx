@@ -49,7 +49,7 @@ const capabilities = [
 const capabilityLabels = {
   register: "Register patients",
   admit: "Open journeys",
-  read: "Read assigned journeys",
+  read: "Read linked journeys",
   write: "Document & comment",
   attest: "Attest notes",
   observe: "Record observations",
@@ -121,17 +121,21 @@ export function WorkforcePage() {
     <>
       <Heading
         title="Departments & care teams"
-        detail="Responsibility belongs to a team role. Named employees work through dated assignments, so shifts and staff changes retain a clear audit trail."
+        detail="Responsibility belongs to a shared team role. Enroll matching professions once or assign employees individually; each person’s work retains its own audit trail."
       />
       <VocabularyPanel org={org} />
       <ChoiceLoader query={professions} />
       <ChoiceLoader query={responsibilities} />
-      <p className="mb-5 rounded-xl border border-border bg-mint p-4 text-sm">
-        Team roles represent shared duties, not employee names. Creating a role
-        does not assign an employee to it. Use a dated assignment so multiple
-        employees can cover the same role across shifts. Reception needs
-        Register patients and inclusion as an intake team on the published form.
-      </p>
+      <details className="workforce-membership-guide">
+        <summary>Shared role membership</summary>
+        <p>
+          Configure a shared role for all employees with its compatible
+          profession. New matching employees inherit that role automatically.
+          Use individual dated assignments for restricted teams or
+          department-specific coverage. Reception roles need Register patients
+          and inclusion as an intake team on the published form.
+        </p>
+      </details>
       <div className="live-grid grid grid-cols-2 items-start gap-6 max-[760px]:grid-cols-1 max-[760px]:gap-0">
         <Panel title="Departments">
           <QueryState query={departments} />
@@ -244,7 +248,7 @@ export function WorkforcePage() {
         </Panel>
         <Panel
           title="Create a care-team role"
-          detail="Choose compatible professions and explicit responsibilities. Reception staff cannot receive clinical reading or signing permissions."
+          detail="Create a shared responsibility once for all matching employees, or use individual dated assignments for a restricted care team."
         >
           <ActionForm
             scope={org}
@@ -258,6 +262,7 @@ export function WorkforcePage() {
               profession_ids: data.getAll("profession_ids"),
               responsibility_ids: data.getAll("responsibility_ids"),
               capabilities: data.getAll("capabilities"),
+              membership_mode: value(data, "membership_mode"),
             })}
           >
             <Field name="department_id" label="Department">
@@ -284,6 +289,24 @@ export function WorkforcePage() {
               pattern="[a-z][a-z0-9_]{1,39}"
               maxLength={40}
             />
+            <Field
+              name="membership_mode"
+              label="Role membership"
+              defaultValue="profession"
+            >
+              <option value="profession">
+                All matching employees (shared profession role)
+              </option>
+              <option value="individual">
+                Individually assigned employees only
+              </option>
+            </Field>
+            <p className="mb-4 text-sm text-muted">
+              Shared roles respect employee availability, active departments and
+              any selected facility profession. A pharmacist role can target the
+              facility’s Pharmacist profession without including other
+              allied-health employees.
+            </p>
             <fieldset className="option-grid">
               <legend>Compatible professions</legend>
               {(
@@ -322,7 +345,7 @@ export function WorkforcePage() {
           </ActionForm>
         </Panel>
       </div>
-      <Panel title="Shared team roles">
+      <Panel title="Shared team roles" scroll>
         <QueryState query={roles} />
         {roles.data?.items.map((role) => (
           <div
@@ -331,6 +354,11 @@ export function WorkforcePage() {
           >
             <div>
               <strong>{role.name}</strong>
+              <p className="text-sm text-teal-dark">
+                {role.membership_mode === "profession"
+                  ? "Applies to all matching employees"
+                  : "Uses individual dated assignments"}
+              </p>
               <p>
                 {role.identity_roles
                   .map((item) => memberLabels[item as MemberRole])
@@ -349,6 +377,7 @@ export function WorkforcePage() {
             <details>
               <summary>Edit care-team role</summary>
               <ActionForm
+                key={`${role.id}:${role.version}`}
                 scope={org}
                 path={`workforce/roles/${role.id}`}
                 method="PATCH"
@@ -363,8 +392,26 @@ export function WorkforcePage() {
                   profession_ids: data.getAll("profession_ids"),
                   responsibility_ids: data.getAll("responsibility_ids"),
                   reason: value(data, "reason"),
+                  membership_mode: value(data, "membership_mode"),
                 })}
               >
+                <Field
+                  name="membership_mode"
+                  label="Role membership"
+                  defaultValue={role.membership_mode}
+                >
+                  <option value="profession">
+                    All matching employees (shared profession role)
+                  </option>
+                  <option value="individual">
+                    Individually assigned employees only
+                  </option>
+                </Field>
+                <p className="mb-4 text-sm text-muted">
+                  Changing this applies immediately to matching employees and
+                  existing patient journeys using this role. Individual
+                  assignment history remains intact.
+                </p>
                 <Field
                   name="name"
                   label="Team role name"
@@ -556,15 +603,18 @@ export function WorkforcePage() {
                   />
                 </ActionForm>
                 <p className="mt-5 text-sm text-muted">
-                  To transfer responsibility, end this assignment and create a
-                  dated assignment for the receiving employee.
+                  Individual teams use dated assignments for transfers. Ending
+                  an assignment does not remove profession-wide eligibility;
+                  update availability or the shared role when access must end.
                 </p>
                 <ActionForm
                   scope={org}
                   path={`workforce/assignments/${item.id}`}
                   method="PATCH"
                   label={
-                    item.active ? "End assignment access" : "Restore assignment"
+                    item.active
+                      ? "End individual assignment"
+                      : "Restore assignment"
                   }
                   body={(data) => ({
                     active: !item.active,
