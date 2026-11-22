@@ -33,9 +33,11 @@ export function Heading({
   return (
     <header className="workspace-heading mt-1 mb-7 flex items-start justify-between gap-6 max-[760px]:flex-col">
       <div>
-        <p className="text-[11px] font-bold tracking-[.13em] text-teal-dark">
-          {eyebrow}
-        </p>
+        {eyebrow && (
+          <p className="text-[11px] font-bold tracking-[.13em] text-teal-dark">
+            {eyebrow}
+          </p>
+        )}
         <h1 className="mt-2 mb-3 text-[clamp(26px,2.3vw,36px)] leading-[1.15] tracking-[-.035em] text-navy">
           {title}
         </h1>

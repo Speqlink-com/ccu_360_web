@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { z } from "zod";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { CCU360Loader } from "@/components/ui/ccu-loader";
@@ -169,6 +169,24 @@ function Shortcut({
 
 export function OverviewPage() {
   const user = useIdentity().data!;
+  const [dayPart, setDayPart] = useState<string | null>(null);
+  useEffect(() => {
+    const updateGreeting = () => {
+      const hour = new Date().getHours();
+      setDayPart(
+        hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening",
+      );
+    };
+    updateGreeting();
+    const timer = window.setInterval(updateGreeting, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const nameParts = user.display_name
+    .trim()
+    .replace(/^(?:(?:Eng(?:ineer)?|Dr|Mr|Mrs|Ms|Prof)\.{0,2}\s+)+/i, "")
+    .split(/\s+/)
+    .filter(Boolean);
+  const firstName = nameParts[0] ?? "there";
   const member = user.memberships.find(
     (m) => m.organization_id === user.organization_id,
   );
@@ -225,99 +243,131 @@ export function OverviewPage() {
       ? [people, teams, forms]
       : [access, journeys, patients];
   const refreshing = activeQueries.some((q) => q.isFetching);
-  const name = platform
-    ? "Ayot Health Solutions"
-    : (member?.provider_name ?? "Your facility");
-  const primaryPath = platform
-    ? "facilities"
-    : admin
-      ? "templates"
-      : "patients";
+  const name = member?.provider_name ?? "Your facility";
+  const primaryPath = admin ? "templates" : "patients";
   const security = user.mfa_enabled ? "Enabled" : "Set up";
   const shown = (data: { items: unknown[] } | undefined) =>
     data ? data.items.length : "—";
-  const previewCaption = (data: { items: unknown[] } | undefined) =>
+  const previewCaption = (
+    data: { items: unknown[] } | undefined,
+    limit = previewSize,
+  ) =>
     data
-      ? `${data.items.length} shown · Directory preview`
+      ? `${Math.min(data.items.length, limit)} shown · Directory preview`
       : "Directory preview";
   if (activeQueries.some((query) => query.isPending))
     return <CCU360Loader variant="dashboard" />;
   return (
-    <div className="dashboard-overview">
+    <div className={`dashboard-overview ${platform ? "platform-overview" : ""}`}>
       <Heading
         eyebrow={
           platform
-            ? "AHS / PLATFORM OVERVIEW"
+            ? ""
             : admin
               ? "CCU360 / FACILITY OVERVIEW"
               : "CCU360 / CARE OVERVIEW"
         }
-        title={`Welcome, ${user.display_name.split(" ")[0]}.`}
+        title={
+          platform
+            ? `${dayPart ?? "Welcome"}, ${nameParts.at(-1) ?? firstName}!`
+            : `Welcome, ${firstName}.`
+        }
         detail=""
         actions={
-          <button
-            type="button"
-            className="btn btn-secondary dashboard-refresh"
-            disabled={refreshing}
-            onClick={() => {
-              for (const q of activeQueries) void q.refetch();
-            }}
-          >
-            <Icon name="clock" size={17} />
-            {refreshing ? "Refreshing…" : "Refresh dashboard"}
-          </button>
+          !platform && (
+            <button
+              type="button"
+              className="btn btn-secondary dashboard-refresh"
+              disabled={refreshing}
+              onClick={() => {
+                for (const q of activeQueries) void q.refetch();
+              }}
+            >
+              <Icon name="clock" size={17} />
+              {refreshing ? "Refreshing…" : "Refresh dashboard"}
+            </button>
+          )
         }
       />
-      <section
-        className="dashboard-hero"
-        aria-label={platform ? "Platform overview" : "Workspace overview"}
-      >
+      {platform && (
+        <section className="platform-quickbar" aria-label="Quick actions">
+          <nav
+            className="platform-quickbar-panel"
+            aria-label="Platform shortcuts"
+          >
+            <Link
+              href="/dashboard/facilities"
+              className="platform-quickbar-action"
+            >
+              <span className="platform-quickbar-icon">
+                <span className="platform-quickbar-outline">
+                  <Icon name="facilities" size={18} outline />
+                </span>
+                <span className="platform-quickbar-artwork">
+                  <Icon name="facilities" size={22} />
+                </span>
+              </span>
+              <span>Facilities</span>
+            </Link>
+            <Link
+              href="/dashboard/administrators"
+              className="platform-quickbar-action"
+            >
+              <span className="platform-quickbar-icon">
+                <span className="platform-quickbar-outline">
+                  <Icon name="addUser" size={18} outline />
+                </span>
+                <span className="platform-quickbar-artwork">
+                  <Icon name="addUser" size={22} />
+                </span>
+              </span>
+              <span>Users</span>
+            </Link>
+            <button
+              type="button"
+              className="platform-quickbar-action"
+              disabled={refreshing}
+              onClick={() => void facilities.refetch()}
+            >
+              <span className={`platform-quickbar-icon platform-quickbar-icon-refresh ${refreshing ? "platform-refreshing" : ""}`}>
+                <span className="platform-quickbar-artwork">
+                  <Icon name="refresh" size={26} />
+                </span>
+              </span>
+              <span>{refreshing ? "Refreshing" : "Refresh"}</span>
+            </button>
+          </nav>
+        </section>
+      )}
+      {!platform && (
+        <section className="dashboard-hero" aria-label="Workspace overview">
         <div className="dashboard-hero-main">
           <span className="dashboard-kicker">
             <span />
             {name}
           </span>
-          <h2>
-            {platform
-              ? "Your care network."
-              : admin
-                ? "Facility operations."
-                : "Your care workspace."}
-          </h2>
+          <h2>{admin ? "Facility operations." : "Your care workspace."}</h2>
           <p>
-            {platform
-              ? "Facilities · Administration · Accountability"
-              : admin
-                ? "People · Forms · Connected care"
-                : "Patients · Shared journeys · Teamwork"}
+            {admin ? "People · Forms · Connected care" : "Patients · Shared journeys · Teamwork"}
           </p>
           <div className="dashboard-hero-actions">
             <Link
               href={`/dashboard/${primaryPath}`}
               className="btn dashboard-hero-primary"
             >
-              <Icon
-                name={platform ? "facilities" : admin ? "form" : "bed"}
-                size={23}
-              />
-              {platform
-                ? "Manage facilities"
-                : admin
-                  ? "Open Form Studio"
-                  : member?.role === "receptionist"
-                    ? "Open reception"
-                    : "Browse patients"}
+              <Icon name={admin ? "form" : "bed"} size={23} />
+              {admin
+                ? "Open Form Studio"
+                : member?.role === "receptionist"
+                  ? "Open reception"
+                  : "Browse patients"}
               <Icon name="arrow" size={17} />
             </Link>
             <Link
-              href={`/dashboard/${platform ? "administrators" : admin ? "employees" : "queue"}`}
+              href={`/dashboard/${admin ? "employees" : "queue"}`}
               className="dashboard-hero-secondary"
             >
-              {platform
-                ? "AHS administrators"
-                : admin
-                  ? "Manage employees"
-                  : "Team work queue"}
+              {admin ? "Manage employees" : "Team work queue"}
               <Icon name="arrow" size={17} />
             </Link>
           </div>
@@ -328,13 +378,11 @@ export function OverviewPage() {
           </span>
           <div>
             <strong>
-              {platform
-                ? "Platform access"
-                : admin
-                  ? "Facility access"
-                  : member
-                    ? memberLabels[member.role]
-                    : "Workspace access"}
+              {admin
+                ? "Facility access"
+                : member
+                  ? memberLabels[member.role]
+                  : "Workspace access"}
             </strong>
             <span>
               <i className={user.email_verified ? "is-verified" : ""} />
@@ -348,14 +396,15 @@ export function OverviewPage() {
             </span>
           </div>
         </div>
-      </section>
+        </section>
+      )}
       <section className="dashboard-metrics" aria-label="Workspace snapshot">
         {platform ? (
           <>
             <Metric
               href="/dashboard/facilities"
               icon="facilities"
-              label="Facilities shown"
+              label="Facilities sampled"
               value={shown(facilities.data)}
               detail={`Up to ${previewSize} directory records`}
               tone="navy"
@@ -363,20 +412,20 @@ export function OverviewPage() {
             <Metric
               href="/dashboard/facilities"
               icon="bed"
-              label="Active in preview"
+              label="Active sampled"
               value={
                 facilities.data
                   ? facilities.data.items.filter((f) => f.status === "active")
                       .length
                   : "—"
               }
-              detail="Facility directory"
+              detail="Within directory sample"
               tone="teal"
             />
             <Metric
               href="/dashboard/facilities"
               icon="location"
-              label="Suspended in preview"
+              label="Suspended sampled"
               value={
                 facilities.data
                   ? facilities.data.items.filter(
@@ -384,7 +433,7 @@ export function OverviewPage() {
                     ).length
                   : "—"
               }
-              detail="Facility directory"
+              detail="Within directory sample"
             />
           </>
         ) : admin ? (
@@ -443,7 +492,7 @@ export function OverviewPage() {
         <Metric
           href="/dashboard/security"
           icon="shield"
-          label="Two-step verification"
+          label={platform ? "Two-step protection" : "Two-step verification"}
           value={security}
           detail="My account & security"
         />
@@ -455,10 +504,10 @@ export function OverviewPage() {
             subtitle="Provider directory"
             icon="facilities"
             href="/dashboard/facilities"
-            footer={previewCaption(facilities.data)}
+            footer={previewCaption(facilities.data, 5)}
           >
             <QueryState query={facilities} />
-            {facilities.data?.items.map((f) => (
+            {facilities.data?.items.slice(0, 5).map((f) => (
               <div className="dashboard-list-row" key={f.id}>
                 <span className="dashboard-row-icon">
                   <Icon name="facilities" size={28} />

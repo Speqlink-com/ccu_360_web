@@ -422,27 +422,48 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  background: #f9fbfcf5;
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid #c7d5de;
-  box-shadow: 0 3px 12px #082b4d08;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 8px 22px -12px #006d6980, 0 2px 6px #006d6920;
   height: 80px;
 }
 .workspace .topbar-left {
   min-width: 0;
+  flex: 1 1 auto;
 }
 .workspace .topbar-context {
-  color: #5a7386;
+  color: #006d69;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.workspace .topbar-separator {
+  color: #64a8a2;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+  font-size: 18px;
+  font-weight: 400;
 }
 .workspace .workspace-context-name {
-  color: #183b55;
+  color: #1a4f4d;
   font-weight: 650;
 }
 .workspace .profile {
-  padding-left: 18px;
-  border-color: #c9d8e1;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
   gap: 10px;
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+.workspace .profile:is(:hover, :focus-visible) {
+  background: #eaf6f4;
+  box-shadow: 0 4px 10px -7px #006d6980;
+}
+.workspace .profile:focus-visible {
+  outline: 2px solid #008f87;
+  outline-offset: 2px;
 }
 .workspace .profile strong {
   font-size: 13px;
@@ -466,14 +487,14 @@
   place-items: center;
   width: 41px;
   height: 41px;
-  border: 1px solid #cddae3;
+  border: 0;
   border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 3px 7px #082b4d0a;
+  background: #f0f8f6;
+  box-shadow: 0 3px 8px -5px #006d6950;
 }
 .topbar-action:hover {
-  border-color: #008f87;
-  box-shadow: 0 4px 10px #082b4d18;
+  background: #e4f5f1;
+  box-shadow: 0 4px 10px -5px #006d6970;
 }
 .workspace .workspace-main {
   padding-top: 28px;
@@ -481,10 +502,13 @@
   min-width: 0;
 }
 .workspace .workspace-footer {
-  background: #e2eaf0;
-  border-color: #c8d6df;
-  padding-block: 17px;
-  color: #4d687b;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 -7px 20px -15px #006d6980, 0 -2px 6px #006d6918;
+  padding-block: 18px;
+  color: #1d625b;
+  font-size: 12px;
+  font-weight: 600;
 }
 .workspace .workspace-heading {
   margin-bottom: 25px;
@@ -727,6 +751,15 @@
 .dashboard-overview .workspace-heading {
   align-items: center;
 }
+.dashboard-overview.platform-overview .workspace-heading {
+  margin-bottom: 17px;
+}
+.dashboard-overview.platform-overview .workspace-heading h1 {
+  margin: 0;
+  font-size: clamp(21px, 1.7vw, 27px);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
 .dashboard-refresh {
   padding: 10px 14px;
   font-size: 12px;
@@ -734,6 +767,118 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+.platform-quickbar {
+  position: relative;
+  margin: 0 0 23px;
+}
+.platform-quickbar::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, #006d69, #00938a 50%, #006d69);
+}
+.platform-quickbar-panel {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: min(430px, 100%);
+  height: 56px;
+  margin: 0 auto;
+  padding: 3px 23px 9px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 19px) 100%, 19px 100%);
+  background: linear-gradient(180deg, #008f87 0%, #006d69 100%);
+  color: #fff;
+}
+.platform-quickbar-action {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+.platform-quickbar-action:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 1px;
+  height: 22px;
+  translate: 0 -50%;
+  background: #ffffff45;
+}
+.platform-quickbar-action:is(:hover, :focus-visible) {
+  background: #fff;
+  color: #006d69;
+}
+.platform-quickbar-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+.platform-quickbar-outline,
+.platform-quickbar-artwork {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transition: opacity 150ms ease;
+}
+.platform-quickbar-artwork,
+.platform-quickbar-action:is(:hover, :focus-visible) .platform-quickbar-outline {
+  opacity: 0;
+}
+.platform-quickbar-action:is(:hover, :focus-visible) .platform-quickbar-artwork {
+  opacity: 1;
+}
+.platform-quickbar-icon-refresh .platform-quickbar-artwork {
+  opacity: 1;
+  filter: brightness(0) invert(1);
+}
+.platform-quickbar-action:is(:hover, :focus-visible) .platform-quickbar-icon-refresh .platform-quickbar-artwork {
+  filter: none;
+}
+.workspace .platform-quickbar-action:focus-visible {
+  outline: 2px solid #006d69;
+  outline-offset: -3px;
+}
+.platform-quickbar-action:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+.platform-refreshing {
+  animation: platform-refresh-spin 900ms linear infinite;
+}
+@keyframes platform-refresh-spin {
+  to { transform: rotate(360deg); }
+}
+@media (max-width: 760px) {
+  .platform-quickbar {
+    margin-bottom: 18px;
+  }
+  .platform-quickbar-panel {
+    height: 54px;
+    padding: 3px 18px 9px;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 15px) 100%, 15px 100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .platform-refreshing { animation: none; }
 }
 .dashboard-hero {
   position: relative;
@@ -965,6 +1110,66 @@
   border-color: #ffffff45;
   background: #f3f9fa;
 }
+.platform-overview .dashboard-metrics {
+  gap: 14px;
+}
+.platform-overview .dashboard-metric {
+  position: relative;
+  min-height: 172px;
+  overflow: hidden;
+  padding: 18px 18px 14px;
+  border: 1px solid #c9e2de;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 9px 20px -17px #005e5980, 0 1px 3px #005e5912;
+  color: #143c58;
+}
+.platform-overview .dashboard-metric::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: #008f87;
+}
+.platform-overview .dashboard-metric:hover {
+  transform: translateY(-3px);
+  border-color: #008f87;
+  box-shadow: 0 16px 26px -18px #005e5990, 0 2px 5px #005e5924;
+}
+.platform-overview .dashboard-metric-top {
+  color: #4d746f;
+  font-size: 14px;
+}
+.platform-overview .dashboard-metric .dashboard-icon-tile {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 3px;
+  background: #e8f5f2;
+  box-shadow: none;
+}
+.platform-overview .dashboard-metric .dashboard-icon-tile .asset-icon {
+  width: 27px !important;
+  height: 27px !important;
+}
+.platform-overview .dashboard-metric > strong {
+  margin: 12px 0 17px;
+  color: #145b55;
+  font-size: clamp(28px, 2.8vw, 39px);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.platform-overview .dashboard-metric-bottom {
+  padding-top: 10px;
+  border-top: 1px solid #d4e8e4;
+  color: #5e817d;
+  font-size: 12px;
+  line-height: 1.3;
+}
+.platform-overview .dashboard-metric-bottom svg {
+  flex: 0 0 auto;
+  color: #007d78;
+}
 .dashboard-collections {
   display: grid;
   grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr);
@@ -1168,6 +1373,95 @@
 .dashboard-action-list > .dashboard-shortcut:last-child {
   border: 0;
 }
+.platform-overview .dashboard-collections {
+  align-items: stretch;
+}
+.platform-overview .dashboard-collections > .dashboard-panel {
+  display: flex;
+  flex-direction: column;
+  height: 448px;
+  border-color: #bdded8;
+  border-radius: 4px;
+  box-shadow: 0 9px 20px -16px #005e5960;
+}
+.platform-overview .dashboard-panel-header {
+  flex: 0 0 auto;
+  background: linear-gradient(105deg, #dff2ee, #f4fbf9);
+  border-bottom-color: #b8ddd6;
+}
+.platform-overview .dashboard-panel-title h2 {
+  color: #006d69;
+}
+.platform-overview .dashboard-panel-title p {
+  color: #527b75;
+}
+.platform-overview .dashboard-panel-header .dashboard-icon-tile {
+  border-color: #b8ddd6;
+  border-radius: 4px;
+  background: #fff;
+}
+.platform-overview .dashboard-view-link {
+  padding: 7px 9px;
+  border-radius: 4px;
+  transition: background 160ms ease;
+}
+.platform-overview .dashboard-view-link:is(:hover, :focus-visible) {
+  background: #fff;
+}
+.platform-overview .dashboard-panel-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  padding-inline: 18px;
+  scrollbar-color: #73b7af #eef8f5;
+}
+.platform-overview .dashboard-list-row {
+  min-height: 60px;
+  padding: 8px 2px;
+  border-bottom-color: #d3eae5;
+}
+.platform-overview .dashboard-row-icon {
+  border: 0;
+  border-radius: 4px;
+  background: #e9f6f3;
+}
+.platform-overview .dashboard-panel-footer {
+  flex: 0 0 auto;
+  border-top-color: #d3eae5;
+  background: #f3faf8;
+  color: #527b75;
+}
+.platform-overview .dashboard-action-list {
+  display: grid;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+}
+.platform-overview .dashboard-action-list .dashboard-shortcut {
+  padding: 0 20px;
+  border-bottom: 1px solid #d3eae5;
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+.platform-overview .dashboard-action-list .dashboard-icon-tile {
+  border: 0;
+  border-radius: 4px;
+  background: #e9f6f3;
+  box-shadow: none;
+}
+.platform-overview .dashboard-action-list .dashboard-shortcut:last-child {
+  border-bottom: 0;
+}
+.platform-overview .dashboard-action-list .dashboard-shortcut:is(:hover, :focus-visible) {
+  background: #e9f7f3;
+  box-shadow: inset 3px 0 #008f87;
+}
+.platform-overview .dashboard-action-list .dashboard-shortcut:is(:hover, :focus-visible) .dashboard-icon-tile {
+  background: #fff;
+}
+.platform-overview .dashboard-action-list .dashboard-shortcut:is(:hover, :focus-visible) strong {
+  color: #006d69;
+}
 .dashboard-quick-access {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1296,8 +1590,15 @@
     gap: 10px;
   }
   .workspace .profile {
-    padding: 0;
+    padding: 3px;
     border: 0;
+  }
+  .workspace .topbar-context {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+  .workspace .unit-switcher select {
+    max-width: 62px;
   }
   .workspace .profile-copy {
     display: none;

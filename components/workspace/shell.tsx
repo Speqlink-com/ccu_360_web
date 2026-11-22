@@ -22,6 +22,12 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   const links = isDemo
     ? navigationFor(session?.user.role)
     : productionNavigationFor(session?.user.role);
+  const currentSection =
+    links.find(
+      (link) =>
+        link.href !== "/dashboard" &&
+        (pathname === link.href || pathname.startsWith(`${link.href}/`)),
+    )?.title ?? links.find((link) => link.href === "/dashboard")?.title ?? "Overview";
   const client = useQueryClient();
   const [signOutError, setSignOutError] = useState("");
   const clinical =
@@ -227,8 +233,8 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
         <div className="flex min-w-0 flex-col" inert={mobile}>
-          <header className="topbar flex h-[82px] items-center justify-between gap-4 border-b border-border bg-surface px-9 max-[1250px]:px-7 max-[760px]:h-[73px] max-[760px]:px-4.5">
-            <div className="topbar-left flex items-center gap-5 max-[760px]:gap-3">
+          <header className="topbar flex h-[82px] items-center justify-between gap-4 bg-white px-9 max-[1250px]:px-7 max-[760px]:h-[73px] max-[760px]:px-4.5">
+            <div className="topbar-left flex items-center gap-5 max-[760px]:gap-2">
               <button
                 className="icon-button mobile-menu"
                 aria-label="Open navigation"
@@ -238,17 +244,16 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               >
                 <Icon name="menu" />
               </button>
-              <span className="topbar-context text-[13px] text-[#7b8c99] max-[1250px]:hidden">
-                {platform
-                  ? "Platform workspace"
-                  : clinical
-                    ? "Clinical workspace"
-                    : "Facility workspace"}
+              <span className="topbar-context">
+                CCU360 <span className="max-[480px]:hidden">WORKSPACE</span>
               </span>
-              <span className="topbar-separator text-[#c7d1d7] max-[1250px]:hidden">
+              <span className="topbar-separator" aria-hidden="true">
                 /
               </span>
-              {clinical && isDemo ? (
+              <span className="workspace-context-name min-w-0 truncate text-sm max-[760px]:text-xs">
+                {currentSection}
+              </span>
+              {clinical && isDemo && (
                 <label className="unit-switcher flex items-center gap-[7px] text-[#5c6e80]">
                   <Icon name="bed" size={16} />
                   <span className="sr-only">Filter by unit</span>
@@ -262,10 +267,6 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                     <option>HDU</option>
                   </select>
                 </label>
-              ) : (
-                <span className="workspace-context-name text-sm font-[550] text-[#3a5265] max-[760px]:max-w-[175px] max-[760px]:truncate max-[760px]:text-xs">
-                  {platform ? "Facility network" : session?.facility?.name}
-                </span>
               )}
             </div>
             <div className="topbar-right flex items-center gap-5 max-[760px]:gap-0">
@@ -286,7 +287,9 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               <Link
                 href="/dashboard/security"
                 aria-label={`Account & security for ${session?.user.name ?? "current user"}`}
-                className="profile flex items-center gap-[11px] border-l border-border pl-6 max-[760px]:border-0 max-[760px]:pl-0"
+                aria-current={pathname.startsWith("/dashboard/security") ? "page" : undefined}
+                title="My account & security"
+                className="profile flex items-center gap-[11px]"
               >
                 <span className="avatar grid h-[42px] w-[42px] place-items-center rounded-full bg-[#eaf7f6] text-[10px] font-semibold text-navy max-[760px]:h-[37px] max-[760px]:w-[37px]">
                   <Icon name="profile" size={40} />
@@ -322,17 +325,8 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           >
             {children}
           </main>
-          <footer className="workspace-footer mt-auto flex justify-between gap-3 border-t border-border px-9 py-[21px] text-[11px] text-[#667786] max-[1000px]:px-7 max-[1000px]:text-[10px] max-[760px]:p-5 max-[760px]:text-[9px]">
-            <span>
-              CCU360™ <span>by Ayot Health Solutions</span>
-            </span>
-            <span>
-              {session?.facility
-                ? `${session.facility.name}${session.facility.code ? " · " + session.facility.code : ""}`
-                : platform
-                  ? "AHS · Platform administration"
-                  : "Choose your facility"}
-            </span>
+          <footer className="workspace-footer mt-auto flex items-center justify-center px-9 py-[21px] text-center text-[12px] font-semibold max-[1000px]:px-7 max-[760px]:p-5">
+            © {new Date().getUTCFullYear()} Ayot Health Solutions. All rights reserved.
           </footer>
         </div>
       </div>
