@@ -1,5 +1,7 @@
 /* Workspace visual system. Clinical document branding and the sign-in surface keep their own themes. */
 .workspace {
+  --workspace-sidebar-width: 252px;
+  --workspace-topbar-height: 80px;
   --canvas: #e8eef2;
   --line: #cdd9e1;
   --muted: #526b7e;
@@ -9,6 +11,24 @@
   background: var(--canvas);
   color: var(--ink);
   isolation: isolate;
+}
+.workspace.is-collapsed {
+  --workspace-sidebar-width: 78px;
+}
+@media (min-width: 1800px) {
+  .workspace { --workspace-sidebar-width: 272px; }
+  .workspace.is-collapsed { --workspace-sidebar-width: 82px; }
+}
+@media (max-width: 1250px) {
+  .workspace { --workspace-sidebar-width: 224px; }
+  .workspace.is-collapsed { --workspace-sidebar-width: 76px; }
+}
+@media (max-width: 760px) {
+  .workspace,
+  .workspace.is-collapsed {
+    --workspace-sidebar-width: 0px;
+    --workspace-topbar-height: 72px;
+  }
 }
 .workspace .sidebar {
   background: linear-gradient(165deg, #082b4d 0%, #0a304d 68%, #0c454f 100%);
@@ -151,6 +171,252 @@
 }
 .workspace.is-collapsed .institution {
   padding-inline: 8px;
+}
+
+/* Shared dashboard navigation: a teal surface with an angled logo header. */
+.workspace.teal-workspace {
+  transition: grid-template-columns 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.workspace.teal-workspace .sidebar {
+  --platform-sidebar-inset: 16px;
+  background: linear-gradient(180deg, #008f87 0%, #007d78 58%, #006d69 100%);
+  color: #f7fffd;
+  box-shadow: 8px 0 28px -18px #005e59a6;
+  padding-top: 22px;
+}
+.workspace.teal-workspace .platform-logo-curve {
+  position: absolute;
+  inset: 0 0 auto 0;
+  width: 100%;
+  height: 132px;
+  filter: drop-shadow(0 8px 10px #004f4b70);
+  pointer-events: none;
+}
+.workspace.teal-workspace .sidebar-brand {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  height: 82px;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.workspace.teal-workspace .sidebar-brand .brand {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  display: block;
+  opacity: 1;
+  transform: scale(1);
+  transition: width 300ms ease, height 300ms ease;
+}
+.workspace.teal-workspace.is-collapsed .sidebar-brand .brand {
+  width: 70px;
+  height: 33px;
+}
+.workspace.teal-workspace .institution {
+  margin: 24px 0 8px;
+  padding: 12px 8px 15px;
+  border: 0;
+  border-bottom: 1px solid #ffffff38;
+  border-radius: 0;
+  background: transparent;
+  transition: padding 300ms ease;
+}
+.workspace.teal-workspace .institution-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+}
+.workspace.teal-workspace .institution strong {
+  color: #fff;
+}
+.workspace.teal-workspace .institution small {
+  color: #c5eeea;
+}
+.workspace.teal-workspace .sidebar .nav-label {
+  display: block;
+  max-width: 180px;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 1;
+  transition: max-width 320ms ease, opacity 170ms ease;
+}
+.workspace.teal-workspace.is-collapsed .sidebar .nav-label {
+  max-width: 0;
+  opacity: 0;
+}
+.workspace.teal-workspace .nav-group {
+  max-height: 24px;
+  overflow: hidden;
+  color: #c4eeea;
+  opacity: 1;
+  transition: max-height 250ms ease, margin 250ms ease, opacity 160ms ease;
+}
+.workspace.teal-workspace.is-collapsed .nav-group {
+  max-height: 0;
+  margin-block: 0;
+  opacity: 0;
+}
+.workspace.teal-workspace .sidebar nav {
+  margin-right: calc(-1 * var(--platform-sidebar-inset));
+  padding-right: 0;
+  scrollbar-color: #9fd8d2 transparent;
+}
+.workspace.teal-workspace.is-collapsed .sidebar {
+  --platform-sidebar-inset: 8px;
+}
+.workspace.teal-workspace .nav-link {
+  border-radius: 0;
+  color: #e7f8f5;
+  background: transparent;
+  box-shadow: none;
+}
+.workspace.teal-workspace .sidebar nav .nav-link:is(.active, :hover, :focus-visible) {
+  color: #006d69;
+  background: #fff;
+  border-radius: 28px 0 0 28px;
+  box-shadow: 0 8px 18px -12px #004f4b8c;
+}
+.workspace.teal-workspace .sidebar .nav-icon-tile,
+.workspace.teal-workspace .sidebar .institution-mark,
+.workspace.teal-workspace .sidebar nav .nav-link:is(.active, :hover, :focus-visible) .nav-icon-tile {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.workspace.teal-workspace .sidebar .nav-icon-tile {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  color: #fff;
+}
+.workspace.teal-workspace .sidebar nav .nav-link:is(.active, :hover, :focus-visible) .nav-icon-tile {
+  color: #006d69;
+}
+.workspace.teal-workspace .sidebar nav :is(.platform-nav-outline, .platform-nav-artwork) {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transition: opacity 170ms ease;
+}
+.workspace.teal-workspace .sidebar nav .platform-nav-artwork,
+.workspace.teal-workspace .sidebar nav .nav-link:is(.active, :hover, :focus-visible) .platform-nav-outline {
+  opacity: 0;
+}
+.workspace.teal-workspace .sidebar nav .nav-link:is(.active, :hover, :focus-visible) .platform-nav-artwork {
+  opacity: 1;
+}
+.workspace.teal-workspace .collapse-button,
+.workspace.teal-workspace .exit-link {
+  color: #e7f8f5;
+  background: transparent;
+}
+.workspace.teal-workspace .collapse-button svg {
+  background: transparent;
+  transition: transform 300ms ease;
+}
+.workspace.teal-workspace.is-collapsed .collapse-button {
+  transform: none;
+}
+.workspace.teal-workspace.is-collapsed .collapse-button svg {
+  transform: rotate(180deg);
+}
+.workspace.teal-workspace .exit-link {
+  border-top-color: #ffffff38;
+  width: calc(100% + var(--platform-sidebar-inset));
+}
+.workspace.teal-workspace .exit-link:is(:hover, :focus-visible) {
+  color: #006d69;
+  background: #fff;
+  border-top-color: transparent;
+  border-radius: 28px 0 0 28px;
+  box-shadow: 0 8px 18px -12px #004f4b8c;
+}
+.workspace.teal-workspace .platform-exit-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+}
+.workspace.teal-workspace :is(.platform-exit-outline, .platform-exit-artwork) {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transition: opacity 170ms ease;
+}
+.workspace.teal-workspace .platform-exit-artwork,
+.workspace.teal-workspace .exit-link:is(:hover, :focus-visible) .platform-exit-outline {
+  opacity: 0;
+}
+.workspace.teal-workspace .exit-link:is(:hover, :focus-visible) .platform-exit-artwork {
+  opacity: 1;
+}
+.workspace.teal-workspace .platform-exit-icon :is(svg, img) {
+  transform: scaleX(-1);
+}
+.workspace.teal-workspace.is-collapsed .institution {
+  justify-content: center;
+  padding-inline: 0;
+}
+@media (max-width: 760px) {
+  .workspace.teal-workspace {
+    transition: none;
+  }
+  .workspace.teal-workspace .sidebar {
+    --platform-sidebar-inset: 16px;
+    transform: none;
+    translate: -100% 0;
+    visibility: hidden;
+    transition: translate 280ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 280ms;
+  }
+  .workspace.teal-workspace .sidebar.sidebar-open {
+    transform: none;
+    translate: 0 0;
+    visibility: visible;
+    transition: translate 280ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s;
+  }
+  .workspace.teal-workspace.is-collapsed .sidebar {
+    --platform-sidebar-inset: 16px;
+  }
+  .workspace.teal-workspace.is-collapsed .sidebar .nav-label {
+    max-width: 180px;
+    opacity: 1;
+  }
+  .workspace.teal-workspace.is-collapsed .nav-link {
+    justify-content: flex-start;
+    padding-inline: 14px;
+  }
+  .workspace.teal-workspace.is-collapsed .sidebar-brand .brand {
+    width: 140px;
+    height: 65px;
+  }
+  .workspace.teal-workspace.is-collapsed .nav-group {
+    max-height: 24px;
+    margin-top: 18px;
+    margin-bottom: 10px;
+    opacity: 1;
+  }
+  .workspace.teal-workspace.is-collapsed .institution {
+    justify-content: flex-start;
+    padding-inline: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace.teal-workspace,
+  .workspace.teal-workspace .sidebar :is(.nav-label, .nav-group, .brand, .institution, .collapse-button svg) {
+    transition: none;
+  }
 }
 .workspace .topbar {
   position: sticky;

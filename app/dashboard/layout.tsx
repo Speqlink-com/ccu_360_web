@@ -14,11 +14,11 @@ export default async function Layout({
   if (!isDemo) {
     const jar = await cookies();
     const names = authCookieNames();
-    if (!jar.has(names.access) && !jar.has(names.refresh)) redirect("/");
+    if (!jar.has(names.access) && !jar.has(names.refresh)) redirect("/auth/signin");
     return <IdentityBoundary>{children}</IdentityBoundary>;
   }
   const session = await currentDemoSession();
-  if (isDemo && !session) redirect("/");
+  if (isDemo && !session) redirect("/auth/signin");
   return (
     <SessionProvider session={session}>
       <WorkspaceShell>{children}</WorkspaceShell>

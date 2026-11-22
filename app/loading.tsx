@@ -1,7 +1,5 @@
+import { CCU360Loader } from "@/components/ui/ccu-loader";
+
 export default function Loading() {
-  return (
-    <main className="loading-state" role="status">
-      Opening CCU360…
-    </main>
-  );
+  return <CCU360Loader variant="page" />;
 }

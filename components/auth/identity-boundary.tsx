@@ -10,7 +10,7 @@ import { SessionProvider } from "@/providers/session-provider";
 import { useServices } from "@/providers/app-provider";
 import { WorkspaceShell } from "@/components/workspace/shell";
 import Link from "next/link";
-import { Brand } from "@/components/ui/brand";
+import { CCU360Loader } from "@/components/ui/ccu-loader";
 import {
   WorksiteAccessProvider,
   WorksiteBoundary,
@@ -72,7 +72,7 @@ export function IdentityBoundary({ children }: { children: ReactNode }) {
       services.identity.getState().reset();
       services.communication.getState().reset();
       services.ui.setState({ unit: "All units", mobileOpen: false });
-      replaceIdentityLocation("/");
+      replaceIdentityLocation("/auth/signin");
     };
     const channel =
       typeof BroadcastChannel !== "undefined"
@@ -82,7 +82,7 @@ export function IdentityBoundary({ children }: { children: ReactNode }) {
       if (["logout", "tenant", "login"].includes(event.data)) {
         void client.cancelQueries();
         client.clear();
-        replaceIdentityLocation(event.data === "logout" ? "/" : "/dashboard");
+        replaceIdentityLocation(event.data === "logout" ? "/auth/signin" : "/dashboard");
       }
     };
     channel?.addEventListener("message", change);
@@ -95,16 +95,10 @@ export function IdentityBoundary({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (query.error instanceof ApiError && query.error.status === 401) {
       client.clear();
-      replaceIdentityLocation("/");
+      replaceIdentityLocation("/auth/signin");
     }
   }, [query.error, client]);
-  if (query.isPending)
-    return (
-      <div className="identity-loading flex min-h-[80vh] flex-col items-center justify-center gap-6 p-6 text-center" role="status">
-        <Brand />
-        <h1>Opening your secure workspace…</h1>
-      </div>
-    );
+  if (query.isPending) return <CCU360Loader variant="page" />;
   if (!query.data)
     return (
       <div className="identity-loading flex min-h-[80vh] flex-col items-center justify-center gap-6 p-6 text-center">
@@ -113,7 +107,7 @@ export function IdentityBoundary({ children }: { children: ReactNode }) {
         <button className={buttonClasses.primary} onClick={() => query.refetch()}>
           Try again
         </button>
-        <Link href="/">Back to sign in</Link>
+        <Link href="/auth/signin">Back to sign in</Link>
       </div>
     );
   return (

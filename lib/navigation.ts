@@ -75,7 +75,7 @@ export function productionNavigationFor(role?: Role): NavigationItem[] {
   const overview: NavigationItem = {
     href: "/dashboard",
     title: "Overview",
-    icon: "overview",
+    icon: role === "ahs_admin" ? "platformOverview" : "overview",
     group: role === "ahs_admin" ? "AHS PLATFORM" : "YOUR FACILITY",
   };
   const security: NavigationItem = {
@@ -97,7 +97,7 @@ export function productionNavigationFor(role?: Role): NavigationItem[] {
         title: "AHS administrators",
         icon: "addUser",
       },
-      { href: "/dashboard/audit", title: "Audit & delivery", icon: "actions" },
+      { href: "/dashboard/audit", title: "Audit & delivery", icon: "platformAudit" },
       security,
     ];
   if (role === "facility_admin")

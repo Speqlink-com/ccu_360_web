@@ -4,7 +4,7 @@ import { ApiError, describeProblem, safeValidationIssues } from "./errors";
 export { ApiError } from "./errors";
 let rotation: Promise<void> | null = null;
 // Identity boundaries require a document reload to discard the previous RSC tree and all in-memory stores.
-export function replaceIdentityLocation(destination: "/" | "/dashboard") {
+export function replaceIdentityLocation(destination: "/auth/signin" | "/dashboard") {
   window.location.replace(new URL(destination, window.location.origin).href);
 }
 export function notifyIdentityChange(kind: "logout" | "tenant" | "login") {

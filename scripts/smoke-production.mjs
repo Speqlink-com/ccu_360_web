@@ -36,12 +36,12 @@ try {
     await setTimeout(250);
   }
   assert.ok(ready, "Production server did not become ready");
-  for (const path of ["/", "/dashboard", "/dashboard/actions", "/dashboard/connect", "/dashboard/worksite"]) {
+  for (const path of ["/", "/auth/signin", "/dashboard", "/dashboard/actions", "/dashboard/connect", "/dashboard/worksite"]) {
     const response = await fetch(base + path, {
       signal: AbortSignal.timeout(5000),
       redirect: "manual",
     });
-    assert.equal(response.status, path.startsWith("/dashboard") ? 307 : 200);
+    assert.equal(response.status, path === "/" || path.startsWith("/dashboard") ? 307 : 200);
     const html = await response.text();
     assert.ok(
       !html.includes("Explore the demo workspace"),
@@ -51,18 +51,18 @@ try {
       !html.includes("Alex Morgan"),
       "Production must not render synthetic patient records",
     );
-    if (path.startsWith("/dashboard"))
+    if (path === "/" || path.startsWith("/dashboard"))
       assert.equal(
         new URL(response.headers.get("location"), base).pathname,
-        "/",
-        "Unauthenticated clinical routes redirect to sign-in",
+        "/auth/signin",
+        "Index and unauthenticated clinical routes redirect to sign-in",
       );
     assert.equal(response.headers.get("x-frame-options"), "DENY");
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
     assert.equal(response.headers.get("referrer-policy"), "no-referrer");
     assert.equal(response.headers.get("x-powered-by"), null);
     assert.match(response.headers.get("permissions-policy") ?? "", /geolocation=\(self\)/);
-    if (path === "/") {
+    if (path === "/auth/signin") {
       const stylesheet = html.match(/href="([^"]+\.css(?:\?[^"]*)?)"/);
       assert.ok(stylesheet, "A production stylesheet must be present");
       assert.equal(

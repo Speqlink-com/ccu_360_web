@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { z } from "zod";
 import { Icon, type IconName } from "@/components/ui/icon";
+import { CCU360Loader } from "@/components/ui/ccu-loader";
 import { FacilityPicker } from "@/components/auth/identity-boundary";
 import { useIdentity, useLiveQuery } from "@/features/identity/queries";
 import { usePatientSearch } from "@/features/reception/queries";
@@ -239,6 +240,8 @@ export function OverviewPage() {
     data
       ? `${data.items.length} shown · Directory preview`
       : "Directory preview";
+  if (activeQueries.some((query) => query.isPending))
+    return <CCU360Loader variant="dashboard" />;
   return (
     <div className="dashboard-overview">
       <Heading

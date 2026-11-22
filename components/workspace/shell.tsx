@@ -45,7 +45,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         credentials: "same-origin",
       });
       if (!response.ok) throw new Error("Sign out failed");
-      router.replace("/");
+      router.replace("/auth/signin");
       router.refresh();
     } catch {
       setSignOutError("Sign out could not complete. Please try again.");
@@ -104,7 +104,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   return (
     <FeedbackProvider>
       <div
-        className={`workspace grid min-h-dvh w-full bg-background max-[760px]:block ${collapsed ? "is-collapsed [grid-template-columns:78px_minmax(0,1fr)] min-[1800px]:[grid-template-columns:82px_minmax(0,1fr)] max-[1250px]:[grid-template-columns:76px_minmax(0,1fr)]" : "[grid-template-columns:252px_minmax(0,1fr)] min-[1800px]:[grid-template-columns:272px_minmax(0,1fr)] max-[1250px]:[grid-template-columns:224px_minmax(0,1fr)]"}`}
+        className={`workspace teal-workspace grid min-h-dvh w-full bg-background max-[760px]:block ${collapsed ? "is-collapsed [grid-template-columns:78px_minmax(0,1fr)] min-[1800px]:[grid-template-columns:82px_minmax(0,1fr)] max-[1250px]:[grid-template-columns:76px_minmax(0,1fr)]" : "[grid-template-columns:252px_minmax(0,1fr)] min-[1800px]:[grid-template-columns:272px_minmax(0,1fr)] max-[1250px]:[grid-template-columns:224px_minmax(0,1fr)]"}`}
       >
         <a className="skip-link" href="#workspace-main">
           Skip to workspace
@@ -122,21 +122,28 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           role={mobile ? "dialog" : undefined}
           aria-modal={mobile || undefined}
           aria-label="Workspace navigation"
-          className={`sidebar sticky top-0 z-40 flex h-dvh flex-col overflow-hidden border-r border-border px-4 pt-[23px] pb-3.5 max-[1000px]:px-[9px] max-[760px]:fixed max-[760px]:invisible max-[760px]:left-0 max-[760px]:w-[260px] max-[760px]:translate-x-[-100%] max-[760px]:px-4 max-[760px]:pt-[23px] max-[760px]:pb-3.5 ${platform ? "border-t-[3px] border-t-teal-dark bg-background" : "bg-white"} ${mobile ? "sidebar-open max-[760px]:visible max-[760px]:translate-x-0" : ""}`}
+          className={`sidebar sticky top-0 z-40 flex h-dvh flex-col overflow-hidden border-r border-border px-4 pt-[23px] pb-3.5 max-[1000px]:px-[9px] max-[760px]:fixed max-[760px]:invisible max-[760px]:left-0 max-[760px]:w-[260px] max-[760px]:translate-x-[-100%] max-[760px]:px-4 max-[760px]:pt-[23px] max-[760px]:pb-3.5 teal-sidebar ${mobile ? "sidebar-open max-[760px]:visible max-[760px]:translate-x-0" : ""}`}
         >
+          <svg
+            className="platform-logo-curve"
+            viewBox="0 0 320 132"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path d="M0 0H320V128H302L274 110H46L18 128H0Z" fill="white" />
+          </svg>
           <Link
             href="/dashboard"
-            aria-label="CCU360 unit overview"
+            aria-label="CCU360 overview"
             className="sidebar-brand block pl-[21px] max-[1250px]:pl-3"
           >
             <Brand />
-            <span className="collapsed-brand hidden">360</span>
           </Link>
           <div
-            className={`institution mx-0.5 mt-[22px] mb-[18px] flex items-center gap-2.5 border border-border px-2.5 py-[13px] ${platform ? "rounded-[4px] bg-surface" : "rounded-lg bg-[#f8fbfc]"}`}
+            className="institution mx-0.5 mt-[22px] mb-[18px] flex items-center gap-2.5 border border-border px-2.5 py-[13px] rounded-[4px] bg-surface"
           >
             <span className="institution-mark grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#eaf6f3] text-teal-dark">
-              <Icon name={platform ? "facilities" : "bed"} size={22} />
+              <Icon name={platform ? "facilities" : "bed"} size={22} outline={platform} />
             </span>
             <span className="nav-label min-w-0">
               <strong className="block text-xs leading-[1.4] font-semibold max-[1250px]:text-[11px]">
@@ -152,36 +159,39 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
             </span>
           </div>
           <nav aria-label="Main navigation" tabIndex={0}>
-            {links.map((link) => (
-              <div key={link.href}>
-                {link.group && (
-                  <p className="nav-group nav-label mx-3.5 mt-[26px] mb-2.5 text-[10px] font-semibold tracking-[1.5px] text-[#7b8e9c] [@media(max-height:850px)]:mt-[18px]">
-                    {link.group}
-                  </p>
-                )}
-                <Link
-                  aria-label={link.title}
-                  title={collapsed ? link.title : undefined}
-                  href={link.href}
-                  onClick={() => setMobile(false)}
-                  className={`nav-link my-[3px] flex min-h-12 items-center gap-3 px-3.5 py-[13px] text-sm font-medium text-[#5d7384] focus-visible:outline-2 focus-visible:outline-teal-dark max-[1000px]:gap-2 max-[1000px]:px-2.5 max-[760px]:min-h-11 ${platform ? "rounded-[4px]" : "rounded-lg"} ${(link.href === "/dashboard" ? pathname === link.href : pathname.startsWith(link.href)) ? "active bg-mint font-semibold text-teal-dark shadow-[inset_3px_0_#008f87]" : "hover:bg-[#f3f7f9] hover:text-teal-dark"}`}
-                  aria-current={
-                    (
-                      link.href === "/dashboard"
-                        ? pathname === link.href
-                        : pathname.startsWith(link.href)
-                    )
-                      ? "page"
-                      : undefined
-                  }
-                >
-                  <span className="nav-icon-tile">
-                    <Icon name={link.icon} size={23} />
-                  </span>
-                  <span className="nav-label">{link.title}</span>
-                </Link>
-              </div>
-            ))}
+            {links.map((link) => {
+              const active =
+                link.href === "/dashboard"
+                  ? pathname === link.href
+                  : pathname.startsWith(link.href);
+              return (
+                <div key={link.href}>
+                  {link.group && (
+                    <p className="nav-group nav-label mx-3.5 mt-[26px] mb-2.5 text-[10px] font-semibold tracking-[1.5px] text-[#7b8e9c] [@media(max-height:850px)]:mt-[18px]">
+                      {link.group}
+                    </p>
+                  )}
+                  <Link
+                    aria-label={link.title}
+                    title={collapsed ? link.title : undefined}
+                    href={link.href}
+                    onClick={() => setMobile(false)}
+                    className={`nav-link my-[3px] flex min-h-12 items-center gap-3 rounded-[4px] px-3.5 py-[13px] text-sm font-medium text-[#5d7384] focus-visible:outline-2 focus-visible:outline-teal-dark max-[1000px]:gap-2 max-[1000px]:px-2.5 max-[760px]:min-h-11 ${active ? "active bg-mint font-semibold text-teal-dark shadow-[inset_3px_0_#008f87]" : "hover:bg-[#f3f7f9] hover:text-teal-dark"}`}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <span className="nav-icon-tile">
+                      <span className="platform-nav-outline">
+                        <Icon name={link.icon} size={23} outline />
+                      </span>
+                      <span className="platform-nav-artwork">
+                        <Icon name={link.icon} size={29} />
+                      </span>
+                    </span>
+                    <span className="nav-label">{link.title}</span>
+                  </Link>
+                </div>
+              );
+            })}
           </nav>
           <div className="sidebar-bottom mt-auto shrink-0 pt-[13px]">
             <button
@@ -189,7 +199,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               onClick={() => setCollapsed(!collapsed)}
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              <Icon name="collapse" />
+              <Icon name="collapse" outline />
               <span className="nav-label">Collapse sidebar</span>
             </button>
             {
@@ -200,7 +210,14 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                 onClick={signOut}
                 aria-label="Sign out"
               >
-                <Icon name="logout" />
+                <span className="platform-exit-icon">
+                  <span className="platform-exit-outline">
+                    <Icon name="logout" size={23} outline />
+                  </span>
+                  <span className="platform-exit-artwork">
+                    <Icon name="logout" size={23} />
+                  </span>
+                </span>
                 <span className="nav-label">
                   {leaving ? "Signing out…" : "Sign out"}
                 </span>

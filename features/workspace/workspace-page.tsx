@@ -44,7 +44,7 @@ export function DataBoundary({ children }: { children: React.ReactNode }) {
     return (
       <Empty title="Your clinical workspace is being prepared.">
         Institution authentication and the clinical API must be connected before
-        patient data is available. <Link href="/">Return to sign in</Link>
+        patient data is available. <Link href="/auth/signin">Return to sign in</Link>
       </Empty>
     );
   return children;

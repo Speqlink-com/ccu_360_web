@@ -307,7 +307,75 @@ textarea:focus {
   margin-top: 3px;
   color: #628984;
 }
-/* The index presentation keeps the legacy authentication controls and narrows their geometry. */
+/* Translucent teal waves overlap along the bottom of the authentication page. */
+.index-auth {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 450px 330px at 50% 49%, #b9e4e633, transparent 85%),
+    linear-gradient(180deg, #fbfdfd 0%, #f5faf9 62%, #eaf5f3 100%);
+}
+.index-auth::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: clamp(360px, 48dvh, 520px);
+  pointer-events: none;
+  background: url("/auth/bottom-wave.svg") no-repeat center bottom / 100% 100%;
+}
+.index-auth .auth-form {
+  isolation: isolate;
+  border-color: transparent;
+  background:
+    linear-gradient(145deg, #ffffffd9, #ffffff85 47%, #ffffffa8) padding-box,
+    linear-gradient(145deg, #ffffff, #ffffff80 36%, #6ebbb380 70%, #ffffffd9) border-box;
+  box-shadow:
+    0 30px 70px -34px #0b565a59,
+    0 10px 30px -15px #0b565a40,
+    inset 0 1px #ffffffeb,
+    inset 0 -1px #006d6929;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) brightness(1.04);
+  backdrop-filter: blur(16px) saturate(160%) brightness(1.04);
+}
+.index-auth .auth-form::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 90% 28% at 48% 0, #ffffffb3, transparent 78%),
+    linear-gradient(125deg, #ffffff75, transparent 32%, transparent 68%, #ffffff38);
+}
+.index-auth .auth-form::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 1px 1px #ffffffbf,
+    inset -1px -1px #005d542e;
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .index-auth .auth-form {
+    background: #f8fdfced;
+  }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .index-auth .auth-form {
+    background: #ffffff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+.index-auth .auth-footer {
+  text-shadow: 0 1px 3px #07526780;
+}
 .index-auth .auth-form input,
 .index-auth .auth-form .btn,
 .index-auth .demo-signin-info {
@@ -326,11 +394,21 @@ textarea:focus {
   outline: 2px solid var(--teal-dark);
   outline-offset: 2px;
 }
+.index-auth .auth-form .verification-digit {
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
 .index-auth .auth-form a.auth-submit {
   color: #fff;
 }
 @media (max-width: 760px) {
   .index-auth .auth-form h2 { font-size: 32px; }
+  .index-auth .brand-large { width: 151px; height: 71px; }
 }
 /* Base workspace primitives; full-width enterprise layout is defined below. */
 .shift-summary > div {

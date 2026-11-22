@@ -4,6 +4,7 @@ import "./globals.css";
 import "./collaboration.css";
 import "./workspace.css";
 import { AppProvider } from "@/providers/app-provider";
+import { RouteTransitionLoader } from "@/components/ui/route-transition-loader";
 export const metadata: Metadata = {
   title: {
     default: "CCU360 · Connected critical care",
@@ -19,7 +20,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AppProvider>{children}</AppProvider>
+        <AppProvider>
+          <RouteTransitionLoader />
+          {children}
+        </AppProvider>
       </body>
     </html>
   );

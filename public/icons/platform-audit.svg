@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="paper" x1="9" y1="5" x2="34" y2="38" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D8F4F0"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="9" y1="7" x2="37" y2="41" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6FE2D5"/>
+      <stop offset="1" stop-color="#087D78"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="25" y1="21" x2="40" y2="41" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C8FFF4"/>
+      <stop offset=".54" stop-color="#48D8C2"/>
+      <stop offset="1" stop-color="#079489"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="48" height="48" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="1.6"/>
+    </filter>
+  </defs>
+  <ellipse cx="24" cy="43" rx="15" ry="2.8" fill="#006D69" fill-opacity=".22" filter="url(#shadow)"/>
+  <path d="M12 7h20l6 6v25a4 4 0 0 1-4 4H12a4 4 0 0 1-4-4V11a4 4 0 0 1 4-4Z" fill="#08736F"/>
+  <path d="M10 5h20l6 6v25a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4Z" fill="url(#edge)"/>
+  <path d="M10 7h19l5 5v23a3 3 0 0 1-3 3H10a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" fill="url(#paper)"/>
+  <path d="M29 7v5h5" stroke="#80D7CE" stroke-width="1.5"/>
+  <path d="M13 16h13M13 20h9M13 24h8" stroke="#76BDB8" stroke-width="2" stroke-linecap="round"/>
+  <path d="M31 20c3.2 2.5 6.1 2.9 9 3v8.2c0 5.3-4.5 8.4-9 10.8-4.5-2.4-9-5.5-9-10.8V23c3-.1 5.8-.5 9-3Z" fill="#087E79"/>
+  <path d="M31 22c2.7 2 5.1 2.4 7.5 2.5v6.6c0 4.3-3.6 6.8-7.5 9-3.9-2.2-7.5-4.7-7.5-9v-6.6c2.4-.1 4.8-.5 7.5-2.5Z" fill="url(#shield)" stroke="#AEF8E9"/>
+  <path d="m27.5 31 2.5 2.5 5-5.5" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M26 25c1.6-.3 3.3-.8 5-1.8" stroke="#FFFFFF" stroke-opacity=".7" stroke-width="1.2" stroke-linecap="round"/>
+</svg>

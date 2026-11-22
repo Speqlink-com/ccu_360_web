@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 const icons = {
   overview: LayoutDashboard,
+  platformOverview: LayoutDashboard,
+  platformAudit: ShieldCheck,
   patients: Users,
   rounds: ClipboardList,
   actions: Check,
@@ -66,6 +68,8 @@ const icons = {
 export type IconName = keyof typeof icons;
 // Supplied PNG/WebP artwork retains its original colours and alpha transparency.
 const approvedAssets: Partial<Record<IconName, string>> = {
+  platformOverview: "/icons/platform-overview.svg",
+  platformAudit: "/icons/platform-audit.svg",
   profile: "/icons/profile-icon.webp",
   addUser: "/icons/add-user.png",
   shield: "/icons/shield-icon.webp",
@@ -92,13 +96,15 @@ export function Icon({
   name,
   size = 18,
   className = "",
+  outline = false,
 }: {
   name: IconName;
   size?: number;
   className?: string;
+  outline?: boolean;
 }) {
   const Component = icons[name];
-  if (approvedAssets[name])
+  if (!outline && approvedAssets[name])
     return (
       <span
         className={`asset-icon ${className}`}

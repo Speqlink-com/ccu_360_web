@@ -1,96 +1,66 @@
-import Image from "next/image";
 import { Brand } from "@/components/ui/brand";
 
-export const indexLayoutClasses =
-  "index-auth mx-auto grid min-h-dvh max-w-[1800px] grid-cols-1 bg-background lg:grid-cols-[minmax(0,1.06fr)_minmax(440px,.94fr)]";
+export const indexLayoutClasses = "index-auth min-h-dvh bg-background";
 
 export const indexFormSideClasses =
-  "auth-form-side order-1 grid min-h-dvh grid-rows-[auto_1fr_auto] bg-background px-6 py-7 text-ink sm:px-12 sm:py-10 lg:order-2 lg:px-12 xl:px-16";
+  "auth-form-side relative z-10 grid min-h-dvh grid-rows-[auto_1fr_auto] px-6 py-7 text-ink sm:px-12 sm:py-10 xl:px-16";
 
-export const indexFooterClasses =
-  "mx-auto mt-8 w-full max-w-[380px] border-t border-border pt-5 text-[11px] text-muted";
+export const indexCardClasses =
+  "auth-form relative z-10 mt-6 w-full max-w-[460px] self-center justify-self-center overflow-hidden rounded-[18px] border px-5 py-8 sm:mt-0 sm:px-10 sm:py-10";
+
+const indexFooterClasses =
+  "auth-footer relative z-10 mx-auto mt-8 w-full max-w-[380px] text-center text-[11px] text-white";
+
+export function IndexCopyright() {
+  return (
+    <p className={indexFooterClasses}>
+      © {new Date().getUTCFullYear()} Ayot Health Solutions. All rights reserved.
+    </p>
+  );
+}
 
 export const indexAuthSubmitClasses =
-  "auth-submit mt-6 inline-flex h-[49px] w-full items-center justify-center rounded-[3px] border border-navy bg-navy px-4 text-[14px] font-semibold text-white transition-colors hover:bg-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-dark disabled:cursor-not-allowed disabled:opacity-65";
+  "auth-submit mt-6 inline-flex h-[49px] w-full items-center justify-center rounded-[3px] border border-teal-dark bg-teal-dark px-4 text-[14px] font-semibold text-white transition-colors hover:bg-button-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-dark disabled:cursor-not-allowed disabled:opacity-65";
 
 export function IndexEntryHeader() {
   return (
-    <div className="mx-auto flex w-full max-w-[380px] items-center border-b border-border pb-4">
-      <div className="lg:hidden"><Brand /></div>
+    <div className="index-entry-header relative z-10 flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+      <Brand large />
+      <div className="index-intro max-w-[365px] sm:pt-2">
+        <p className="flex items-center gap-3 text-[11px] font-bold tracking-[0.16em] text-teal-dark uppercase">
+          <span className="h-px w-8 bg-teal" aria-hidden="true" />
+          About CCU360
+        </p>
+        <h1 className="mt-3 text-[25px] leading-tight font-semibold tracking-[-0.035em] text-navy">
+          Critical care, connected.
+        </h1>
+        <p className="mt-2 text-[13px] leading-[1.6] text-muted">
+          Patient context, clinical work and care teams in one secure workspace.
+        </p>
+      </div>
     </div>
   );
 }
 
-export function IndexEditorial() {
+export function IndexTechLines() {
   return (
-    <section className="relative isolate order-2 hidden flex-col overflow-hidden bg-teal-dark px-10 py-9 text-white lg:order-1 lg:flex lg:min-h-dvh lg:px-12 lg:py-10 xl:px-16">
-      <svg
-        className="pointer-events-none absolute inset-x-0 top-0 h-[150px] w-full text-white"
-        viewBox="0 0 760 150"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <path
-          d="M0 0H760V44C600 98 337 151 0 122Z"
-          fill="currentColor"
-        />
-      </svg>
-      <div className="relative z-10 w-fit"><Brand large /></div>
-      <div className="relative z-10 mx-auto flex w-full max-w-[710px] flex-1 flex-col justify-center py-10 lg:py-6">
-        <div className="max-w-[650px]">
-          <h1 className="text-[clamp(2.35rem,3.5vw,3.9rem)] leading-[1.08] font-semibold tracking-[-0.045em] text-white">
-            One patient story.
-            <br />
-            <span className="text-white/85">One connected team.</span>
-          </h1>
-          <p className="mt-5 max-w-[570px] text-[16px] leading-[1.7] text-white/85">
-            Bring patient context, clinical work, and care teams into one
-            coordinated view.
-          </p>
-        </div>
-        <div className="mt-9 grid h-[300px] grid-cols-[1.22fr_.78fr] grid-rows-2 gap-3 xl:h-[340px]">
-          <div className="relative row-span-2 overflow-hidden border border-border bg-border">
-            <Image
-              src="/auth/kenyan-clinical-handover.webp"
-              alt="Two Kenyan critical-care clinicians reviewing a tablet at a hospital workstation"
-              fill
-              sizes="(min-width: 1280px) 410px, (min-width: 1024px) 34vw, 55vw"
-              className="object-cover object-[center_40%]"
-            />
-            <div className="absolute right-0 bottom-0 w-[58%] bg-navy p-4 text-white xl:p-5">
-              <span className="mb-3 block h-[3px] w-7 bg-teal" aria-hidden="true" />
-              <p className="text-[15px] leading-[1.3] font-medium tracking-[-0.02em]">
-                Care moves together.
-              </p>
-              <p className="mt-1 text-[10px] leading-[1.5] text-white/70">
-                Patient · team · facility
-              </p>
-            </div>
-          </div>
-          <div className="relative overflow-hidden border border-border bg-border">
-            <Image
-              src="/auth/care-handover.webp"
-              alt="A clinician preparing a care handover at a hospital workstation"
-              fill
-              sizes="(min-width: 1280px) 250px, (min-width: 1024px) 22vw, 35vw"
-              className="object-cover object-center"
-            />
-          </div>
-          <div className="relative overflow-hidden border border-border bg-border">
-            <Image
-              src="/auth/kenyan-patient-consultation.webp"
-              alt="A Kenyan doctor entering information on a laptop while a patient sits nearby"
-              fill
-              sizes="(min-width: 1280px) 250px, (min-width: 1024px) 22vw, 35vw"
-              className="object-cover object-center"
-            />
-          </div>
-        </div>
-      </div>
-      <div className="relative z-10 mx-auto flex w-full max-w-[710px] items-center justify-between gap-4 border-t border-white/25 pt-5 text-[11px] text-white/75">
-        <span>Developed by Ayot Health Solutions</span>
-        <span>CCU360™</span>
-      </div>
-    </section>
+    <svg
+      className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full sm:block"
+      viewBox="0 0 1440 900"
+      preserveAspectRatio="none"
+      fill="none"
+      aria-hidden="true"
+    >
+      <g stroke="#008f87" strokeOpacity=".26" strokeWidth="1.25">
+        <path d="M0 207h209l47 47h109M0 386h91l55-55h184M0 535h171l47 47h141" />
+        <path d="M1440 192h-201l-49 49h-111M1440 374h-119l-54 54h-167M1440 551h-194l-45-45h-115" />
+        <path d="M90 331v-79m121 330v65m110-393v-55M1322 374v-84m-124 216v72m-106-265v-62" />
+      </g>
+      <g fill="#008f87" fillOpacity=".46">
+        <circle cx="365" cy="254" r="3" /><circle cx="330" cy="331" r="3" />
+        <circle cx="359" cy="582" r="3" /><circle cx="1079" cy="241" r="3" />
+        <circle cx="1100" cy="428" r="3" /><circle cx="1086" cy="506" r="3" />
+      </g>
+    </svg>
   );
 }

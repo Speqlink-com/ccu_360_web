@@ -75,5 +75,5 @@ export async function finishSignOut(client: ReturnType<typeof useQueryClient>) {
   await client.cancelQueries();
   client.clear();
   notifyIdentityChange("logout");
-  replaceIdentityLocation("/");
+  replaceIdentityLocation("/auth/signin");
 }
