@@ -1,6 +1,6 @@
 "use client";
 import { buttonClasses } from "@/lib/presentation";
-import { Icon } from "@/components/ui/icon";
+import { Icon, type IconName } from "@/components/ui/icon";
 import {
   useId,
   useRef,
@@ -12,10 +12,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { apiRequest, ApiError } from "@/lib/api/client";
 import { RequestError } from "@/components/ui/request-error";
+import { ButtonHeartbeat, CCU360Loader } from "@/components/ui/ccu-loader";
 import { Badge } from "@/components/ui/primitives";
 import {
   FeedbackMessage,
-  LoadingState,
   useToast,
 } from "@/components/ui/feedback";
 
@@ -38,18 +38,19 @@ export function Heading({
             {eyebrow}
           </p>
         )}
-        <h1 className="mt-2 mb-3 text-[clamp(26px,2.3vw,36px)] leading-[1.15] tracking-[-.035em] text-navy">
-          {title}
-        </h1>
-        {detail && (
-          <details className="workspace-guide">
-            <summary>
-              <Icon name="help" size={15} />
-              Page guide
-            </summary>
-            <p>{detail}</p>
-          </details>
-        )}
+        <div className="workspace-title-row">
+          <h1 className="mt-2 mb-3 text-[clamp(26px,2.3vw,36px)] leading-[1.15] tracking-[-.035em] text-navy">
+            {title}
+          </h1>
+          {detail && (
+            <InfoTooltip
+              className="workspace-guide"
+              label="Page guide"
+              content={detail}
+              showLabel
+            />
+          )}
+        </div>
       </div>
       {actions && (
         <div className="flex flex-wrap items-center gap-[10px]">{actions}</div>
@@ -60,27 +61,31 @@ export function Heading({
 export function Panel({
   title,
   detail,
+  icon,
   children,
   scroll = false,
 }: {
   title: string;
   detail?: string;
+  icon?: IconName;
   children: ReactNode;
   scroll?: boolean;
 }) {
   return (
     <section className="live-panel mb-6 min-w-0 rounded-[14px] border border-border bg-surface [&_p]:wrap-anywhere">
       <header className="live-panel-header">
-        <h2 className="text-xl leading-[inherit] tracking-[-.02em] text-navy">
-          {title}
-        </h2>
+        <div className="live-panel-title">
+          {icon && <span className="live-panel-icon"><Icon name={icon} size={19} outline /></span>}
+          <h2 className="text-xl leading-[inherit] tracking-[-.02em] text-navy">
+            {title}
+          </h2>
+        </div>
         {detail && (
-          <details className="panel-context">
-            <summary aria-label={`About ${title}`} title={`About ${title}`}>
-              <Icon name="help" size={18} />
-            </summary>
-            <p>{detail}</p>
-          </details>
+          <InfoTooltip
+            className="panel-context"
+            label={`About ${title}`}
+            content={detail}
+          />
         )}
       </header>
       <div
@@ -92,6 +97,35 @@ export function Panel({
         {children}
       </div>
     </section>
+  );
+}
+function InfoTooltip({
+  className,
+  label,
+  content,
+  showLabel = false,
+}: {
+  className: string;
+  label: string;
+  content: string;
+  showLabel?: boolean;
+}) {
+  const id = useId();
+  return (
+    <span className={className}>
+      <button
+        type="button"
+        className="info-tooltip-trigger"
+        aria-label={label}
+        aria-describedby={id}
+      >
+        <Icon name="help" size={showLabel ? 15 : 18} />
+        {showLabel && label}
+      </button>
+      <span id={id} className="info-tooltip-content" role="tooltip">
+        {content}
+      </span>
+    </span>
   );
 }
 export function Notice({
@@ -113,7 +147,12 @@ export function QueryState({
     refetch: () => unknown;
   };
 }) {
-  if (query.isPending) return <LoadingState />;
+  if (query.isPending)
+    return (
+      <div className="live-query-loader">
+        <CCU360Loader variant="inline" label="Loading records" />
+      </div>
+    );
   if (query.isError)
     return (
       <div>
@@ -176,6 +215,9 @@ export function Field({
   max?: number;
   step?: string;
   pattern?: string;
+  placeholder?: string;
+  autoComplete?: string;
+  autoFocus?: boolean;
 }) {
   const id = useId();
   return (
@@ -226,6 +268,7 @@ export function ActionForm({
   body,
   children,
   label,
+  icon,
   onSuccess,
   successMessage = "Saved successfully.",
   reset = true,
@@ -237,6 +280,7 @@ export function ActionForm({
   body: (data: FormData) => unknown;
   children: ReactNode;
   label: string;
+  icon?: IconName;
   onSuccess?: (result: unknown) => void | Promise<void>;
   successMessage?: string;
   reset?: boolean;
@@ -275,8 +319,11 @@ export function ActionForm({
         {mutation.isSuccess && (
           <FeedbackMessage tone="success">{successMessage}</FeedbackMessage>
         )}
-        <button type="submit" className={buttonClasses.primary}>
-          {mutation.isPending ? "Saving…" : label}
+        <button type="submit" className={buttonClasses.primary} aria-busy={mutation.isPending}>
+          <ButtonHeartbeat loading={mutation.isPending}>
+            {icon && <Icon name={icon} size={16} outline />}
+            {label}
+          </ButtonHeartbeat>
         </button>
       </fieldset>
     </form>
@@ -319,13 +366,15 @@ export function ActionButton({
   return (
     <div className="live-action max-w-full self-start">
       <button
+        type="button"
         className={buttonClasses.secondary}
         disabled={mutation.isPending}
+        aria-busy={mutation.isPending}
         onClick={() => {
           if (!confirm || window.confirm(confirm)) mutation.mutate();
         }}
       >
-        {mutation.isPending ? "Please wait…" : children}
+        <ButtonHeartbeat loading={mutation.isPending}>{children}</ButtonHeartbeat>
       </button>
       <Notice error={mutation.error} />
     </div>
@@ -335,11 +384,13 @@ export function Pager({
   offset,
   count,
   size = 20,
+  hasMore,
   change,
 }: {
   offset: number;
   count: number;
   size?: number;
+  hasMore?: boolean;
   change: (offset: number) => void;
 }) {
   return (
@@ -358,7 +409,7 @@ export function Pager({
       </button>
       <button
         className={buttonClasses.secondary}
-        disabled={count < size}
+        disabled={hasMore === undefined ? count < size : !hasMore}
         onClick={() => change(offset + size)}
       >
         Next

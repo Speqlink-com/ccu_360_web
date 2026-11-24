@@ -2,7 +2,9 @@
 import { buttonClasses } from "@/lib/presentation";
 import { useState, type FormEvent } from "react";
 import { Dialog } from "@/components/ui/dialog";
+import { SideDrawer } from "@/components/ui/side-drawer";
 import { Icon } from "@/components/ui/icon";
+import { ButtonHeartbeat } from "@/components/ui/ccu-loader";
 import { useProvision } from "@/features/administration/queries";
 export function ProvisionDialog({
   kind,
@@ -14,13 +16,14 @@ export function ProvisionDialog({
   const mutation = useProvision(kind);
   const [copied, setCopied] = useState(false);
   const facility = kind === "facilities";
+  const Surface = facility ? SideDrawer : Dialog;
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const values = Object.fromEntries(new FormData(e.currentTarget));
     mutation.mutate(values);
   }
   return (
-    <Dialog
+    <Surface
       title={
         mutation.isSuccess
           ? "Workspace access is ready"
@@ -203,18 +206,16 @@ export function ProvisionDialog({
             >
               Cancel
             </button>
-            <button disabled={mutation.isPending} className={buttonClasses.primary}>
-              {mutation.isPending
-                ? "Creating workspace access…"
-                : facility
-                  ? "Create facility workspace"
-                  : "Create employee account"}
-              <Icon name={facility ? "arrow" : "addUser"} />
+            <button disabled={mutation.isPending} aria-busy={mutation.isPending} className={buttonClasses.primary}>
+              <ButtonHeartbeat loading={mutation.isPending}>
+                {facility ? "Create facility workspace" : "Create employee account"}
+                <Icon name={facility ? "arrow" : "addUser"} />
+              </ButtonHeartbeat>
             </button>
           </footer>
         </form>
       )}
-    </Dialog>
+    </Surface>
   );
 }
 function Field({

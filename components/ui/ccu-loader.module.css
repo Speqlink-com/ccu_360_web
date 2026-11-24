@@ -101,6 +101,57 @@
   font-size: 21px;
 }
 
+.buttonContent {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.buttonLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.buttonLabel[data-loading] {
+  visibility: hidden;
+}
+
+.buttonSignal {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: inherit;
+}
+
+.buttonSignal svg {
+  width: min(52px, 100%);
+  height: 24px;
+}
+
+.buttonTrack,
+.buttonBeat {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.buttonTrack {
+  stroke-width: 1.5;
+  opacity: 0.34;
+}
+
+.buttonBeat {
+  stroke-width: 2.5;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: heartbeat 1.8s ease-in-out infinite;
+}
+
 .overlay {
   position: fixed;
   z-index: 200;
@@ -142,11 +193,17 @@
 
 @media (prefers-reduced-motion: reduce) {
   .beat,
+  .buttonBeat,
   .signal::before {
     animation: none;
   }
 
   .beat {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+
+  .buttonBeat {
     stroke-dashoffset: 0;
     opacity: 1;
   }

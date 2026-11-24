@@ -30,6 +30,7 @@ export function MfaSettings() {
     return (
       <Panel
         title="Save your recovery codes"
+        icon="shield"
         detail="These replace any previous recovery codes. Each works once. Store them in your password manager before continuing."
       >
         <div className="recovery-codes grid grid-cols-1 gap-2 wrap-anywhere rounded-lg border border-border bg-[#f4f8f9] p-3.5 text-xs">
@@ -63,6 +64,7 @@ export function MfaSettings() {
   return (
     <Panel
       title="Two-step verification"
+      icon="shield"
       detail={
         privileged
           ? "Administrator accounts must retain MFA. Recovery codes let you sign in if your authenticator is unavailable."
@@ -74,6 +76,7 @@ export function MfaSettings() {
           scope={user.id}
           path="auth/mfa/totp/start"
           label="Prepare authenticator setup"
+          icon="shield"
           body={(form) => ({ password: form.get("password") })}
           onSuccess={async (result) => {
             const parsed = z
@@ -112,6 +115,7 @@ export function MfaSettings() {
             scope={user.id}
             path="auth/mfa/totp/confirm"
             label="Enable authenticator"
+            icon="check"
             body={(form) => ({ code: String(form.get("code")).trim() })}
             onSuccess={(result) => {
               const parsed = z
@@ -142,6 +146,7 @@ export function MfaSettings() {
               scope={user.id}
               path="auth/mfa/recovery-codes"
               label="Replace recovery codes"
+              icon="refresh"
               body={(form) => ({
                 password: form.get("password"),
                 code: String(form.get("code")).trim(),
@@ -175,6 +180,7 @@ export function MfaSettings() {
                 scope={user.id}
                 path="auth/mfa/disable"
                 label="Disable MFA & sign out"
+                icon="logout"
                 body={(form) => ({
                   password: form.get("password"),
                   code: String(form.get("code")).trim(),

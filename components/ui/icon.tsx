@@ -27,9 +27,12 @@ import {
   UserRoundPlus,
   TrendingUp,
   RefreshCw,
+  PauseCircle,
+  RotateCcw,
   CircleUserRound,
   Settings,
   MapPin,
+  Monitor,
 } from "lucide-react";
 const icons = {
   overview: LayoutDashboard,
@@ -38,6 +41,7 @@ const icons = {
   patients: Users,
   rounds: ClipboardList,
   actions: Check,
+  check: Check,
   connect: Network,
   handover: ArrowDownLeft,
   outputs: FileText,
@@ -61,11 +65,14 @@ const icons = {
   addUser: UserRoundPlus,
   growth: TrendingUp,
   refresh: RefreshCw,
+  suspend: PauseCircle,
+  reactivate: RotateCcw,
   profile: CircleUserRound,
   team: Users,
   form: FileText,
   location: MapPin,
   settings: Settings,
+  device: Monitor,
 };
 export type IconName = keyof typeof icons;
 // Supplied PNG/WebP artwork retains its original colours and alpha transparency.

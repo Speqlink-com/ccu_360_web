@@ -3,6 +3,10 @@ import { buttonClasses } from "@/lib/presentation";
 import { useState } from "react";
 import { z } from "zod";
 import Link from "next/link";
+import { Icon } from "@/components/ui/icon";
+import { SideDrawer } from "@/components/ui/side-drawer";
+import { ButtonHeartbeat } from "@/components/ui/ccu-loader";
+import { useToast } from "@/components/ui/feedback";
 import { useIdentity, useLiveQuery } from "@/features/identity/queries";
 import {
   provider,
@@ -25,25 +29,42 @@ import {
   value,
 } from "./shared";
 
+const facilityPageSize = 7;
+const administratorPageSize = 7;
+const auditPageSize = 7;
+
 export function FacilitiesPage() {
   const user = useIdentity().data!;
   const [offset, setOffset] = useState(0);
+  const [onboarding, setOnboarding] = useState(false);
+  const toast = useToast();
   const query = useLiveQuery(
     user.id,
-    `identity/providers?offset=${offset}&limit=20`,
+    `identity/providers?offset=${offset}&limit=${facilityPageSize + 1}`,
     pageOf(provider),
   );
   return (
     <>
-      <Heading
-        title="Facilities"
-        detail="Onboard independent providers and invite the people responsible for their administration."
-      />
-      <div className="live-grid live-grid-wide grid items-start gap-6 [grid-template-columns:minmax(0,1.8fr)_minmax(320px,1fr)] max-[1440px]:grid-cols-1 max-[760px]:gap-0">
+      <div className="workspace-directory-page">
+        <Heading
+          eyebrow=""
+          title="Facilities"
+          detail="Manage the provider network and the administrators responsible for each workspace."
+          actions={
+            <button
+              type="button"
+              className={`${buttonClasses.primary} facilities-onboard-trigger`}
+              onClick={() => setOnboarding(true)}
+            >
+              <Icon name="facilities" size={19} outline />
+              Onboard facility
+            </button>
+          }
+        />
         <Panel
-          title="Provider network"
+          title="Facility network"
           scroll
-          detail="Facility suspension immediately revokes selected sessions and clinical access."
+          detail="Suspending a facility revokes its active sessions and clinical access."
         >
           <QueryState query={query} />
           <div className="live-table-wrap w-full overflow-x-auto">
@@ -57,13 +78,15 @@ export function FacilitiesPage() {
                 </tr>
               </thead>
               <tbody>
-                {query.data?.items.map((item) => (
+                {query.data?.items.slice(0, facilityPageSize).map((item) => (
                   <tr key={item.id}>
                     <td>
                       <strong>{item.name}</strong>
                       <small>Added {stamp(item.created_at)}</small>
                     </td>
-                    <td>{item.code}</td>
+                    <td>
+                      <span className="facility-code">{item.code}</span>
+                    </td>
                     <td>
                       <Status value={item.status} />
                     </td>
@@ -79,6 +102,11 @@ export function FacilitiesPage() {
                         confirm={`${item.status === "active" ? "Suspend" : "Reactivate"} ${item.name}?`}
                         successMessage={`${item.name} ${item.status === "active" ? "suspended" : "reactivated"}.`}
                       >
+                        <Icon
+                          name={item.status === "active" ? "suspend" : "reactivate"}
+                          size={17}
+                          outline
+                        />
                         {item.status === "active" ? "Suspend" : "Reactivate"}
                       </ActionButton>
                     </td>
@@ -95,19 +123,33 @@ export function FacilitiesPage() {
           )}
           <Pager
             offset={offset}
-            count={query.data?.items.length ?? 0}
+            count={Math.min(query.data?.items.length ?? 0, facilityPageSize)}
+            size={facilityPageSize}
+            hasMore={query.data ? query.data.items.length > facilityPageSize : undefined}
             change={setOffset}
           />
         </Panel>
-        <Panel
+      </div>
+      {onboarding && (
+        <SideDrawer
           title="Onboard a facility"
-          detail="A secure invitation is emailed to the first facility administrator. No shared passwords."
+          subtitle="Create a workspace and invite its first administrator."
+          onClose={() => setOnboarding(false)}
         >
+          <p className="facility-drawer-note">
+            Each facility gets its own workspace. An invitation is emailed to
+            its administrator.
+          </p>
           <ActionForm
             scope={user.id}
             path="identity/providers"
             label="Create facility & send invitation"
-            successMessage="Facility created. The administrator’s invitation is queued for delivery."
+            onSuccess={() => {
+              toast?.(
+                "Facility created. The administrator’s invitation is queued for delivery.",
+              );
+              setOnboarding(false);
+            }}
             body={(data) => ({
               name: value(data, "name"),
               code: value(data, "code").toUpperCase(),
@@ -115,46 +157,72 @@ export function FacilitiesPage() {
               admin_email: value(data, "admin_email"),
             })}
           >
-            <Field name="name" label="Facility name" minLength={2} />
+            <p className="facility-form-section">Facility details</p>
+            <Field
+              name="name"
+              label="Facility name"
+              minLength={2}
+              placeholder="e.g. Central Hospital"
+              autoFocus
+            />
             <Field
               name="code"
               label="Unique facility code"
               pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,39}"
               maxLength={40}
+              placeholder="e.g. CENTRAL"
             />
+            <p className="facility-form-section">First administrator</p>
             <Field
               name="admin_name"
-              label="Administrator’s full name"
+              label="Full name"
               minLength={2}
               maxLength={120}
+              placeholder="Administrator’s name"
+              autoComplete="name"
             />
             <Field
               name="admin_email"
-              label="Administrator’s email"
+              label="Work email"
               type="email"
               maxLength={320}
+              placeholder="admin@facility.org"
+              autoComplete="email"
             />
           </ActionForm>
-        </Panel>
-      </div>
+        </SideDrawer>
+      )}
     </>
   );
 }
 export function AdministratorsPage() {
   const user = useIdentity().data!;
   const [offset, setOffset] = useState(0);
+  const [inviting, setInviting] = useState(false);
+  const toast = useToast();
   const query = useLiveQuery(
     user.id,
-    `identity/users?offset=${offset}&limit=20`,
+    `identity/users?offset=${offset}&limit=${administratorPageSize + 1}`,
     pageOf(directoryUser),
   );
   return (
     <>
-      <Heading
-        title="AHS administrators & accounts"
-        detail="Platform administrators onboard providers and govern access. Facility employees remain separate identities."
-      />
-      <div className="live-grid live-grid-wide grid items-start gap-6 [grid-template-columns:minmax(0,1.8fr)_minmax(320px,1fr)] max-[1440px]:grid-cols-1 max-[760px]:gap-0">
+      <div className="workspace-directory-page">
+        <Heading
+          eyebrow=""
+          title="AHS administrators & accounts"
+          detail="Platform administrators onboard providers and govern access. Facility employees remain separate identities."
+          actions={
+            <button
+              type="button"
+              className={`${buttonClasses.primary} facilities-onboard-trigger`}
+              onClick={() => setInviting(true)}
+            >
+              <Icon name="addUser" size={19} outline />
+              Invite administrator
+            </button>
+          }
+        />
         <Panel
           title="Account directory"
           scroll
@@ -173,7 +241,7 @@ export function AdministratorsPage() {
                 </tr>
               </thead>
               <tbody>
-                {query.data?.items.map((item) => (
+                {query.data?.items.slice(0, administratorPageSize).map((item) => (
                   <tr key={item.id}>
                     <td>
                       <strong>{item.display_name}</strong>
@@ -198,6 +266,7 @@ export function AdministratorsPage() {
                               confirm="Revoke this pending invitation?"
                               successMessage="Administrator invitation revoked."
                             >
+                              <Icon name="close" size={17} outline />
                               Revoke invitation
                             </ActionButton>
                           )
@@ -215,6 +284,11 @@ export function AdministratorsPage() {
                               confirm="Change this person’s global account access?"
                               successMessage={`Account ${item.status === "active" ? "disabled" : "reactivated"}.`}
                             >
+                              <Icon
+                                name={item.status === "active" ? "suspend" : "reactivate"}
+                                size={17}
+                                outline
+                              />
                               {item.status === "active"
                                 ? "Disable"
                                 : "Reactivate"}
@@ -226,21 +300,40 @@ export function AdministratorsPage() {
               </tbody>
             </table>
           </div>
+          {query.data && !query.data.items.length && (
+            <p className="live-empty py-6 text-muted">
+              No accounts yet. Invite an administrator to get started.
+            </p>
+          )}
           <Pager
             offset={offset}
-            count={query.data?.items.length ?? 0}
+            count={Math.min(query.data?.items.length ?? 0, administratorPageSize)}
+            size={administratorPageSize}
+            hasMore={query.data ? query.data.items.length > administratorPageSize : undefined}
             change={setOffset}
           />
         </Panel>
-        <Panel
+      </div>
+      {inviting && (
+        <SideDrawer
           title="Invite an AHS administrator"
-          detail="Each administrator accepts an email invitation and enrolls their own authenticator."
+          subtitle="Send a secure invitation to a new platform administrator."
+          eyebrow="CCU360 / ACCOUNTS"
+          closeLabel="Close administrator invitation form"
+          onClose={() => setInviting(false)}
         >
+          <p className="facility-drawer-note">
+            Each administrator accepts an email invitation and enrolls their own authenticator.
+          </p>
           <ActionForm
             scope={user.id}
             path="identity/ahs/invitations"
             label="Send administrator invitation"
             successMessage="Administrator invitation queued."
+            onSuccess={() => {
+              toast?.("Administrator invitation queued.");
+              setInviting(false);
+            }}
             body={(data) => ({
               display_name: value(data, "name"),
               email: value(data, "email"),
@@ -251,11 +344,20 @@ export function AdministratorsPage() {
               label="Full name"
               minLength={2}
               maxLength={120}
+              placeholder="Administrator’s name"
+              autoComplete="name"
             />
-            <Field name="email" label="Email" type="email" maxLength={320} />
+            <Field
+              name="email"
+              label="Work email"
+              type="email"
+              maxLength={320}
+              placeholder="admin@ayothealth.org"
+              autoComplete="email"
+            />
           </ActionForm>
-        </Panel>
-      </div>
+        </SideDrawer>
+      )}
     </>
   );
 }
@@ -421,14 +523,15 @@ export function AuditPage() {
   const platform = user.platform_role === "ahs_admin";
   const scope = platform ? user.id : user.organization_id;
   const [offset, setOffset] = useState(0);
+  const [deliveryOffset, setDeliveryOffset] = useState(0);
   const query = useLiveQuery(
     scope,
-    `${platform ? "identity/audit" : "journey/access-audit"}?offset=${offset}&limit=20`,
+    `${platform ? "identity/audit" : "journey/access-audit"}?offset=${offset}&limit=${auditPageSize + 1}`,
     pageOf(auditRow),
   );
   const delivery = useLiveQuery(
     scope,
-    "identity/email-deliveries?offset=0&limit=20",
+    `identity/email-deliveries?offset=${deliveryOffset}&limit=${auditPageSize + 1}`,
     pageOf(
       z.object({
         id: z.string(),
@@ -440,13 +543,35 @@ export function AuditPage() {
     ),
     platform,
   );
+  const refreshing = query.isFetching || (platform && delivery.isFetching);
   return (
-    <>
+    <div className="workspace-directory-page audit-page">
       <Heading
+        eyebrow=""
         title="Audit & accountability"
         detail="Recorded account and access events. Times shown in East Africa Time."
+        actions={
+          <button
+            type="button"
+            className={`${buttonClasses.primary} facilities-onboard-trigger`}
+            disabled={refreshing}
+            aria-busy={refreshing}
+            onClick={() => {
+              void query.refetch();
+              if (platform) void delivery.refetch();
+            }}
+          >
+            <ButtonHeartbeat loading={refreshing}>
+              <Icon name="refresh" size={18} outline />
+              Refresh records
+            </ButtonHeartbeat>
+          </button>
+        }
       />
-      <Panel title="Access history">
+      <Panel
+        title="Access history"
+        detail="Each entry records an access event, its outcome and a request reference."
+      >
         <QueryState query={query} />
         <div className="live-table-wrap w-full overflow-x-auto">
           <table className="live-table">
@@ -459,24 +584,33 @@ export function AuditPage() {
               </tr>
             </thead>
             <tbody>
-              {query.data?.items.map((item) => (
+              {query.data?.items.slice(0, auditPageSize).map((item) => (
                 <tr key={item.id}>
                   <td>
-                    {item.action.replaceAll(".", " · ").replaceAll("_", " ")}
+                    <strong className="audit-event">
+                      {item.action.replaceAll(".", " · ").replaceAll("_", " ")}
+                    </strong>
                   </td>
                   <td>{stamp(item.created_at ?? item.recorded_at)}</td>
-                  <td>{item.outcome ?? "recorded"}</td>
+                  <td><Status value={item.outcome ?? "recorded"} /></td>
                   <td>
-                    <small>{item.request_id ?? item.id}</small>
+                    <small className="audit-reference" title={item.request_id ?? item.id}>
+                      {item.request_id ?? item.id}
+                    </small>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {query.data && !query.data.items.length && (
+          <p className="live-empty py-6 text-muted">No access events have been recorded yet.</p>
+        )}
         <Pager
           offset={offset}
-          count={query.data?.items.length ?? 0}
+          count={Math.min(query.data?.items.length ?? 0, auditPageSize)}
+          size={auditPageSize}
+          hasMore={query.data ? query.data.items.length > auditPageSize : undefined}
           change={setOffset}
         />
       </Panel>
@@ -486,22 +620,42 @@ export function AuditPage() {
           detail="Recent delivery status. Message bodies and credentials are never exposed here."
         >
           <QueryState query={delivery} />
-          {delivery.data?.items.map((item) => (
-            <div
-              className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4"
-              key={item.id}
-            >
-              <span>
-                {stamp(item.created_at)} · {item.attempts} attempts
-              </span>
-              <Status value={item.status} />
-            </div>
-          ))}
+          <div className="live-table-wrap w-full overflow-x-auto">
+            <table className="live-table">
+              <thead>
+                <tr>
+                  <th>Queued</th>
+                  <th>Status</th>
+                  <th>Attempts</th>
+                  <th>Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {delivery.data?.items.slice(0, auditPageSize).map((item) => (
+                  <tr key={item.id}>
+                    <td><strong>{stamp(item.created_at)}</strong></td>
+                    <td><Status value={item.status} /></td>
+                    <td>{item.attempts}</td>
+                    <td>
+                      <small className="audit-reference" title={item.id}>{item.id}</small>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {delivery.data && !delivery.data.items.length && (
-            <p>No emails have been queued yet.</p>
+            <p className="live-empty py-6 text-muted">No emails have been queued yet.</p>
           )}
+          <Pager
+            offset={deliveryOffset}
+            count={Math.min(delivery.data?.items.length ?? 0, auditPageSize)}
+            size={auditPageSize}
+            hasMore={delivery.data ? delivery.data.items.length > auditPageSize : undefined}
+            change={setDeliveryOffset}
+          />
         </Panel>
       )}
-    </>
+    </div>
   );
 }

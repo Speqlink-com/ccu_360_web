@@ -17,6 +17,7 @@ import { LoadingState } from "@/components/ui/feedback";
 import { ProvisionDialog } from "@/components/administration/provision-dialog";
 export type AdminSection =
   "overview" | "facilities" | "employees" | "team" | "units" | "access";
+const facilityPageSize = 7;
 export function AdministrationPage({ section }: { section: AdminSection }) {
   const session = useSession();
   const query = useDirectory();
@@ -25,6 +26,7 @@ export function AdministrationPage({ section }: { section: AdminSection }) {
   );
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
+  const [facilityOffset, setFacilityOffset] = useState(0);
   const [detail, setDetail] = useState<Facility | null>(null);
   if (!session)
     return (
@@ -56,6 +58,15 @@ export function AdministrationPage({ section }: { section: AdminSection }) {
         .toLowerCase()
         .includes(search.toLowerCase()) &&
       (filter === "All" || f.status === filter),
+  );
+  const visibleFacilityOffset = Math.min(
+    facilityOffset,
+    Math.max(0, Math.ceil(facilityList.length / facilityPageSize) - 1) *
+      facilityPageSize,
+  );
+  const visibleFacilities = facilityList.slice(
+    visibleFacilityOffset,
+    visibleFacilityOffset + facilityPageSize,
   );
   const employees = data.employees.filter(
     (u) =>
@@ -104,10 +115,10 @@ export function AdministrationPage({ section }: { section: AdminSection }) {
         </div>
         {platform && (section === "overview" || section === "facilities") ? (
           <button
-            className={buttonClasses.primary}
+            className={`${buttonClasses.primary} ${section === "facilities" ? "facilities-onboard-trigger" : ""}`}
             onClick={() => setProvision("facilities")}
           >
-            <Icon name="plus" />
+            <Icon name="facilities" size={19} outline />
             Onboard facility
           </button>
         ) : session.user.role === "facility_admin" &&
@@ -218,7 +229,7 @@ export function AdministrationPage({ section }: { section: AdminSection }) {
         </>
       )}
       {(section === "facilities" || (section === "overview" && platform)) && (
-        <section className="panel admin-table-panel">
+        <section className={`panel admin-table-panel ${section === "facilities" ? "demo-facilities-panel" : ""}`}>
           <div className="panel-heading">
             <div>
               <h2>
@@ -229,13 +240,19 @@ export function AdministrationPage({ section }: { section: AdminSection }) {
             </div>
             <Search
               value={search}
-              onChange={setSearch}
+              onChange={(next) => {
+                setSearch(next);
+                setFacilityOffset(0);
+              }}
               placeholder="Search facilities or city"
             />
           </div>
           <Filters
             value={filter}
-            onChange={setFilter}
+            onChange={(next) => {
+              setFilter(next);
+              setFacilityOffset(0);
+            }}
             values={["All", "Active", "Onboarding", "Suspended"]}
             label="Facility status"
           />
@@ -252,7 +269,7 @@ export function AdministrationPage({ section }: { section: AdminSection }) {
                 </tr>
               </thead>
               <tbody>
-                {facilityList.map((f) => (
+                {visibleFacilities.map((f) => (
                   <tr key={f.id}>
                     <td>
                       <button
@@ -304,10 +321,11 @@ export function AdministrationPage({ section }: { section: AdminSection }) {
                     <td>
                       <button
                         className="icon-button"
-                        aria-label={`Manage ${f.name}`}
+                        aria-label={`Manage access for ${f.name}`}
+                        title={`Manage access for ${f.name}`}
                         onClick={() => setDetail(f)}
                       >
-                        <Icon name="right" size={16} />
+                        <Icon name={f.status === "Active" ? "suspend" : "reactivate"} size={18} outline />
                       </button>
                     </td>
                   </tr>
@@ -317,6 +335,31 @@ export function AdministrationPage({ section }: { section: AdminSection }) {
             {!facilityList.length && (
               <Empty title="No facilities match this view." />
             )}
+          </div>
+          <div className="facility-pager">
+            <span>
+              {facilityList.length
+                ? `Showing ${visibleFacilityOffset + 1}–${visibleFacilityOffset + visibleFacilities.length} of ${facilityList.length}`
+                : "No facilities in this view"}
+            </span>
+            <div>
+              <button
+                type="button"
+                className={buttonClasses.secondary}
+                disabled={visibleFacilityOffset === 0}
+                onClick={() => setFacilityOffset(Math.max(0, visibleFacilityOffset - facilityPageSize))}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                className={buttonClasses.secondary}
+                disabled={visibleFacilityOffset + facilityPageSize >= facilityList.length}
+                onClick={() => setFacilityOffset(visibleFacilityOffset + facilityPageSize)}
+              >
+                Next
+              </button>
+            </div>
           </div>
         </section>
       )}
