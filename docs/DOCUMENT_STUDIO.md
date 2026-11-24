@@ -1,6 +1,6 @@
 # Provider documents and shared work queues
 
-Provider administrators: open **Form Studio & branding**. Create facility branding, then create a form from the reception starter or a blank canvas. Existing versions can be cloned in the version library.
+Provider administrators: open **Form Studio**. Create facility branding, then create a form from the reception starter or a blank canvas. Existing versions can be cloned in the version library.
 
 ## Administrator workflow
 

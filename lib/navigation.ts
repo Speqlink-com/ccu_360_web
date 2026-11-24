@@ -120,7 +120,7 @@ export function productionNavigationFor(role?: Role): NavigationItem[] {
       },
       {
         href: "/dashboard/templates",
-        title: "Form Studio & branding",
+        title: "Form Studio",
         icon: "form",
       },
       { href: "/dashboard/audit", title: "Access audit", icon: "shield" },

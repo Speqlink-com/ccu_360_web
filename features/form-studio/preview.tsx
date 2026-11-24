@@ -82,6 +82,10 @@ export function FormPreview({
             setMessage("Sample form checked. Nothing was saved or submitted.");
           }}
         >
+          <div className="studio-preview-paper-meta">
+            <span>CCU360 / DIGITAL CLINICAL FORM</span>
+            <span>SAMPLE DOCUMENT · NO PATIENT DATA</span>
+          </div>
           <header>
             <p className="studio-kicker">FORM PREVIEW · SAMPLE DATA ONLY</p>
             <h2>{branding?.title ?? title}</h2>
@@ -145,6 +149,7 @@ export function FormPreview({
             Check sample answers
           </button>
           {message && <p role="status">{message}</p>}
+          <footer className="studio-preview-paper-footer">CCU360 · Sample entries stay in this browser and are never saved</footer>
         </form>
       )}
     </section>

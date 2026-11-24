@@ -10,7 +10,7 @@ export function FieldPreview({
 }) {
   if (!interactive)
     return (
-      <div className="studio-field-ghost" aria-hidden="true">
+      <div className="studio-field-ghost" data-field-type={field.type} aria-hidden="true">
         {field.type === "table" ? (
           <>
             <div className="studio-table-head">
