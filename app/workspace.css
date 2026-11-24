@@ -483,18 +483,211 @@
   color: #28665f;
 }
 .topbar-action {
-  display: grid;
-  place-items: center;
-  width: 41px;
-  height: 41px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 41px;
+  padding: 7px 11px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 6px;
   background: #f0f8f6;
+  color: #006d69;
   box-shadow: 0 3px 8px -5px #006d6950;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
 }
 .topbar-action:hover {
   background: #e4f5f1;
   box-shadow: 0 4px 10px -5px #006d6970;
+}
+@media (max-width: 760px) {
+  .topbar-connect-label {
+    display: none;
+  }
+}
+.workspace .facility-picker {
+  display: grid;
+  gap: 17px;
+  width: min(100%, 540px);
+  margin: 14px auto;
+  padding: 20px 21px;
+  border: 1px solid #c9e0da;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 0 19px #0b4c4a15, 0 14px 30px -22px #0b4c4a5c;
+}
+.facility-picker-heading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.facility-picker-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 37px;
+  height: 37px;
+  border: 1px solid #c5e5dc;
+  border-radius: 6px;
+  background: #eaf7f2;
+  color: #007b74;
+}
+.workspace .facility-picker h1 {
+  margin: 0;
+  color: #184640;
+  font-size: 19px;
+  font-weight: 680;
+  letter-spacing: -.025em;
+  line-height: 1.25;
+}
+.facility-picker-heading p {
+  margin: 3px 0 0;
+  color: #69817e;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.facility-picker-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.facility-picker-field {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+.facility-picker-field label {
+  color: #315d57;
+  font-size: 11px;
+  font-weight: 650;
+}
+.facility-picker-search {
+  position: relative;
+  min-width: 0;
+}
+.facility-picker-search svg {
+  position: absolute;
+  top: 50%;
+  left: 11px;
+  transform: translateY(-50%);
+  color: #5b8d85;
+  pointer-events: none;
+}
+.facility-picker-suggestions {
+  position: absolute;
+  z-index: 25;
+  top: calc(100% + 5px);
+  right: 0;
+  left: 0;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid #bad9d1;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 12px 27px #064f4b2b;
+  list-style: none;
+}
+.facility-picker-suggestions button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #224d48;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+.facility-picker-suggestions button:is(:hover, :focus-visible) {
+  background: #eaf6f2;
+}
+.facility-picker-suggestions button span {
+  overflow: hidden;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.facility-picker-suggestions button small,
+.facility-picker-more,
+.facility-picker-no-match {
+  color: #65817b;
+  font-size: 10px;
+}
+.facility-picker-more,
+.facility-picker-no-match {
+  padding: 8px 10px;
+}
+.facility-picker-more {
+  border-top: 1px solid #e0ece8;
+}
+.workspace .facility-picker :is(input[type=search], select) {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #c5dcd6;
+  border-radius: 5px;
+  background-color: #fbfdfc;
+  color: #214a47;
+  font-size: 12px;
+}
+.workspace .facility-picker input[type=search] {
+  padding: 9px 10px 9px 36px;
+}
+.workspace .facility-picker select {
+  padding: 9px 28px 9px 11px;
+}
+.workspace .facility-picker :is(input[type=search], select):focus {
+  border-color: #008f87;
+  outline: 2px solid #008f8730;
+  outline-offset: 1px;
+}
+.facility-picker-status,
+.facility-picker-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.facility-picker-status {
+  color: #637d78;
+}
+.facility-picker-error {
+  color: #a43f46;
+}
+.facility-picker-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 2px;
+}
+.workspace .facility-picker-actions button {
+  min-height: 40px;
+  border-radius: 5px;
+  box-shadow: none;
+  font-size: 12px;
+}
+.facility-picker-actions a {
+  color: #00766f;
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+}
+.facility-picker-actions a:hover {
+  text-decoration: underline;
+}
+@media (max-width: 600px) {
+  .workspace .facility-picker {
+    padding: 17px;
+  }
+  .facility-picker-fields {
+    grid-template-columns: 1fr;
+  }
 }
 .workspace .workspace-main {
   padding-top: 28px;
@@ -2295,6 +2488,7 @@
 .dashboard-facility-switch {
   padding: 22px;
   margin-top: 23px;
+  overflow: visible;
 }
 .dashboard-facility-switch > h2 {
   font-size: 18px;

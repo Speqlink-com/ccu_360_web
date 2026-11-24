@@ -34,6 +34,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     session?.user.role !== "ahs_admin" &&
     session?.user.role !== "facility_admin";
   const platform = session?.user.role === "ahs_admin";
+  const facilityAdmin = session?.user.role === "facility_admin";
   const [leaving, setLeaving] = useState(false);
   async function signOut() {
     setLeaving(true);
@@ -149,7 +150,11 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
             className="institution mx-0.5 mt-[22px] mb-[18px] flex items-center gap-2.5 border border-border px-2.5 py-[13px] rounded-[4px] bg-surface"
           >
             <span className="institution-mark grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#eaf6f3] text-teal-dark">
-              <Icon name={platform ? "facilities" : "bed"} size={22} outline={platform} />
+              <Icon
+                name={platform || facilityAdmin ? "facilities" : "bed"}
+                size={22}
+                outline={platform || facilityAdmin}
+              />
             </span>
             <span className="nav-label min-w-0">
               <strong className="block text-xs leading-[1.4] font-semibold max-[1250px]:text-[11px]">
@@ -186,12 +191,18 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                     aria-current={active ? "page" : undefined}
                   >
                     <span className="nav-icon-tile">
-                      <span className="platform-nav-outline">
-                        <Icon name={link.icon} size={23} outline />
-                      </span>
-                      <span className="platform-nav-artwork">
-                        <Icon name={link.icon} size={29} />
-                      </span>
+                      {link.href === "/dashboard" ? (
+                        <Icon name="platformOverview" size={29} />
+                      ) : (
+                        <>
+                          <span className="platform-nav-outline">
+                            <Icon name={link.icon} size={23} outline />
+                          </span>
+                          <span className="platform-nav-artwork">
+                            <Icon name={link.icon} size={29} />
+                          </span>
+                        </>
+                      )}
                     </span>
                     <span className="nav-label">{link.title}</span>
                   </Link>
@@ -277,11 +288,12 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               {!platform && (
                 <Link
                   href="/dashboard/connect"
-                  className="topbar-action"
-                  aria-label="Open team messages"
-                  title="Team messages"
+                  className="topbar-action topbar-connect"
+                  aria-label="Open Connect 360 chat"
+                  title="Connect 360"
                 >
                   <Icon name="connect" size={25} />
+                  <span className="topbar-connect-label">Connect 360</span>
                 </Link>
               )}
               <Link

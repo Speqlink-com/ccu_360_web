@@ -32,11 +32,17 @@ export function navigationFor(role?: Role): NavigationItem[] {
       {
         href: "/dashboard",
         title: "Facility overview",
-        icon: "overview",
+        icon: "platformOverview",
         group: "YOUR FACILITY",
       },
       { href: "/dashboard/employees", title: "Employees", icon: "addUser" },
       { href: "/dashboard/units", title: "Units & beds", icon: "bed" },
+      {
+        href: "/dashboard/connect",
+        title: "Connect 360",
+        icon: "connect",
+        group: "COMMUNICATION",
+      },
       {
         href: "/dashboard/access",
         title: "Roles & access",
@@ -75,7 +81,10 @@ export function productionNavigationFor(role?: Role): NavigationItem[] {
   const overview: NavigationItem = {
     href: "/dashboard",
     title: "Overview",
-    icon: role === "ahs_admin" ? "platformOverview" : "overview",
+    icon:
+      role === "ahs_admin" || role === "facility_admin"
+        ? "platformOverview"
+        : "overview",
     group: role === "ahs_admin" ? "AHS PLATFORM" : "YOUR FACILITY",
   };
   const security: NavigationItem = {
