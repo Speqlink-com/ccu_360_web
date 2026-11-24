@@ -5,6 +5,7 @@ import { fieldTypes, newField, uid } from "./model";
 import type { Section, teamRole } from "@/features/live/journey-contract";
 import type { z } from "zod";
 import { TableColumns } from "@/features/document-studio/table-columns";
+import { WebSelect } from "@/components/ui/web-select";
 export type TeamRole = z.infer<typeof teamRole>;
 export function canWrite(role: TeamRole, section: Section) {
   return (
@@ -89,12 +90,11 @@ export function Inspector({
               onChange={(e) => patchField({ label: e.target.value })}
             />
           </label>
-          <label className="live-field">
-            Field type
-            <select
+          <WebSelect
+              label="Field type"
               value={field.type}
-              onChange={(e) => {
-                const fresh = newField(e.target.value as typeof field.type);
+              onChange={(value) => {
+                const fresh = newField(value as typeof field.type);
                 patchField({
                   ...fresh,
                   key: field.key,
@@ -102,14 +102,8 @@ export function Inspector({
                   required: field.required,
                 });
               }}
-            >
-              {fieldTypes.map(([type, label]) => (
-                <option key={type} value={type}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={fieldTypes.map(([type, label]) => ({ value: type, label }))}
+            />
           <label className="studio-check">
             <input
               type="checkbox"
@@ -150,12 +144,10 @@ export function Inspector({
               and are never fetched by the form designer.
             </p>
           )}
-          <label className="live-field">
-            Move field to section
-            <select
+          <WebSelect
+              label="Move field to section"
               value={section!.key}
-              onChange={(e) => {
-                const targetKey = e.target.value;
+              onChange={(targetKey) => {
                 edit((d) => {
                   const st = d.definition.stages.find(
                     (s) => s.key === stage.key,
@@ -178,21 +170,9 @@ export function Inspector({
                     field: field.key,
                   });
               }}
-            >
-              {stage.sections.map((s) => (
-                <option
-                  key={s.key}
-                  value={s.key}
-                  disabled={
-                    s.key !== section!.key &&
-                    (section!.fields.length <= 1 || s.fields.length >= 30)
-                  }
-                >
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={stage.sections.filter((s) => s.key === section!.key || (section!.fields.length > 1 && s.fields.length < 30)).map((s) => ({ value: s.key, label: s.label }))}
+              searchable={stage.sections.length > 6}
+            />
           <div className="studio-binding">
             <small>Stable data binding</small>
             <code>
@@ -238,13 +218,12 @@ export function Inspector({
               }
             />
           </label>
-          <label className="live-field">
-            Section purpose
-            <select
+          <WebSelect
+              label="Section purpose"
               value={section.kind}
-              onChange={(e) =>
+              onChange={(value) =>
                 update((s) => {
-                  s.kind = e.target.value as Section["kind"];
+                  s.kind = value as Section["kind"];
                   s.identity_roles =
                     s.kind === "administrative"
                       ? ["receptionist", "doctor", "nurse", "allied"]
@@ -253,11 +232,8 @@ export function Inspector({
                     s.attestation_required = false;
                 })
               }
-            >
-              <option value="administrative">Reception / administration</option>
-              <option value="clinical">Clinical documentation</option>
-            </select>
-          </label>
+              options={[{ value: "administrative", label: "Reception / administration" }, { value: "clinical", label: "Clinical documentation" }]}
+            />
           <label className="studio-check">
             <input
               type="checkbox"
@@ -356,12 +332,10 @@ export function Inspector({
                 </label>
               ))}
           </fieldset>
-          <label className="live-field">
-            Move section to stage
-            <select
+          <WebSelect
+              label="Move section to stage"
               value={stage.key}
-              onChange={(e) => {
-                const target = e.target.value;
+              onChange={(target) => {
                 edit((d) => {
                   const source = d.definition.stages.find(
                     (s) => s.key === stage.key,
@@ -379,18 +353,9 @@ export function Inspector({
                 });
                 select({ stage: target, section: section.key });
               }}
-            >
-              {draft.definition.stages.map((s) => (
-                <option
-                  key={s.key}
-                  value={s.key}
-                  disabled={s.sections.length >= 32 && s.key !== stage.key}
-                >
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={draft.definition.stages.filter((s) => s.key === stage.key || s.sections.length < 32).map((s) => ({ value: s.key, label: s.label }))}
+              searchable
+            />
           <div className="studio-inspector-actions">
             <button
               type="button"

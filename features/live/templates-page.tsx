@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { useIdentity, useLiveQuery } from "@/features/identity/queries";
 import { pageOf } from "@/lib/api/identity-contract";
@@ -19,6 +19,9 @@ import {
 import { useChoices, ChoiceLoader } from "./choices";
 import { TemplateEditor } from "./template-editor";
 import dynamic from "next/dynamic";
+import { Icon } from "@/components/ui/icon";
+import { SideDrawer } from "@/components/ui/side-drawer";
+import { WebSelect } from "@/components/ui/web-select";
 import "@/features/form-studio/studio.css";
 const FormPreview = dynamic(
   () => import("@/features/form-studio/preview").then((m) => m.FormPreview),
@@ -27,7 +30,7 @@ const FormPreview = dynamic(
 
 type Brand = z.infer<typeof brand>;
 type Template = z.infer<typeof formTemplate>;
-function BrandForm({ org, existing }: { org: string; existing?: Brand }) {
+function BrandForm({ org, existing, onSaved }: { org: string; existing?: Brand; onSaved?: () => void }) {
   const [logo, setLogo] = useState(existing?.logo_id ?? "");
   const [uploadError, setUploadError] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -44,6 +47,7 @@ function BrandForm({ org, existing }: { org: string; existing?: Brand }) {
         existing ? "Save new branding version" : "Create facility branding"
       }
       reset={false}
+      onSuccess={onSaved}
       body={(data) => ({
         title: value(data, "title"),
         primary_color: value(data, "primary_color"),
@@ -69,13 +73,13 @@ function BrandForm({ org, existing }: { org: string; existing?: Brand }) {
           name="primary_color"
           label="Primary colour"
           type="color"
-          defaultValue={existing?.primary_color ?? "#092744"}
+          defaultValue={existing?.primary_color ?? "#006d69"}
         />
         <Field
           name="accent_color"
           label="Accent colour"
           type="color"
-          defaultValue={existing?.accent_color ?? "#008f89"}
+          defaultValue={existing?.accent_color ?? "#008f87"}
         />
       </div>
       <label className="live-field">
@@ -157,23 +161,28 @@ export function TemplatesPage() {
   const [brandOffset, setBrandOffset] = useState(0);
   const [editing, setEditing] = useState<Template | null>(null);
   const [preview, setPreview] = useState<Template | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [addingBrand, setAddingBrand] = useState(false);
+  const [brandManage, setBrandManage] = useState<Brand | null>(null);
+  const [manage, setManage] = useState<Template | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const previewTarget = useRef<HTMLDivElement>(null);
   const base = useLiveQuery(org, "journey/config/baseline", definition);
-  const templates = useLiveQuery(
-    org,
-    `journey/config/templates?offset=${offset}&limit=20`,
-    pageOf(formTemplate),
-  );
-  const brandsPage = useLiveQuery(
-    org,
-    `journey/config/brands?offset=${brandOffset}&limit=20`,
-    pageOf(brand),
-  );
+  const templates = useLiveQuery(org, `journey/config/templates?offset=${offset}&limit=8`, pageOf(formTemplate));
+  const brandsPage = useLiveQuery(org, `journey/config/brands?offset=${brandOffset}&limit=5`, pageOf(brand));
   const brands = useChoices(org, "journey/config/brands", brand);
   const roles = useChoices(org, "workforce/roles", teamRole);
   const allBrands = brands.data?.pages.flatMap((page) => page.items) ?? [];
+  const activeBrands = allBrands.filter((item) => item.active);
   const allRoles = roles.data?.pages.flatMap((page) => page.items) ?? [];
+  const shown = templates.data?.items.slice(0, 7).filter((item) =>
+    item.name.toLowerCase().includes(search.trim().toLowerCase()) &&
+    (statusFilter === "all" || item.status === statusFilter),
+  );
+  useEffect(() => {
+    if (preview) requestAnimationFrame(() => previewTarget.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [preview]);
   if (editing && base.data)
     return (
       <TemplateEditor
@@ -188,376 +197,103 @@ export function TemplatesPage() {
         onClose={() => setEditing(null)}
       />
     );
-  const shown = templates.data?.items.filter(
-    (item) =>
-      item.name.toLowerCase().includes(search.toLowerCase()) &&
-      (statusFilter === "all" || item.status === statusFilter),
-  );
   return (
-    <>
-      <Heading
-        title="Form Studio & branding"
-        detail="Create digital patient-journey forms with a visual builder and a connected PDF designer. Customize the document, define team responsibilities, test the experience and publish an approved version."
-      />
-      <div className="mb-7 flex flex-wrap items-center justify-between gap-6 rounded-2xl border border-[#cadfd2] bg-[#f1f7f3] p-7">
+    <div className="form-studio-home">
+      <Heading title="Form Studio" detail="Create digital patient-journey forms, assign care-team responsibilities, design their PDF pages, test, and publish approved versions." />
+      <section className="studio-home-intro" aria-label="Form Studio workflow">
         <div>
-          <p className="text-[11px] font-bold tracking-widest text-teal-dark">
-            YOUR FACILITY. YOUR DOCUMENTS.
-          </p>
-          <h2 className="my-3 text-2xl tracking-tight text-navy">
-            Design once. Collaborate throughout care.
-          </h2>
-          <p className="max-w-3xl text-sm text-muted">
-            A single shared record, from reception to handover. Add fields,
-            repeating tables, images and files; control who can write each
-            section; create the PDF your teams recognize.
-          </p>
+          <span className="studio-home-eyebrow">DIGITAL CARE DOCUMENTS</span>
+          <h2>Build a form your teams can use together.</h2>
+          <p>Structure the clinical journey, connect each section to a care team, then shape the final document in PDFme before publication.</p>
         </div>
-        <button
-          type="button"
-          className={buttonClasses.primary}
-          onClick={() => {
-            document
-              .getElementById("new-form")
-              ?.scrollIntoView({ behavior: "smooth", block: "start" });
-            document
-              .querySelector<HTMLInputElement>('#new-form input[name="name"]')
-              ?.focus({ preventScroll: true });
-          }}
-        >
-          + Create a digital form
-        </button>
+        <div className="studio-home-actions">
+          <button className={buttonClasses.primary} type="button" onClick={() => setCreating(true)}><Icon name="plus" size={17} outline /> Create digital form</button>
+          <button className={buttonClasses.secondary} type="button" onClick={() => setAddingBrand(true)}><Icon name="facilities" size={17} outline /> Facility branding</button>
+        </div>
+      </section>
+      <div className="studio-home-steps" aria-label="Form creation steps">
+        <span><b>01</b> Build fields</span><span><b>02</b> Design PDF pages</span><span><b>03</b> Assign teams</span><span><b>04</b> Preview & publish</span>
       </div>
-      {!editing && (
-        <div className="grid items-start gap-6 lg:grid-cols-2">
-          <Panel
-            title="Facility identity"
-            detail="Create reusable branding for the final journey ledger."
-          >
-            <details>
-              <summary className="mb-4 cursor-pointer font-semibold text-teal-dark">
-                Add facility branding
-              </summary>
-              <BrandForm org={org} />
-            </details>
-            <QueryState query={brandsPage} />
-            {brandsPage.data?.items.map((item) => (
-              <div key={item.id} className="border-t border-border py-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <strong>{item.title}</strong>
-                    <p className="text-sm text-muted">
-                      Brand v{item.version}
-                      {item.source_brand_id ? " · Revised identity" : ""}
-                    </p>
-                  </div>
-                  <div className="flex gap-2" aria-label="Brand colours">
-                    <span
-                      className="h-7 w-7 rounded-full border border-border"
-                      style={{ backgroundColor: item.primary_color }}
-                    />
-                    <span
-                      className="h-7 w-7 rounded-full border border-border"
-                      style={{ backgroundColor: item.accent_color }}
-                    />
-                  </div>
-                  <Status value={item.active ? "active" : "archived"} />
-                </div>
-                <details className="mt-3">
-                  <summary className="cursor-pointer text-sm font-semibold text-teal-dark">
-                    Revise branding
-                  </summary>
-                  <div className="mt-4">
-                    <BrandForm org={org} existing={item} />
-                  </div>
-                </details>
-                <details className="mt-3">
-                  <summary className="cursor-pointer text-sm text-muted">
-                    {item.active ? "Archive branding" : "Restore branding"}
-                  </summary>
-                  <ActionForm
-                    scope={org}
-                    path={`journey/config/brands/${item.id}`}
-                    method="PATCH"
-                    label={
-                      item.active
-                        ? "Archive branding version"
-                        : "Restore branding version"
-                    }
-                    body={(data) => ({
-                      active: !item.active,
-                      expected_version: item.revision,
-                      reason: value(data, "reason"),
-                    })}
-                  >
-                    <Field
-                      name="reason"
-                      label="Reason"
-                      minLength={3}
-                      maxLength={500}
-                    />
-                  </ActionForm>
-                </details>
-              </div>
-            ))}
-            <Pager
-              offset={brandOffset}
-              count={brandsPage.data?.items.length ?? 0}
-              change={setBrandOffset}
-            />
-          </Panel>
-          <div id="new-form">
-            <Panel
-              title="Start a journey form"
-              detail="Start with a small editable intake form or an empty canvas. Every form keeps the shared journey stages; your facility defines its sections and fields."
-            >
-              <QueryState query={base} />
-              <ChoiceLoader query={brands} />
-              <ChoiceLoader query={roles} />
-              {base.data && (
-                <ActionForm
-                  disabled={!!editing}
-                  scope={org}
-                  path="journey/config/templates"
-                  label="Create & open draft"
-                  body={(data) => ({
-                    name: value(data, "name"),
-                    brand_id: value(data, "brand_id"),
-                    definition:
-                      value(data, "starting_point") === "blank"
-                        ? {
-                            ...base.data,
-                            design_version: 2,
-                            access_role_ids: [],
-                            intake_role_ids: [],
-                            document: null,
-                            stages: base.data!.stages.map((stage) => ({
-                              ...stage,
-                              sections: [],
-                            })),
-                          }
-                        : base.data,
-                  })}
-                  onSuccess={(result) => {
-                    setEditing(formTemplate.parse(result));
-                    setPreview(null);
-                  }}
-                >
-                  <Field
-                    name="name"
-                    label="Form name"
-                    minLength={2}
-                    maxLength={120}
-                  />
-                  <Field name="starting_point" label="Starting point">
-                    <option value="intake">Reception intake starter</option>
-                    <option value="blank">Blank form canvas</option>
-                  </Field>
-                  <Field name="brand_id" label="Facility branding">
-                    <option value="">Choose active branding</option>
-                    {allBrands
-                      .filter((item) => item.active)
-                      .map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.title} · v{item.version}
-                        </option>
-                      ))}
-                  </Field>
-                  {editing && (
-                    <p className="mb-4 text-sm text-muted">
-                      Close the open editor before starting another draft.
-                    </p>
-                  )}
-                </ActionForm>
-              )}
-              <p className="mt-4 text-sm text-muted">
-                Create departments and compatible care-team roles before
-                publishing. Link the participating teams, select an intake team,
-                then assign writers to each section. Attestation is optional for
-                clinical sections.
-              </p>
-            </Panel>
+      <div className="studio-home-grid">
+        <Panel title="Form version library" icon="form" detail="Published versions are immutable. Clone one to make changes. Existing patient journeys retain their original form version.">
+          <QueryState query={templates} />
+          <div className="studio-library-toolbar">
+            <label className="studio-library-search"><Icon name="search" size={16} outline /><input aria-label="Search forms on this page" placeholder="Search forms on this page" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
+            <WebSelect label="Status" className="studio-status-filter" value={statusFilter} onChange={setStatusFilter} options={[
+              { value: "all", label: "All statuses" }, { value: "draft", label: "Drafts" }, { value: "published", label: "Published" }, { value: "retired", label: "Retired" },
+            ]} />
+            <span className="studio-library-count">{shown?.length ?? 0} shown</span>
           </div>
-        </div>
-      )}
-      {preview && (
-        <Panel
-          title={`Document preview · ${preview.name}`}
-          detail={`Version ${preview.version} · ${preview.status} · Illustrative data only`}
-        >
-          <div className="mb-4 flex flex-wrap gap-3">
-            <button
-              type="button"
-              className={buttonClasses.secondary}
-              onClick={() => setPreview(null)}
-            >
-              Close preview
-            </button>
+          <div className="studio-version-list">
+            {shown?.map((item) => {
+              const sectionCount = item.definition.stages.reduce((count, stage) => count + stage.sections.filter((section) => section.enabled).length, 0);
+              return (
+                <article className="studio-version-row" key={item.id}>
+                  <span className="studio-version-icon"><Icon name="form" size={21} /></span>
+                  <div className="studio-version-copy">
+                    <div className="studio-version-name"><strong>{item.name}</strong><Status value={item.status} /></div>
+                    <small>Version {item.version} · {sectionCount} sections · {item.definition.document ? `${item.definition.document.schemas.length} PDF pages` : "Automatic PDF"}{item.source_template_id ? " · Cloned" : ""}</small>
+                  </div>
+                  <div className="studio-version-actions">
+                    <button type="button" onClick={() => setPreview(item)} aria-label={`Preview ${item.name}`}><Icon name="show" size={16} outline /><span>Preview</span></button>
+                    <button type="button" onClick={() => item.status === "draft" ? setEditing(item) : setManage(item)} aria-label={`${item.status === "draft" ? "Edit" : "Manage"} ${item.name}`}><Icon name={item.status === "draft" ? "form" : "settings"} size={16} outline /><span>{item.status === "draft" ? "Edit" : "Manage"}</span></button>
+                    {item.status === "draft" && <button type="button" onClick={() => setManage(item)} aria-label={`Manage ${item.name}`}><Icon name="settings" size={16} outline /></button>}
+                  </div>
+                </article>
+              );
+            })}
+            {templates.data && !templates.data.items.length && <p className="studio-empty-list">No form versions yet. Create your first digital form.</p>}
+            {templates.data && !!templates.data.items.length && !shown?.length && <p className="studio-empty-list">No forms on this page match the search or status.</p>}
           </div>
-          <FormPreview
-            title={preview.name}
-            definition={preview.definition}
-            branding={allBrands.find((item) => item.id === preview.brand_id)}
-          />
+          <Pager offset={offset} count={Math.min(templates.data?.items.length ?? 0, 7)} size={7} hasMore={(templates.data?.items.length ?? 0) > 7} change={setOffset} />
         </Panel>
-      )}
-      <Panel
-        title="Form version library"
-        scroll
-        detail="Published versions are immutable. Clone a version for changes; retiring a form prevents new admissions while existing patient journeys retain it."
-      >
-        <QueryState query={templates} />
-        <div className="studio-library-toolbar">
-          <input
-            aria-label="Search forms on this page"
-            placeholder="Search forms on this page…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select
-            aria-label="Filter form status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">All statuses</option>
-            <option value="draft">Drafts</option>
-            <option value="published">Published</option>
-            <option value="retired">Retired</option>
-          </select>
-          <span className="studio-library-count">
-            {shown?.length ?? 0} forms on this page
-          </span>
+        <Panel title="Facility identity" icon="facilities" detail="Branding versions apply the facility title, colours, and logo to the final journey ledger.">
+          <div className="studio-brand-intro"><p>Choose an identity when you create a form. Each saved branding version stays available to existing documents.</p><button type="button" onClick={() => setAddingBrand(true)}><Icon name="plus" size={15} outline /> Add branding</button></div>
+          <QueryState query={brandsPage} />
+          <div className="studio-brand-list">
+            {brandsPage.data?.items.slice(0, 4).map((item) => (
+              <article className="studio-brand-row" key={item.id}>
+                <span className="studio-brand-swatches" aria-label="Brand colours"><i style={{ backgroundColor: item.primary_color }} /><i style={{ backgroundColor: item.accent_color }} /></span>
+                <div><strong>{item.title}</strong><small>Brand v{item.version}{item.source_brand_id ? " · Revised" : ""}</small></div>
+                <Status value={item.active ? "active" : "archived"} />
+                <button type="button" onClick={() => setBrandManage(item)} aria-label={`Manage ${item.title}`}><Icon name="arrow" size={16} outline /></button>
+              </article>
+            ))}
+            {brandsPage.data && !brandsPage.data.items.length && <p className="studio-empty-list">Create branding to give your forms a facility identity.</p>}
+          </div>
+          <Pager offset={brandOffset} count={Math.min(brandsPage.data?.items.length ?? 0, 4)} size={4} hasMore={(brandsPage.data?.items.length ?? 0) > 4} change={setBrandOffset} />
+        </Panel>
+      </div>
+      {preview && <div ref={previewTarget} className="studio-home-preview"><Panel title={`Document preview · ${preview.name}`} icon="show" detail={`Version ${preview.version} · ${preview.status} · Illustrative data only`}><button type="button" className={buttonClasses.secondary} onClick={() => setPreview(null)}>Close preview</button><FormPreview title={preview.name} definition={preview.definition} branding={allBrands.find((item) => item.id === preview.brand_id)} /></Panel></div>}
+      {creating && <SideDrawer title="Create a digital form" subtitle="Start a private draft, then build its fields and PDF pages." eyebrow="FORM STUDIO / NEW" closeLabel="Close new form" className="studio-home-drawer" onClose={() => setCreating(false)}>
+        <QueryState query={base} /><ChoiceLoader query={brands} />
+        {!activeBrands.length && brands.data && <p className="studio-home-guidance">Create an active facility branding version before starting a form.</p>}
+        {base.data && !!activeBrands.length && <ActionForm scope={org} path="journey/config/templates" label="Create & open draft" icon="arrow" compactError body={(data) => ({
+          name: value(data, "name"), brand_id: value(data, "brand_id"), definition: value(data, "starting_point") === "blank" ? {
+            ...base.data, design_version: 2, access_role_ids: [], intake_role_ids: [], document: null,
+            stages: base.data!.stages.map((stage) => ({ ...stage, sections: [] })),
+          } : base.data,
+        })} onSuccess={(result) => { setCreating(false); setEditing(formTemplate.parse(result)); setPreview(null); }}>
+          <Field name="name" label="Form name" minLength={2} maxLength={120} />
+          <WebSelect name="starting_point" label="Starting point" defaultValue="intake" required options={[{ value: "intake", label: "Reception intake starter" }, { value: "blank", label: "Blank form canvas" }]} />
+          <WebSelect name="brand_id" label="Facility branding" defaultValue={activeBrands[0]?.id} required searchable={activeBrands.length > 5} options={activeBrands.map((item) => ({ value: item.id, label: `${item.title} · v${item.version}` }))} />
+          <p className="studio-home-guidance">The draft remains private until it passes validation and publication approval. Set up departments and care-team roles before assigning section writers.</p>
+        </ActionForm>}
+        {!activeBrands.length && <button type="button" className={buttonClasses.secondary} onClick={() => { setCreating(false); setAddingBrand(true); }}>Add facility branding</button>}
+      </SideDrawer>}
+      {addingBrand && <SideDrawer title="Facility branding" subtitle="Create a reusable title, colours, and logo for clinical documents." eyebrow="FORM STUDIO / IDENTITY" closeLabel="Close branding form" className="studio-home-drawer" onClose={() => setAddingBrand(false)}><BrandForm org={org} onSaved={() => setAddingBrand(false)} /></SideDrawer>}
+      {brandManage && <SideDrawer title="Manage branding" subtitle={`${brandManage.title} · version ${brandManage.version}`} eyebrow="FORM STUDIO / IDENTITY" closeLabel="Close branding details" className="studio-home-drawer" onClose={() => setBrandManage(null)}>
+        <BrandForm org={org} existing={brandManage} onSaved={() => setBrandManage(null)} />
+        <div className="studio-drawer-divider"><h3>{brandManage.active ? "Archive" : "Restore"} this version</h3><ActionForm scope={org} path={`journey/config/brands/${brandManage.id}`} method="PATCH" label={brandManage.active ? "Archive branding" : "Restore branding"} compactError body={(data) => ({ active: !brandManage.active, expected_version: brandManage.revision, reason: value(data, "reason") })} onSuccess={() => setBrandManage(null)}><Field name="reason" label="Reason" minLength={3} maxLength={500} /></ActionForm></div>
+      </SideDrawer>}
+      {manage && <SideDrawer title="Manage form version" subtitle={`${manage.name} · version ${manage.version}`} eyebrow="FORM STUDIO / CONTROL" closeLabel="Close form actions" className="studio-home-drawer" onClose={() => setManage(null)}>
+        <div className="studio-manage-summary"><Status value={manage.status} /><span>{manage.definition.stages.reduce((count, stage) => count + stage.sections.filter((section) => section.enabled).length, 0)} enabled sections</span><span>Revision {manage.revision}</span></div>
+        <div className="studio-manage-actions">
+          <ActionButton scope={org} path={`journey/config/templates/${manage.id}/clone`} body={{ expected_version: manage.revision, reason: "Create a new draft from this form version" }} onSuccess={(result) => { setManage(null); setEditing(formTemplate.parse(result)); setPreview(null); }}>Clone to new draft</ActionButton>
+          {manage.status === "draft" && <button type="button" className={buttonClasses.secondary} onClick={() => { setManage(null); setEditing(manage); }}>Open editor to review & publish</button>}
         </div>
-        {shown?.map((item) => (
-          <article key={item.id} className="border-b border-border py-5">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <strong className="text-lg text-navy">{item.name}</strong>
-                <p className="mt-1 text-sm text-muted">
-                  Version {item.version} · Revision {item.revision} ·{" "}
-                  {item.definition.stages.reduce(
-                    (sum, stage) =>
-                      sum +
-                      stage.sections.filter((section) => section.enabled)
-                        .length,
-                    0,
-                  )}{" "}
-                  enabled sections
-                  {item.definition.document
-                    ? ` · ${item.definition.document.schemas.length} designed PDF pages`
-                    : " · Automatic PDF layout"}
-                  {item.source_template_id ? " · Cloned version" : ""}
-                </p>
-              </div>
-              <Status value={item.status} />
-            </div>
-            <div className="mt-4 flex flex-wrap items-start gap-2">
-              <button
-                className={buttonClasses.secondary}
-                onClick={() => {
-                  setPreview(item);
-                }}
-              >
-                Preview ledger
-              </button>
-              {item.status === "draft" && (
-                <button
-                  className={buttonClasses.secondary}
-                  disabled={!!editing}
-                  onClick={() => {
-                    setEditing(item);
-                    setPreview(null);
-                  }}
-                >
-                  Edit saved draft
-                </button>
-              )}
-              {!editing && (
-                <ActionButton
-                  scope={org}
-                  path={`journey/config/templates/${item.id}/clone`}
-                  body={{
-                    expected_version: item.revision,
-                    reason: "Create a new draft from this form version",
-                  }}
-                  onSuccess={(result) => {
-                    setEditing(formTemplate.parse(result));
-                    setPreview(null);
-                  }}
-                >
-                  Clone to new draft
-                </ActionButton>
-              )}
-              {item.status === "draft" && !editing && (
-                <>
-                  <ActionButton
-                    scope={org}
-                    path={`journey/config/templates/${item.id}/validate`}
-                  >
-                    Validate for publication
-                  </ActionButton>
-                  <ActionButton
-                    scope={org}
-                    path={`journey/config/templates/${item.id}/publish`}
-                    body={{ approved: true, expected_version: item.revision }}
-                    confirm="Approve and publish this form for new patient journeys? The published version becomes immutable."
-                  >
-                    Approve & publish
-                  </ActionButton>
-                </>
-              )}
-            </div>
-            {!editing && (
-              <details className="mt-4">
-                <summary className="cursor-pointer text-sm text-muted">
-                  {item.active
-                    ? item.status === "published"
-                      ? "Retire version"
-                      : "Archive draft"
-                    : "Restore version"}
-                </summary>
-                <ActionForm
-                  scope={org}
-                  path={`journey/config/templates/${item.id}`}
-                  method="PATCH"
-                  label={
-                    item.active
-                      ? "Archive this version"
-                      : "Restore this version"
-                  }
-                  body={(data) => ({
-                    active: !item.active,
-                    expected_version: item.revision,
-                    reason: value(data, "reason"),
-                  })}
-                >
-                  <Field
-                    name="reason"
-                    label="Reason"
-                    minLength={3}
-                    maxLength={500}
-                  />
-                </ActionForm>
-              </details>
-            )}
-          </article>
-        ))}
-        {templates.data &&
-          !shown?.length &&
-          templates.data.items.length > 0 && (
-            <p>No forms on this page match the filters.</p>
-          )}
-        {templates.data && !templates.data.items.length && (
-          <p>
-            No form versions yet. Create branding and start your first draft.
-          </p>
-        )}
-        <Pager
-          offset={offset}
-          count={templates.data?.items.length ?? 0}
-          change={setOffset}
-        />
-      </Panel>
-    </>
+        <div className="studio-drawer-divider"><h3>{manage.active ? manage.status === "published" ? "Retire" : "Archive" : "Restore"} this version</h3><ActionForm scope={org} path={`journey/config/templates/${manage.id}`} method="PATCH" label={manage.active ? "Archive version" : "Restore version"} compactError body={(data) => ({ active: !manage.active, expected_version: manage.revision, reason: value(data, "reason") })} onSuccess={() => setManage(null)}><Field name="reason" label="Reason" minLength={3} maxLength={500} /></ActionForm></div>
+      </SideDrawer>}
+    </div>
   );
 }
