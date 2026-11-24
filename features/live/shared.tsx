@@ -176,6 +176,7 @@ export function Status({ value }: { value: string }) {
       tone={
         [
           "active",
+          "current",
           "published",
           "completed",
           "verified",
@@ -184,7 +185,7 @@ export function Status({ value }: { value: string }) {
           "available",
         ].includes(value)
           ? "teal"
-          : ["suspended", "disabled", "failed", "retired", "disputed"].includes(
+          : ["suspended", "disabled", "failed", "retired", "disputed", "expired"].includes(
                 value,
               )
             ? "red"

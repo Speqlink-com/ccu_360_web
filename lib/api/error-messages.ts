@@ -17,7 +17,13 @@ export const descriptions: Record<string, string> = {
   claim_owner_or_care_manager_required:
     "Only the employee handling this section or a care manager may release it.",
   active_care_team_assignment_required:
-    "An active shared or individually assigned care-team role and available staff status are needed to start a shift.",
+    "Ask your facility administrator to enroll you in a shared care-team role or give you a current individual assignment. Linking a role to a form does not enroll employees in that role.",
+  care_team_assignment_expired:
+    "Your individual care-team assignment has expired. Ask your facility administrator to renew its dates or use a shared profession role for ongoing team access.",
+  care_team_assignment_not_started:
+    "Your individual care-team assignment has not started yet. Ask your facility administrator to review its start date or shared role membership.",
+  staff_unavailable_for_shift:
+    "Your staff status is unavailable. Ask your facility administrator to review your availability before starting a shift.",
   attachment_content_not_accepted:
     "This file could not be accepted. Use a valid PNG, JPEG or non-interactive PDF up to 2 MB. PDFs with scripts, links, forms or embedded files are rejected.",
   attachment_not_in_pinned_field:

@@ -21,6 +21,7 @@ import { Icon } from "@/components/ui/icon";
 import { SideDrawer } from "@/components/ui/side-drawer";
 import { ButtonHeartbeat } from "@/components/ui/ccu-loader";
 import { WebSelect } from "@/components/ui/web-select";
+import { descriptions } from "@/lib/api/error-messages";
 
 const queueSize = 7;
 const prefs = create<{
@@ -29,6 +30,8 @@ const prefs = create<{
   set: (v: { mine?: boolean; state?: string }) => void;
 }>((set) => ({ mine: false, state: "", set: (v) => set(v) }));
 const shift = z.object({
+  can_start: z.boolean().optional(),
+  eligibility_error: z.string().nullable().optional(),
   on_shift: z.boolean(),
   version: z.number(),
   ends_at: z.string().nullable(),
@@ -127,14 +130,16 @@ export function WorkQueuePage() {
             {current?.on_shift ? "You are on shift" : "Start your care shift"}
           </h2>
           <p>
-            {current?.on_shift
+            {current?.eligibility_error
+              ? descriptions[current.eligibility_error] ?? descriptions.active_care_team_assignment_required
+              : current?.on_shift
               ? `Claims expire at ${stamp(current.ends_at!)}. Ending your shift makes your sections available to your team.`
               : "Starting a shift makes you available to claim work for up to 12 hours. Patient access still follows your active shared or individual roles."}
           </p>
         </div>
         <button
           className={`${buttonClasses.primary} queue-shift-button`}
-          disabled={!current || changeShift.isPending}
+          disabled={!current || changeShift.isPending || (!current.on_shift && current.can_start === false)}
           onClick={() => {
             changeShift.reset();
             setShiftOpen(true);

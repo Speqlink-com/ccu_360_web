@@ -484,7 +484,7 @@ export function WorkforcePage() {
                 <small>
                   {stamp(item.starts_at)} –{" "}
                   {item.ends_at ? stamp(item.ends_at) : "ongoing"} ·{" "}
-                  <Status value={item.active ? "active" : "suspended"} />
+                  <Status value={item.effective_status ?? (item.active ? "date review required" : "inactive")} />
                 </small>
               </div>
               <EditSurface label="Edit assignment" subtitle="Adjust this person’s coverage window.">

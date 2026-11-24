@@ -87,6 +87,7 @@ export const teamRole = z.object({
   version: z.number(),
 });
 export const assignment = z.object({
+  effective_status: z.enum(["current", "scheduled", "expired", "inactive"]).optional(),
   id: z.string(),
   membership_id: z.string(),
   role_id: z.string(),
