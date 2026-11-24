@@ -193,6 +193,10 @@ export function ArrivalActions({
   const form = useRef<HTMLFormElement>(null);
   const cancelForm = useRef<HTMLFormElement>(null);
   const [formClientId] = useState(() => crypto.randomUUID());
+  const [submittedForm, setSubmittedForm] = useState<{
+    client_id: string;
+    template_id: string;
+  }>();
   const [cancelClientId] = useState(() => crypto.randomUUID());
   const options = useChoices(
     org,
@@ -201,55 +205,75 @@ export function ArrivalActions({
     canStart && visit.status !== "cancelled",
   );
   const attach = useReceptionMutation(visitResult, onChanged);
+  const uncertainForm =
+    attach.error instanceof ApiError && attach.error.outcomeUnknown;
   const cancel = useReceptionMutation(visitResult, onChanged);
   return (
     <>
       {visit.status !== "cancelled" && canStart && (
         <details className="mt-4">
           <summary className="cursor-pointer text-sm font-semibold text-teal-dark">
-            Start another journey form
+            {visit.journeys.length
+              ? "Start another journey form"
+              : "Start a journey form"}
           </summary>
           <form
             ref={form}
             className="mt-4"
             onSubmit={(e) => {
               e.preventDefault();
-              attach.mutate({
-                path: `arrivals/${visit.id}/forms`,
-                body: {
-                  client_id: formClientId,
-                  template_id: value(
-                    new FormData(e.currentTarget),
-                    "template_id",
-                  ),
-                },
-              });
+              if (attach.isPending) return;
+              const body =
+                uncertainForm && submittedForm
+                  ? submittedForm
+                  : {
+                      client_id: formClientId,
+                      template_id: value(
+                        new FormData(e.currentTarget),
+                        "template_id",
+                      ),
+                    };
+              setSubmittedForm(body);
+              attach.mutate({ path: `arrivals/${visit.id}/forms`, body });
             }}
           >
             <Notice error={attach.error} formRef={form} />
-            <WebSelect name="template_id" label="Published form" required searchable options={[
-              { value: "", label: "Select form" },
-              ...(options.data?.pages
-                .flatMap((p) => p.items)
-                .filter(
-                  (item) =>
-                    item.can_initiate &&
-                    !visit.journeys.some(
-                      (j) =>
-                        j.name === item.name &&
-                        j.template_version === item.version,
-                    ),
-                )
-                .map((item) => ({ value: item.id, label: `${item.name} · v${item.version}` })) ?? []),
-            ]} />
-            <ChoiceLoader query={options} />
+            <fieldset disabled={attach.isPending || uncertainForm}>
+              <WebSelect
+                name="template_id"
+                label="Published form"
+                required
+                searchable
+                options={[
+                  { value: "", label: "Select form" },
+                  ...(options.data?.pages
+                    .flatMap((p) => p.items)
+                    .filter(
+                      (item) =>
+                        item.can_initiate &&
+                        !visit.journeys.some(
+                          (j) =>
+                            j.name === item.name &&
+                            j.template_version === item.version,
+                        ),
+                    )
+                    .map((item) => ({
+                      value: item.id,
+                      label: `${item.name} · v${item.version}`,
+                    })) ?? []),
+                ]}
+              />
+              <ChoiceLoader query={options} />
+            </fieldset>
             <button
               className={buttonClasses.secondary}
               disabled={attach.isPending}
             >
               {attach.isPending
                 ? "Starting form…"
-                : "Start form for this arrival"}
+                : uncertainForm
+                  ? "Check / retry same form"
+                  : "Start form for this arrival"}
             </button>
           </form>
         </details>

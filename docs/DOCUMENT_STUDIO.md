@@ -62,3 +62,15 @@ The backend resolves enrollment for every request and active claim. Staff availa
 The acceptance fixture now uses profession-wide reception, nursing and allied roles without individual assignments. Browser checks cover reception-started forms, browsing the directory without a query, opening a shared ledger from patient history, complete read visibility and nursing-only documentation.
 
 Shared-role release verification: **240 backend tests** and **70 web unit tests** passed. The complete real-browser/FastAPI suite passed form design/publishing, cohort-only reception/nursing/allied access, patient-directory discovery, nursing draft submission with a 201 response, read-only medical/intake sections, shared document/PDF generation, claims and shift handover, cross-tab identity boundaries, geofencing and realtime communication. The optimized production build and standalone smoke checks passed, including authentication redirects, security headers, disabled demo endpoints, CSRF rejection and local assets. Lint has no errors and the same two existing warnings documented above.
+
+### Reception recovery (24 November 2026)
+
+Starting a published form on an existing arrival uses a tenant-and-arrival transaction lock, compatible with production's immutable arrival history. The backend fix does not change the published form, role grants or patient records. Use the existing arrival; republishing or registering another visit is unnecessary.
+
+If a form-start response is interrupted, the web keeps the submitted template and request ID, disables changing that selection, and offers **Check / retry same form**. Retrying sends the identical request; the backend returns the prior result after a successful save. The section says **Start a journey form** until a form exists, then **Start another journey form**.
+
+`node --import tsx scripts/smoke-reception-runtime.mts` exercises this flow against an owned disposable FastAPI database using the actual restricted runtime role. It simulates losing a successful response and checks replay produces one arrival and one ledger, then checks shared nursing access. It sends no real email and does not use production records.
+
+Verified: 90 backend regressions, five focused runtime-role tests and 70 web unit tests passed. The real-browser test passed existing-arrival form start, identical-payload retry after a lost committed response, one-arrival/one-ledger checks, reception ledger opening, shared nursing access with nursing-only writes, and mobile overflow checks. The backend's `docs/RECEPTION_RUNTIME_FIX.md` records the cause and production-role tests.
+
+The optimized web build and standalone production checks also passed (authentication redirects, security headers, disabled demo endpoints, CSRF rejection and local assets). ESLint has no errors; its existing PostCSS configuration warning remains.
