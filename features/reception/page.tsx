@@ -21,6 +21,12 @@ import { usePatientSearch, useArrivals } from "./queries";
 import { PatientForm } from "./patient-form";
 import { PatientWorkspace } from "./patient-workspace";
 import { ReceptionPager } from "./shared";
+import { Icon } from "@/components/ui/icon";
+import { ButtonHeartbeat } from "@/components/ui/ccu-loader";
+import { WebSelect } from "@/components/ui/web-select";
+
+const listSize = 7;
+const initialFilter = { ...emptyFilter, limit: listSize };
 export function ReceptionPage() {
   const org = useIdentity().data!.organization_id!;
   const [timeZone] = useState(
@@ -29,8 +35,8 @@ export function ReceptionPage() {
   const [area, setArea] = useState("directory"),
     [selected, setSelected] = useState<string | null>(null),
     [creating, setCreating] = useState(false);
-  const [filter, setFilter] = useState<PatientFilter>(emptyFilter),
-    [queueFilter, setQueueFilter] = useState<QueueFilter>(emptyFilter);
+  const [filter, setFilter] = useState<PatientFilter>(initialFilter),
+    [queueFilter, setQueueFilter] = useState<QueueFilter>(initialFilter);
   const access = useLiveQuery(org, "journey/reception/access", receptionAccess);
   const patients = usePatientSearch(
     { ...filter, timezone: timeZone },
@@ -45,7 +51,7 @@ export function ReceptionPage() {
     setSelected(id);
   };
   return (
-    <>
+    <div className="clinical-patients-page">
       <Heading
         title={
           access.data?.can_register
@@ -63,10 +69,10 @@ export function ReceptionPage() {
         <>
           {!selected && !creating && (
             <>
-              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+              <div className="patient-page-actions mb-6 flex flex-wrap items-center justify-between gap-4">
                 <nav
                   aria-label="Reception workspace"
-                  className="flex flex-wrap gap-2"
+                  className="patient-page-tabs flex flex-wrap gap-2"
                 >
                   {[
                     ["directory", "Patient directory"],
@@ -74,7 +80,7 @@ export function ReceptionPage() {
                   ].map(([key, label]) => (
                     <button
                       key={key}
-                      className={`rounded-lg border px-5 py-3 font-semibold ${area === key ? "border-teal bg-mint text-teal-dark" : "border-border bg-surface text-muted"}`}
+                      className={`patient-page-tab ${area === key ? "is-active" : ""}`}
                       aria-pressed={key === area}
                       onClick={() => setArea(key)}
                     >
@@ -84,10 +90,10 @@ export function ReceptionPage() {
                 </nav>
                 {access.data.can_register && (
                   <button
-                    className={buttonClasses.primary}
+                    className={`${buttonClasses.primary} patient-register-button`}
                     onClick={() => setCreating(true)}
                   >
-                    Register a new patient
+                    <Icon name="addUser" size={17} outline /> Register patient
                   </button>
                 )}
               </div>
@@ -109,10 +115,11 @@ export function ReceptionPage() {
               {area === "directory" && (
                 <Panel
                   title="Facility patient directory"
+                  icon="bed"
                   detail="Patient information stays inside this facility. CCU360 numbers are globally unique; IP numbers belong to the facility."
                 >
                   <form
-                    className="mb-5 rounded-xl border border-border bg-[#f6f9fa] p-5"
+                    className="patient-filter-form mb-5 rounded-xl border border-border bg-[#f6f9fa] p-5"
                     onSubmit={(e) => {
                       e.preventDefault();
                       const data = new FormData(e.currentTarget);
@@ -128,23 +135,17 @@ export function ReceptionPage() {
                         registered_to:
                           value(data, "registered_to") || undefined,
                         offset: 0,
-                        limit: 20,
+                        limit: listSize,
                       });
                     }}
                   >
                     <div className="grid gap-x-4 md:grid-cols-[220px_minmax(0,1fr)]">
-                      <Field
-                        name="search_by"
-                        label="Search by"
-                        defaultValue="any"
-                      >
-                        <option value="any">Name or patient number</option>
-                        <option value="name">Patient name</option>
-                        <option value="ip_number">Facility IP number</option>
-                        <option value="ccu360_number">
-                          CCU360 number · exact six digits
-                        </option>
-                      </Field>
+                      <WebSelect name="search_by" label="Search by" defaultValue="any" options={[
+                        { value: "any", label: "Name or patient number" },
+                        { value: "name", label: "Patient name" },
+                        { value: "ip_number", label: "Facility IP number" },
+                        { value: "ccu360_number", label: "CCU360 number · exact six digits" },
+                      ]} />
                       <Field
                         name="query"
                         label="Search patient name, IP or CCU360 number"
@@ -157,13 +158,13 @@ export function ReceptionPage() {
                         Filter patient records
                       </summary>
                       <div className="mt-4 grid gap-x-4 sm:grid-cols-3">
-                        <Field name="sex" label="Sex" required={false}>
-                          <option value="">Any</option>
-                          <option value="female">Female</option>
-                          <option value="male">Male</option>
-                          <option value="intersex">Intersex</option>
-                          <option value="unknown">Not recorded</option>
-                        </Field>
+                        <WebSelect name="sex" label="Sex" options={[
+                          { value: "", label: "Any" },
+                          { value: "female", label: "Female" },
+                          { value: "male", label: "Male" },
+                          { value: "intersex", label: "Intersex" },
+                          { value: "unknown", label: "Not recorded" },
+                        ]} />
                         <Field
                           name="registered_from"
                           label="Registered from"
@@ -180,22 +181,22 @@ export function ReceptionPage() {
                     </details>
                     <div className="flex flex-wrap gap-3">
                       <button
-                        className={buttonClasses.secondary}
+                        className={buttonClasses.primary}
                         disabled={patients.isFetching}
                       >
-                        {patients.isFetching ? "Searching…" : "Search patients"}
+                        <ButtonHeartbeat loading={patients.isFetching}>Search patients</ButtonHeartbeat>
                       </button>
                       <button
                         type="reset"
                         className="px-3 text-sm font-semibold text-muted"
-                        onClick={() => setFilter(emptyFilter)}
+                        onClick={() => setFilter(initialFilter)}
                       >
                         Clear filters
                       </button>
                     </div>
                   </form>
                   <QueryState query={patients} />
-                  <div className="overflow-x-auto">
+                  <div className="patient-table-wrap overflow-x-auto">
                     <table className="live-table">
                       <thead>
                         <tr>
@@ -209,27 +210,31 @@ export function ReceptionPage() {
                       <tbody>
                         {patients.data?.items.map((item) => (
                           <tr key={item.id}>
-                            <td>
+                            <td data-label="Patient">
+                              <div>
                               <strong>{item.display_name}</strong>
                               <small>
                                 {item.sex === "unknown"
                                   ? "Sex not recorded"
                                   : item.sex}
                               </small>
+                              </div>
                             </td>
-                            <td>
+                            <td data-label="CCU360 number">
                               <span className="font-mono font-semibold tracking-wide text-teal-dark">
                                 {item.ccu360_number}
                               </span>
                             </td>
-                            <td>{item.ip_number}</td>
-                            <td>
+                            <td data-label="IP number">{item.ip_number}</td>
+                            <td data-label="Date of birth / telephone">
+                              <div>
                               {item.date_of_birth ?? "DOB not recorded"}
                               <small>
                                 {item.phone ?? "Telephone not recorded"}
                               </small>
+                              </div>
                             </td>
-                            <td>
+                            <td data-label="Profile">
                               <button
                                 className={buttonClasses.secondary}
                                 onClick={() => select(item.id)}
@@ -256,6 +261,7 @@ export function ReceptionPage() {
                       offset={filter.offset}
                       total={patients.data.total}
                       count={patients.data.items.length}
+                      size={listSize}
                       change={(offset) =>
                         setFilter((old) => ({ ...old, offset }))
                       }
@@ -266,15 +272,16 @@ export function ReceptionPage() {
               {area === "arrivals" && (
                 <Panel
                   title="Reception arrival queue"
+                  icon="clock"
                   detail="Track arrivals and forms without assigning inpatient or outpatient status. The queue refreshes while open."
                 >
                   <form
-                    className="mb-5 rounded-xl border border-border bg-[#f6f9fa] p-5"
+                    className="patient-filter-form mb-5 rounded-xl border border-border bg-[#f6f9fa] p-5"
                     onSubmit={(e) => {
                       e.preventDefault();
                       const data = new FormData(e.currentTarget);
                       setQueueFilter({
-                        ...emptyFilter,
+                        ...initialFilter,
                         query: value(data, "query"),
                         arrival_source:
                           value(data, "arrival_source") || undefined,
@@ -293,36 +300,20 @@ export function ReceptionPage() {
                         required={false}
                         maxLength={100}
                       />
-                      <Field
-                        name="arrival_source"
-                        label="Arrival source"
-                        required={false}
-                      >
-                        <option value="">All arrivals</option>
-                        <option value="walk_in">Walk-in</option>
-                        <option value="referral">Referral</option>
-                      </Field>
-                      <Field
-                        name="registration_type"
-                        label="Visit history"
-                        required={false}
-                      >
-                        <option value="">New and returning</option>
-                        <option value="new">First recorded visit</option>
-                        <option value="returning">Returning patient</option>
-                      </Field>
-                      <Field
-                        name="status"
-                        label="Journey progress"
-                        required={false}
-                      >
-                        <option value="">Any progress</option>
-                        {Object.entries(visitLabels).map(([key, label]) => (
-                          <option key={key} value={key}>
-                            {label}
-                          </option>
-                        ))}
-                      </Field>
+                      <WebSelect name="arrival_source" label="Arrival source" options={[
+                        { value: "", label: "All arrivals" },
+                        { value: "walk_in", label: "Walk-in" },
+                        { value: "referral", label: "Referral" },
+                      ]} />
+                      <WebSelect name="registration_type" label="Visit history" options={[
+                        { value: "", label: "New and returning" },
+                        { value: "new", label: "First recorded visit" },
+                        { value: "returning", label: "Returning patient" },
+                      ]} />
+                      <WebSelect name="status" label="Journey progress" options={[
+                        { value: "", label: "Any progress" },
+                        ...Object.entries(visitLabels).map(([value, label]) => ({ value, label })),
+                      ]} />
                       <Field
                         name="arrived_from"
                         label="Arrivals from"
@@ -337,20 +328,20 @@ export function ReceptionPage() {
                       />
                     </div>
                     <div className="flex gap-3">
-                      <button className={buttonClasses.secondary}>
-                        Filter arrivals
+                      <button className={buttonClasses.primary} disabled={arrivals.isFetching}>
+                        <ButtonHeartbeat loading={arrivals.isFetching}>Filter arrivals</ButtonHeartbeat>
                       </button>
                       <button
                         type="reset"
                         className="px-3 text-sm font-semibold text-muted"
-                        onClick={() => setQueueFilter(emptyFilter)}
+                        onClick={() => setQueueFilter(initialFilter)}
                       >
                         Clear filters
                       </button>
                     </div>
                   </form>
                   <QueryState query={arrivals} />
-                  <div className="overflow-x-auto">
+                  <div className="patient-table-wrap overflow-x-auto">
                     <table className="live-table">
                       <thead>
                         <tr>
@@ -364,34 +355,40 @@ export function ReceptionPage() {
                       <tbody>
                         {arrivals.data?.items.map(({ visit, patient }) => (
                           <tr key={visit.id}>
-                            <td>
+                            <td data-label="Patient">
+                              <div>
                               <strong>{patient.display_name}</strong>
                               <small>
                                 CCU360 {patient.ccu360_number} · IP{" "}
                                 {patient.ip_number}
                               </small>
+                              </div>
                             </td>
-                            <td>
+                            <td data-label="Arrival">
+                              <div>
                               {stamp(visit.arrived_at)}
                               <small>
                                 {visit.arrival_source === "referral"
                                   ? `Referral · ${visit.referring_facility}`
                                   : "Walk-in"}
                               </small>
+                              </div>
                             </td>
-                            <td>
+                            <td data-label="Visit">
                               {visit.registration_type === "new"
                                 ? "First recorded visit"
                                 : "Returning"}
                             </td>
-                            <td>
+                            <td data-label="Progress">
+                              <div>
                               {visitLabels[visit.status]}
                               <small>
                                 {visit.journeys.length} form
                                 {visit.journeys.length === 1 ? "" : "s"}
                               </small>
+                              </div>
                             </td>
-                            <td>
+                            <td data-label="Profile">
                               <button
                                 className={buttonClasses.secondary}
                                 onClick={() => select(patient.id)}
@@ -414,6 +411,7 @@ export function ReceptionPage() {
                       offset={queueFilter.offset}
                       total={arrivals.data.total}
                       count={arrivals.data.items.length}
+                      size={listSize}
                       change={(offset) =>
                         setQueueFilter((old) => ({ ...old, offset }))
                       }
@@ -426,6 +424,7 @@ export function ReceptionPage() {
           {creating && (
             <Panel
               title="Register patient"
+              icon="addUser"
               detail="Create one demographic profile. The server assigns the patient’s six-digit CCU360 number."
             >
               <PatientForm
@@ -447,6 +446,6 @@ export function ReceptionPage() {
           )}
         </>
       )}
-    </>
+    </div>
   );
 }

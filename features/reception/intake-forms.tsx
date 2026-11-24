@@ -14,6 +14,7 @@ import {
 } from "./contracts";
 import { useReceptionMutation } from "./queries";
 import { localTime, VisitCard } from "./shared";
+import { WebSelect } from "@/components/ui/web-select";
 export function ArrivalForm({
   patient,
   canStart,
@@ -226,9 +227,9 @@ export function ArrivalActions({
             }}
           >
             <Notice error={attach.error} formRef={form} />
-            <Field name="template_id" label="Published form">
-              <option value="">Select form</option>
-              {options.data?.pages
+            <WebSelect name="template_id" label="Published form" required searchable options={[
+              { value: "", label: "Select form" },
+              ...(options.data?.pages
                 .flatMap((p) => p.items)
                 .filter(
                   (item) =>
@@ -239,12 +240,8 @@ export function ArrivalActions({
                         j.template_version === item.version,
                     ),
                 )
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name} · v{item.version}
-                  </option>
-                ))}
-            </Field>
+                .map((item) => ({ value: item.id, label: `${item.name} · v${item.version}` })) ?? []),
+            ]} />
             <ChoiceLoader query={options} />
             <button
               className={buttonClasses.secondary}

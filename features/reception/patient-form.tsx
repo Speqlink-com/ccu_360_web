@@ -7,6 +7,7 @@ import { Field, Notice, value } from "@/features/live/shared";
 import { buttonClasses } from "@/lib/presentation";
 import { patientProfile, type PatientProfile } from "./contracts";
 import { useReceptionMutation } from "./queries";
+import { WebSelect } from "@/components/ui/web-select";
 type Demographics = {
   ip_number: string;
   display_name: string;
@@ -145,16 +146,12 @@ export function PatientForm({
             required={false}
             defaultValue={existing?.date_of_birth ?? ""}
           />
-          <Field
-            name="sex"
-            label="Sex"
-            defaultValue={existing?.sex ?? "unknown"}
-          >
-            <option value="unknown">Not recorded</option>
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-            <option value="intersex">Intersex</option>
-          </Field>
+          <WebSelect name="sex" label="Sex" defaultValue={existing?.sex ?? "unknown"} required options={[
+            { value: "unknown", label: "Not recorded" },
+            { value: "female", label: "Female" },
+            { value: "male", label: "Male" },
+            { value: "intersex", label: "Intersex" },
+          ]} />
           <Field
             name="phone"
             label="Telephone number"

@@ -17,6 +17,9 @@ import {
 import { PatientForm } from "./patient-form";
 import { ArrivalForm, ArrivalActions, SavedArrival } from "./intake-forms";
 import { PatientIdentity, ReceptionPager, VisitCard } from "./shared";
+import { Icon } from "@/components/ui/icon";
+
+const historyPageSize = 7;
 export function PatientWorkspace({
   patientId,
   canStart,
@@ -45,37 +48,37 @@ export function PatientWorkspace({
   );
   const history = useLiveQuery(
     org,
-    `journey/reception/patients/${patientId}/visits?offset=${offset}&limit=20`,
+    `journey/reception/patients/${patientId}/visits?offset=${offset}&limit=${historyPageSize}`,
     pageOf(visit),
     tab === "history",
     30_000,
   );
   const journeys = useLiveQuery(
     org,
-    `journey/reception/patients/${patientId}/journeys?offset=${offset}&limit=20`,
+    `journey/reception/patients/${patientId}/journeys?offset=${offset}&limit=${historyPageSize}`,
     pageOf(journeySummary),
     tab === "journeys",
   );
   const revisions = useLiveQuery(
     org,
-    `journey/reception/patients/${patientId}/revisions?offset=${offset}&limit=20`,
+    `journey/reception/patients/${patientId}/revisions?offset=${offset}&limit=${historyPageSize}`,
     pageOf(demographicRevision),
     tab === "changes",
   );
   const patient = detail.data?.patient;
   return (
-    <section aria-label="Selected patient workspace" className="mt-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <section aria-label="Selected patient workspace" className="patient-detail-workspace mt-6">
+      <div className="patient-detail-top mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs font-bold uppercase tracking-widest text-teal-dark">
           {canRegister
             ? "PATIENT PROFILE / RECEPTION"
             : "PATIENT PROFILE / SHARED CARE"}
         </p>
         <button className={buttonClasses.secondary} onClick={onClose}>
-          Back to directory
+          <Icon name="left" size={16} outline /> Back to directory
         </button>
       </div>
-      <Panel title="Patient profile">
+      <Panel title="Patient profile" icon="profile">
         <QueryState query={detail} />
         {patient && (
           <>
@@ -123,7 +126,7 @@ export function PatientWorkspace({
       {patient && !editing && (
         <>
           <nav
-            className="mb-5 flex flex-wrap gap-2"
+            className="patient-detail-tabs mb-5 flex flex-wrap gap-2"
             aria-label="Patient profile areas"
           >
             {[
@@ -136,7 +139,7 @@ export function PatientWorkspace({
               .map(([key, label]) => (
                 <button
                   key={key}
-                  className={`rounded-lg border px-4 py-3 text-sm font-semibold ${key === tab ? "border-teal bg-mint text-teal-dark" : "border-border bg-surface text-muted"}`}
+                  className={`patient-detail-tab ${key === tab ? "is-active" : ""}`}
                   aria-pressed={key === tab}
                   onClick={() => {
                     setTab(key);
@@ -150,6 +153,7 @@ export function PatientWorkspace({
           {tab === "intake" && canRegister && (
             <Panel
               title="Record patient arrival"
+              icon="clock"
               detail="Use this existing profile for every visit. Walk-in and referral describe arrival, not clinical admission."
             >
               {recorded ? (
@@ -175,6 +179,7 @@ export function PatientWorkspace({
           {tab === "history" && (
             <Panel
               title="Arrival history"
+              icon="clock"
               detail="Walk-ins, referrals and repeat visits in this facility. Previous intake details keep the profile version used at the time."
             >
               <QueryState query={history} />
@@ -197,6 +202,7 @@ export function PatientWorkspace({
                   offset={offset}
                   total={history.data.total}
                   count={history.data.items.length}
+                  size={historyPageSize}
                   change={setOffset}
                 />
               )}
@@ -205,6 +211,7 @@ export function PatientWorkspace({
           {tab === "journeys" && (
             <Panel
               title="Clinical journey history"
+              icon="form"
               detail="Includes earlier journeys created before the reception module. Clinical notes remain accessible through current care-team coverage."
             >
               <QueryState query={journeys} />
@@ -240,6 +247,7 @@ export function PatientWorkspace({
                   offset={offset}
                   total={journeys.data.total}
                   count={journeys.data.items.length}
+                  size={historyPageSize}
                   change={setOffset}
                 />
               )}
@@ -248,6 +256,7 @@ export function PatientWorkspace({
           {tab === "changes" && (
             <Panel
               title="Profile change history"
+              icon="shield"
               detail="Every correction is attributed and retained. Earlier clinical documents keep their original patient snapshot."
             >
               <QueryState query={revisions} />
@@ -281,6 +290,7 @@ export function PatientWorkspace({
                   offset={offset}
                   total={revisions.data.total}
                   count={revisions.data.items.length}
+                  size={historyPageSize}
                   change={setOffset}
                 />
               )}

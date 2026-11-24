@@ -20,6 +20,7 @@ import { Heading, Pager, QueryState, Status } from "@/features/live/shared";
 
 const previewSize = 12;
 const peoplePageSize = 5;
+const clinicalPageSize = 5;
 const formPreview = z.object({
   id: z.string(),
   name: z.string(),
@@ -175,6 +176,7 @@ export function OverviewPage() {
   const user = useIdentity().data!;
   const [dayPart, setDayPart] = useState<string | null>(null);
   const [peopleOffset, setPeopleOffset] = useState(0);
+  const [journeyOffset, setJourneyOffset] = useState(0);
   useEffect(() => {
     const updateGreeting = () => {
       const hour = new Date().getHours();
@@ -248,6 +250,13 @@ export function OverviewPage() {
     clinical,
     30_000,
   );
+  const journeyList = useLiveQuery(
+    scope,
+    `journey/inbox?offset=${journeyOffset}&limit=${clinicalPageSize + 1}`,
+    pageOf(journeyPreview),
+    clinical,
+    30_000,
+  );
   const patients = usePatientSearch({ ...emptyFilter, limit: 1 }, clinical);
   const activeQueries = platform
     ? [facilities]
@@ -256,9 +265,9 @@ export function OverviewPage() {
       : [access, journeys, patients];
   const refreshing =
     activeQueries.some((q) => q.isFetching) ||
-    (admin && peoplePreview.isFetching);
+    (admin && peoplePreview.isFetching) ||
+    (clinical && journeyList.isFetching);
   const name = member?.provider_name ?? "Your facility";
-  const primaryPath = admin ? "templates" : "patients";
   const security = user.mfa_enabled ? "Enabled" : "Set up";
   const shown = (data: { items: unknown[] } | undefined) =>
     data ? data.items.length : "—";
@@ -272,57 +281,40 @@ export function OverviewPage() {
   if (activeQueries.some((query) => query.isPending))
     return <CCU360Loader variant="dashboard" />;
   return (
-    <div className={`dashboard-overview ${platform || admin ? "platform-overview" : ""} ${admin ? "facility-admin-overview" : ""}`}>
+    <div className={`dashboard-overview platform-overview ${admin ? "facility-admin-overview" : ""} ${clinical ? "clinical-overview" : ""}`}>
       <Heading
-        eyebrow={platform || admin ? "" : "CCU360 / CARE OVERVIEW"}
-        title={
-          platform || admin
-            ? `${dayPart ?? "Welcome"}, ${nameParts.at(-1) ?? firstName}!`
-            : `Welcome, ${firstName}.`
-        }
+        eyebrow=""
+        title={`${dayPart ?? "Welcome"}, ${nameParts.at(-1) ?? firstName}!`}
         detail=""
         actions={
-          admin ? (
+          !platform ? (
             <span className="facility-workspace-label">
               {name}
             </span>
-          ) : clinical ? (
-            <button
-              type="button"
-              className="btn btn-secondary dashboard-refresh"
-              disabled={refreshing}
-              onClick={() => {
-                for (const q of activeQueries) void q.refetch();
-              }}
-            >
-              <Icon name="clock" size={17} />
-              {refreshing ? "Refreshing…" : "Refresh dashboard"}
-            </button>
           ) : undefined
         }
       />
-      {(platform || admin) && (
-        <section className="platform-quickbar" aria-label="Quick actions">
+      <section className="platform-quickbar" aria-label="Quick actions">
           <nav
             className="platform-quickbar-panel"
-            aria-label={platform ? "Platform shortcuts" : "Facility shortcuts"}
+            aria-label={platform ? "Platform shortcuts" : admin ? "Facility shortcuts" : "Care shortcuts"}
           >
             <Link
-              href={platform ? "/dashboard/facilities" : "/dashboard/employees"}
+              href={platform ? "/dashboard/facilities" : admin ? "/dashboard/employees" : "/dashboard/patients"}
               className="platform-quickbar-action"
             >
               <span className="platform-quickbar-icon">
                 <span className="platform-quickbar-outline">
-                  <Icon name={platform ? "facilities" : "addUser"} size={18} outline />
+                  <Icon name={platform ? "facilities" : admin ? "addUser" : "bed"} size={18} outline />
                 </span>
                 <span className="platform-quickbar-artwork">
-                  <Icon name={platform ? "facilities" : "addUser"} size={22} />
+                  <Icon name={platform ? "facilities" : admin ? "addUser" : "bed"} size={22} />
                 </span>
               </span>
-              <span>{platform ? "Facilities" : "Employees"}</span>
+              <span>{platform ? "Facilities" : admin ? "Employees" : member?.role === "receptionist" ? "Reception" : "Patients"}</span>
             </Link>
             <Link
-              href={platform ? "/dashboard/administrators" : "/dashboard/workforce"}
+              href={platform ? "/dashboard/administrators" : admin ? "/dashboard/workforce" : "/dashboard/queue"}
               className="platform-quickbar-action"
             >
               <span className="platform-quickbar-icon">
@@ -333,7 +325,7 @@ export function OverviewPage() {
                   <Icon name={platform ? "addUser" : "team"} size={22} />
                 </span>
               </span>
-              <span>{platform ? "Users" : "Teams"}</span>
+              <span>{platform ? "Users" : admin ? "Teams" : "Work queue"}</span>
             </Link>
             <button
               type="button"
@@ -342,6 +334,7 @@ export function OverviewPage() {
               onClick={() => {
                 for (const query of activeQueries) void query.refetch();
                 if (admin) void peoplePreview.refetch();
+                if (clinical) void journeyList.refetch();
               }}
             >
               <span className={`platform-quickbar-icon platform-quickbar-icon-refresh ${refreshing ? "platform-refreshing" : ""}`}>
@@ -353,66 +346,6 @@ export function OverviewPage() {
             </button>
           </nav>
         </section>
-      )}
-      {clinical && (
-        <section className="dashboard-hero" aria-label="Workspace overview">
-        <div className="dashboard-hero-main">
-          <span className="dashboard-kicker">
-            <span />
-            {name}
-          </span>
-          <h2>{admin ? "Facility operations." : "Your care workspace."}</h2>
-          <p>
-            {admin ? "People · Forms · Connected care" : "Patients · Shared journeys · Teamwork"}
-          </p>
-          <div className="dashboard-hero-actions">
-            <Link
-              href={`/dashboard/${primaryPath}`}
-              className="btn dashboard-hero-primary"
-            >
-              <Icon name={admin ? "form" : "bed"} size={23} />
-              {admin
-                ? "Open Form Studio"
-                : member?.role === "receptionist"
-                  ? "Open reception"
-                  : "Browse patients"}
-              <Icon name="arrow" size={17} />
-            </Link>
-            <Link
-              href={`/dashboard/${admin ? "employees" : "queue"}`}
-              className="dashboard-hero-secondary"
-            >
-              {admin ? "Manage employees" : "Team work queue"}
-              <Icon name="arrow" size={17} />
-            </Link>
-          </div>
-        </div>
-        <div className="dashboard-hero-security">
-          <span className="dashboard-shield">
-            <Icon name="shield" size={64} />
-          </span>
-          <div>
-            <strong>
-              {admin
-                ? "Facility access"
-                : member
-                  ? memberLabels[member.role]
-                  : "Workspace access"}
-            </strong>
-            <span>
-              <i className={user.email_verified ? "is-verified" : ""} />
-              {user.email_verified ? "Email verified" : "Verify email"}
-            </span>
-            <span>
-              <i className={user.mfa_enabled ? "is-verified" : ""} />
-              {user.mfa_enabled
-                ? "Two-step verification"
-                : "Two-step verification available"}
-            </span>
-          </div>
-        </div>
-        </section>
-      )}
       <section className="dashboard-metrics" aria-label="Workspace snapshot">
         {platform ? (
           <>
@@ -601,10 +534,22 @@ export function OverviewPage() {
             subtitle="Your linked care records"
             icon="bed"
             href="/dashboard/patients"
-            footer={previewCaption(journeys.data)}
+            footer={journeyList.data ? `${journeyList.data.items.slice(0, clinicalPageSize).length} shown · Linked journeys` : "Linked journeys"}
+            pagination={
+              journeyList.data &&
+              (journeyOffset > 0 || journeyList.data.items.length > clinicalPageSize) ? (
+                <Pager
+                  offset={journeyOffset}
+                  count={Math.min(journeyList.data.items.length, clinicalPageSize)}
+                  size={clinicalPageSize}
+                  hasMore={journeyList.data.items.length > clinicalPageSize}
+                  change={setJourneyOffset}
+                />
+              ) : undefined
+            }
           >
-            <QueryState query={journeys} />
-            {journeys.data?.items.map((j) => (
+            <QueryState query={journeyList} />
+            {journeyList.data?.items.slice(0, clinicalPageSize).map((j) => (
               <Link
                 className="dashboard-list-row dashboard-record-link"
                 key={j.id}
@@ -626,10 +571,10 @@ export function OverviewPage() {
                 <Icon name="arrow" size={16} />
               </Link>
             ))}
-            {journeys.data && !journeys.data.items.length && (
+            {journeyList.data && !journeyList.data.items.length && (
               <EmptyPreview
                 icon="form"
-                title="No linked journeys yet"
+                title={journeyOffset > 0 ? "No journeys on this page" : "No linked journeys yet"}
                 href="/dashboard/patients"
                 action="Open patient directory"
               />
@@ -724,79 +669,25 @@ export function OverviewPage() {
             </div>
           </section>
         ) : (
-          <Collection
-            title="My care teams"
-            subtitle="Current responsibilities"
-            icon="team"
-            href="/dashboard/queue"
-            footer="Membership checked by the server"
-          >
-            <QueryState query={access} />
-            {access.data?.roles.map((r) => (
-              <div className="dashboard-list-row" key={r.id}>
-                <span className="dashboard-row-icon">
-                  <Icon name="team" size={27} />
-                </span>
-                <div className="dashboard-row-copy">
-                  <strong>{r.name}</strong>
-                  <span>
-                    {r.capabilities.includes("write")
-                      ? "Clinical documentation"
-                      : r.capabilities.includes("register")
-                        ? "Reception & intake"
-                        : "Shared record access"}
-                  </span>
+          <section className="dashboard-panel dashboard-action-panel">
+            <header className="dashboard-panel-header">
+              <div className="dashboard-panel-title">
+                <span className="dashboard-icon-tile"><Icon name="team" size={28} /></span>
+                <div>
+                  <h2>Care workspace</h2>
+                  <p>{member ? memberLabels[member.role] : "Facility care"} · {name}</p>
                 </div>
-                <span className="dashboard-role-marker">Active</span>
               </div>
-            ))}
-            {access.data && !access.data.roles.length && (
-              <EmptyPreview
-                icon="team"
-                title="No active care-team roles"
-                href="/dashboard/patients"
-                action="Browse facility patients"
-              />
-            )}
-          </Collection>
+            </header>
+            <div className="dashboard-action-list">
+              <Shortcut href="/dashboard/patients" title={member?.role === "receptionist" ? "Reception" : "Patient directory"} icon="bed" caption="Search & patient history" />
+              <Shortcut href="/dashboard/queue" title="Team work queue" icon="team" caption="Claims & shift handover" />
+              <Shortcut href="/dashboard/connect" title="Connect 360" icon="connect" caption="Team communication" />
+              <Shortcut href="/dashboard/security" title="Account security" icon="shield" caption="Password & verification" />
+            </div>
+          </section>
         )}
       </div>
-      {clinical && (
-        <section className="dashboard-quick-access" aria-label="Quick access">
-          <Shortcut
-            href={`/dashboard/${admin ? "employees" : "patients"}`}
-            title={admin ? "Employees" : "Patient directory"}
-            icon={admin ? "addUser" : "bed"}
-            caption={
-              admin ? "Invitations & access" : "Search & patient history"
-            }
-          />
-          <Shortcut
-            href={`/dashboard/${admin ? "workforce" : "queue"}`}
-            title={admin ? "Departments & teams" : "Team work queue"}
-            icon="team"
-            caption={
-              admin
-                ? "Professions & responsibilities"
-                : "Claims & shift handover"
-            }
-          />
-          <Shortcut
-            href="/dashboard/connect"
-            title="Connect 360"
-            icon="connect"
-            caption="Team communication"
-          />
-          <Shortcut
-            href={`/dashboard/${admin ? "worksite" : "security"}`}
-            title={admin ? "Facility access" : "Account security"}
-            icon={admin ? "location" : "shield"}
-            caption={
-              admin ? "Sites & trusted networks" : "Password & verification"
-            }
-          />
-        </section>
-      )}
       {!platform &&
         user.memberships.filter(
           (m) => m.status === "active" && m.provider_status === "active",

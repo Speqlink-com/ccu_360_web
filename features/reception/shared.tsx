@@ -42,15 +42,17 @@ export function ReceptionPager({
   offset,
   total,
   count,
+  size = 20,
   change,
 }: {
   offset: number;
   total: number;
   count: number;
+  size?: number;
   change: (value: number) => void;
 }) {
   return (
-    <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+    <div className="reception-pager mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
       <p className="text-sm text-muted">
         {total
           ? `${offset + 1}–${Math.min(offset + count, total)} of ${total}`
@@ -60,14 +62,14 @@ export function ReceptionPager({
         <button
           className={buttonClasses.secondary}
           disabled={!offset}
-          onClick={() => change(Math.max(0, offset - 20))}
+          onClick={() => change(Math.max(0, offset - size))}
         >
           Previous
         </button>
         <button
           className={buttonClasses.secondary}
           disabled={offset + count >= total}
-          onClick={() => change(offset + 20)}
+          onClick={() => change(offset + size)}
         >
           Next
         </button>
