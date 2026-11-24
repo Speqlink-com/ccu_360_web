@@ -33,6 +33,8 @@ import {
   Settings,
   MapPin,
   Monitor,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 const icons = {
   overview: LayoutDashboard,
@@ -73,6 +75,8 @@ const icons = {
   location: MapPin,
   settings: Settings,
   device: Monitor,
+  show: Eye,
+  hide: EyeOff,
 };
 export type IconName = keyof typeof icons;
 // Supplied PNG/WebP artwork retains its original colours and alpha transparency.

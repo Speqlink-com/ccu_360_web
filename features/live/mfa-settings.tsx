@@ -140,12 +140,11 @@ export function MfaSettings() {
           <p className="success-message rounded-lg border border-success-border bg-mint p-3 text-success-text">
             Authenticator verification is enabled.
           </p>
-          <details>
-            <summary>Replace recovery codes</summary>
+          <div className="account-recovery-section">
             <ActionForm
               scope={user.id}
               path="auth/mfa/recovery-codes"
-              label="Replace recovery codes"
+              label="Generate new recovery codes"
               icon="refresh"
               body={(form) => ({
                 password: form.get("password"),
@@ -172,7 +171,7 @@ export function MfaSettings() {
                 maxLength={32}
               />
             </ActionForm>
-          </details>
+          </div>
           {!privileged && (
             <details>
               <summary>Disable authenticator verification</summary>

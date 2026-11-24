@@ -4,6 +4,7 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import {
   useId,
   useRef,
+  useState,
   type ReactNode,
   type FormEvent,
   type RefObject,
@@ -220,6 +221,22 @@ export function Field({
   autoFocus?: boolean;
 }) {
   const id = useId();
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const input = (
+    <input
+      id={id}
+      name={name}
+      type={type === "password" && passwordVisible ? "text" : type}
+      required={required}
+      defaultValue={defaultValue}
+      minLength={minLength}
+      maxLength={maxLength}
+      autoComplete={type === "password" ? "off" : undefined}
+      spellCheck={type === "password" ? false : undefined}
+      autoCapitalize={type === "password" ? "none" : undefined}
+      {...rest}
+    />
+  );
   return (
     <div className="live-field">
       <label htmlFor={id}>
@@ -245,19 +262,21 @@ export function Field({
           maxLength={maxLength}
           rows={4}
         />
-      ) : (
-        <input
-          id={id}
-          name={name}
-          type={type}
-          required={required}
-          defaultValue={defaultValue}
-          minLength={minLength}
-          maxLength={maxLength}
-          autoComplete={type === "password" ? "off" : undefined}
-          {...rest}
-        />
-      )}
+      ) : type === "password" ? (
+        <div className="live-password-control">
+          {input}
+          <button
+            type="button"
+            className="live-password-toggle"
+            aria-label={`${passwordVisible ? "Hide" : "Show"} ${label.toLowerCase()}`}
+            aria-pressed={passwordVisible}
+            onClick={() => setPasswordVisible((visible) => !visible)}
+          >
+            <Icon name={passwordVisible ? "hide" : "show"} size={15} outline />
+            {passwordVisible ? "Hide" : "Show"}
+          </button>
+        </div>
+      ) : input}
     </div>
   );
 }

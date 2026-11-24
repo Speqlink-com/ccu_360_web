@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import {
@@ -14,6 +15,7 @@ import {
   ActionForm,
   ActionButton,
   QueryState,
+  Pager,
   stamp,
   value,
 } from "./shared";
@@ -22,6 +24,7 @@ import { Icon } from "@/components/ui/icon";
 export function SecurityPage() {
   const user = useIdentity().data!;
   const client = useQueryClient();
+  const [sessionOffset, setSessionOffset] = useState(0);
   const initials = user.display_name
     .trim()
     .split(/\s+/)
@@ -43,6 +46,16 @@ export function SecurityPage() {
         }),
       ),
     }),
+  );
+  const sessionPageSize = 3;
+  const sessionCount = sessions.data?.items.length ?? 0;
+  const visibleSessionOffset = Math.min(
+    sessionOffset,
+    Math.max(0, Math.ceil(sessionCount / sessionPageSize) - 1) * sessionPageSize,
+  );
+  const visibleSessions = sessions.data?.items.slice(
+    visibleSessionOffset,
+    visibleSessionOffset + sessionPageSize,
   );
   return (
     <div className="account-page">
@@ -119,7 +132,7 @@ export function SecurityPage() {
             >
               <QueryState query={sessions} />
               <div className="account-session-list">
-                {sessions.data?.items.map((session) => (
+                {visibleSessions?.map((session) => (
                   <div className="account-session" key={session.id}>
                     <span className="account-session-icon" aria-hidden="true">
                       <Icon name="device" size={19} outline />
@@ -149,6 +162,15 @@ export function SecurityPage() {
               </div>
               {sessions.data && !sessions.data.items.length && (
                 <p className="account-empty">No active sessions found.</p>
+              )}
+              {sessionCount > sessionPageSize && (
+                <Pager
+                  offset={visibleSessionOffset}
+                  count={visibleSessions?.length ?? 0}
+                  size={sessionPageSize}
+                  hasMore={visibleSessionOffset + sessionPageSize < sessionCount}
+                  change={setSessionOffset}
+                />
               )}
               <div className="account-signout-all">
                 <ActionButton

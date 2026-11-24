@@ -1145,6 +1145,38 @@
   background-color: #fff;
   border-color: #008f87;
 }
+.live-password-control {
+  position: relative;
+}
+.workspace .live-password-control input {
+  padding-right: 92px;
+}
+.live-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 5px 8px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #006d69;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+}
+.live-password-toggle:hover {
+  background: #e9f5f1;
+}
+.live-password-toggle:disabled {
+  cursor: default;
+  opacity: .5;
+}
 .live-query-loader {
   display: grid;
   min-height: 108px;
@@ -1167,7 +1199,7 @@
   border: 1px solid #cbded9;
   border-radius: 8px;
   background: #fff;
-  box-shadow: 0 10px 25px -22px #005e5970;
+  box-shadow: 0 0 22px #0b4c4a17, 0 16px 34px -24px #0b4c4a65;
 }
 .account-avatar {
   display: grid;
@@ -1233,21 +1265,24 @@
 .account-settings-grid {
   display: grid;
   grid-template-columns: minmax(0, .93fr) minmax(0, 1.07fr);
-  align-items: start;
+  grid-template-rows: auto auto;
+  align-items: stretch;
   gap: 20px;
 }
 .account-settings-column {
   display: grid;
-  align-content: start;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
   gap: 20px;
   min-width: 0;
 }
 .workspace .account-page .live-panel {
   margin: 0;
+  height: 100%;
   overflow: visible;
   border-color: #cadfda;
   border-radius: 8px;
-  box-shadow: 0 8px 23px -20px #005e5970;
+  box-shadow: 0 0 22px #0b4c4a17, 0 16px 34px -24px #0b4c4a65;
 }
 .account-page .live-panel-header {
   align-items: center;
@@ -1365,6 +1400,32 @@
   font-size: 11px;
   font-weight: 650;
 }
+.account-sessions .live-pager {
+  justify-content: space-between;
+  gap: 9px;
+  margin: 0;
+  padding: 13px 0;
+  border-bottom: 1px solid #e0ece9;
+}
+.account-sessions .live-pager > span {
+  margin-right: auto;
+  color: #66817d;
+  font-size: 11px;
+}
+.account-page .account-sessions .live-pager button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #c5dcd6;
+  border-radius: 2px;
+  background: #fff;
+  color: #245c56;
+  box-shadow: none;
+  font-size: 11px;
+}
+.account-page .account-sessions .live-pager button:hover:not(:disabled) {
+  border-color: #8cbbb0;
+  background: #eef8f5;
+}
 .account-page .account-session .live-action button,
 .account-page .account-signout-all .live-action button {
   min-height: 34px;
@@ -1396,6 +1457,11 @@
   border-radius: 5px;
   color: #17695f;
   font-size: 13px;
+}
+.account-recovery-section {
+  margin-top: 18px;
+  padding-top: 19px;
+  border-top: 1px solid #dce9e5;
 }
 .account-mfa details {
   margin-top: 14px;
