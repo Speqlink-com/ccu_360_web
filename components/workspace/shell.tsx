@@ -192,7 +192,14 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
                   >
                     <span className="nav-icon-tile">
                       {link.href === "/dashboard" ? (
-                        <Icon name="platformOverview" size={29} />
+                        <>
+                          <span className="platform-nav-outline">
+                            <Icon name="overview" size={23} outline />
+                          </span>
+                          <span className="platform-nav-artwork">
+                            <Icon name="platformOverview" size={29} />
+                          </span>
+                        </>
                       ) : (
                         <>
                           <span className="platform-nav-outline">

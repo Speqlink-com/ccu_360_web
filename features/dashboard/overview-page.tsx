@@ -16,9 +16,10 @@ import {
   memberLabels,
 } from "@/lib/api/identity-contract";
 import { teamRole } from "@/features/live/journey-contract";
-import { Heading, QueryState, Status } from "@/features/live/shared";
+import { Heading, Pager, QueryState, Status } from "@/features/live/shared";
 
 const previewSize = 12;
+const peoplePageSize = 5;
 const formPreview = z.object({
   id: z.string(),
   name: z.string(),
@@ -82,6 +83,7 @@ function Collection({
   href,
   children,
   footer,
+  pagination,
 }: {
   title: string;
   subtitle: string;
@@ -89,6 +91,7 @@ function Collection({
   href: string;
   children: ReactNode;
   footer: string;
+  pagination?: ReactNode;
 }) {
   return (
     <section className="dashboard-panel">
@@ -114,6 +117,7 @@ function Collection({
       >
         {children}
       </div>
+      {pagination && <div className="dashboard-collection-pager">{pagination}</div>}
       <footer className="dashboard-panel-footer">
         <span>{footer}</span>
         <span className="dashboard-source-dot" aria-hidden="true" />
@@ -170,6 +174,7 @@ function Shortcut({
 export function OverviewPage() {
   const user = useIdentity().data!;
   const [dayPart, setDayPart] = useState<string | null>(null);
+  const [peopleOffset, setPeopleOffset] = useState(0);
   useEffect(() => {
     const updateGreeting = () => {
       const hour = new Date().getHours();
@@ -208,6 +213,13 @@ export function OverviewPage() {
     admin,
     30_000,
   );
+  const peoplePreview = useLiveQuery(
+    scope,
+    `identity/providers/${user.organization_id}/members?offset=${peopleOffset}&limit=${peoplePageSize + 1}`,
+    pageOf(employee),
+    admin,
+    30_000,
+  );
   const teams = useLiveQuery(
     scope,
     "workforce/roles?offset=0&limit=20",
@@ -242,7 +254,9 @@ export function OverviewPage() {
     : admin
       ? [people, teams, forms]
       : [access, journeys, patients];
-  const refreshing = activeQueries.some((q) => q.isFetching);
+  const refreshing =
+    activeQueries.some((q) => q.isFetching) ||
+    (admin && peoplePreview.isFetching);
   const name = member?.provider_name ?? "Your facility";
   const primaryPath = admin ? "templates" : "patients";
   const security = user.mfa_enabled ? "Enabled" : "Set up";
@@ -258,23 +272,21 @@ export function OverviewPage() {
   if (activeQueries.some((query) => query.isPending))
     return <CCU360Loader variant="dashboard" />;
   return (
-    <div className={`dashboard-overview ${platform ? "platform-overview" : ""}`}>
+    <div className={`dashboard-overview ${platform || admin ? "platform-overview" : ""} ${admin ? "facility-admin-overview" : ""}`}>
       <Heading
-        eyebrow={
-          platform
-            ? ""
-            : admin
-              ? "CCU360 / FACILITY OVERVIEW"
-              : "CCU360 / CARE OVERVIEW"
-        }
+        eyebrow={platform || admin ? "" : "CCU360 / CARE OVERVIEW"}
         title={
-          platform
+          platform || admin
             ? `${dayPart ?? "Welcome"}, ${nameParts.at(-1) ?? firstName}!`
             : `Welcome, ${firstName}.`
         }
         detail=""
         actions={
-          !platform && (
+          admin ? (
+            <span className="facility-workspace-label">
+              {name}
+            </span>
+          ) : clinical ? (
             <button
               type="button"
               className="btn btn-secondary dashboard-refresh"
@@ -286,48 +298,51 @@ export function OverviewPage() {
               <Icon name="clock" size={17} />
               {refreshing ? "Refreshing…" : "Refresh dashboard"}
             </button>
-          )
+          ) : undefined
         }
       />
-      {platform && (
+      {(platform || admin) && (
         <section className="platform-quickbar" aria-label="Quick actions">
           <nav
             className="platform-quickbar-panel"
-            aria-label="Platform shortcuts"
+            aria-label={platform ? "Platform shortcuts" : "Facility shortcuts"}
           >
             <Link
-              href="/dashboard/facilities"
+              href={platform ? "/dashboard/facilities" : "/dashboard/employees"}
               className="platform-quickbar-action"
             >
               <span className="platform-quickbar-icon">
                 <span className="platform-quickbar-outline">
-                  <Icon name="facilities" size={18} outline />
+                  <Icon name={platform ? "facilities" : "addUser"} size={18} outline />
                 </span>
                 <span className="platform-quickbar-artwork">
-                  <Icon name="facilities" size={22} />
+                  <Icon name={platform ? "facilities" : "addUser"} size={22} />
                 </span>
               </span>
-              <span>Facilities</span>
+              <span>{platform ? "Facilities" : "Employees"}</span>
             </Link>
             <Link
-              href="/dashboard/administrators"
+              href={platform ? "/dashboard/administrators" : "/dashboard/workforce"}
               className="platform-quickbar-action"
             >
               <span className="platform-quickbar-icon">
                 <span className="platform-quickbar-outline">
-                  <Icon name="addUser" size={18} outline />
+                  <Icon name={platform ? "addUser" : "team"} size={18} outline />
                 </span>
                 <span className="platform-quickbar-artwork">
-                  <Icon name="addUser" size={22} />
+                  <Icon name={platform ? "addUser" : "team"} size={22} />
                 </span>
               </span>
-              <span>Users</span>
+              <span>{platform ? "Users" : "Teams"}</span>
             </Link>
             <button
               type="button"
               className="platform-quickbar-action"
               disabled={refreshing}
-              onClick={() => void facilities.refetch()}
+              onClick={() => {
+                for (const query of activeQueries) void query.refetch();
+                if (admin) void peoplePreview.refetch();
+              }}
             >
               <span className={`platform-quickbar-icon platform-quickbar-icon-refresh ${refreshing ? "platform-refreshing" : ""}`}>
                 <span className="platform-quickbar-artwork">
@@ -339,7 +354,7 @@ export function OverviewPage() {
           </nav>
         </section>
       )}
-      {!platform && (
+      {clinical && (
         <section className="dashboard-hero" aria-label="Workspace overview">
         <div className="dashboard-hero-main">
           <span className="dashboard-kicker">
@@ -534,10 +549,22 @@ export function OverviewPage() {
             subtitle="Employee directory"
             icon="team"
             href="/dashboard/employees"
-            footer={previewCaption(people.data)}
+            footer="Facility employee directory"
+            pagination={
+              peoplePreview.data &&
+              (peopleOffset > 0 || peoplePreview.data.items.length > peoplePageSize) ? (
+                <Pager
+                  offset={peopleOffset}
+                  count={Math.min(peoplePreview.data.items.length, peoplePageSize)}
+                  size={peoplePageSize}
+                  hasMore={peoplePreview.data.items.length > peoplePageSize}
+                  change={setPeopleOffset}
+                />
+              ) : undefined
+            }
           >
-            <QueryState query={people} />
-            {people.data?.items.map((p) => (
+            <QueryState query={peoplePreview} />
+            {peoplePreview.data?.items.slice(0, peoplePageSize).map((p) => (
               <div className="dashboard-list-row" key={p.id}>
                 <span className="dashboard-person-avatar" aria-hidden="true">
                   {p.display_name
@@ -553,13 +580,19 @@ export function OverviewPage() {
                 <Status value={p.status} />
               </div>
             ))}
-            {people.data && !people.data.items.length && (
-              <EmptyPreview
-                icon="addUser"
-                title="Build your care team"
-                href="/dashboard/employees"
-                action="Invite an employee"
-              />
+            {peoplePreview.data && !peoplePreview.data.items.length && (
+              peopleOffset > 0 ? (
+                <div className="dashboard-empty">
+                  <strong>No employees on this page.</strong>
+                </div>
+              ) : (
+                <EmptyPreview
+                  icon="addUser"
+                  title="Build your care team"
+                  href="/dashboard/employees"
+                  action="Invite an employee"
+                />
+              )
             )}
           </Collection>
         ) : (
@@ -605,36 +638,51 @@ export function OverviewPage() {
           </Collection>
         )}
         {admin ? (
-          <Collection
-            title="Form library"
-            subtitle="Saved document versions"
-            icon="form"
-            href="/dashboard/templates"
-            footer={previewCaption(forms.data)}
-          >
-            <QueryState query={forms} />
-            {forms.data?.items.map((f) => (
-              <div className="dashboard-list-row" key={f.id}>
-                <span className="dashboard-row-icon">
-                  <Icon name="form" size={28} />
+          <section className="dashboard-panel dashboard-action-panel">
+            <header className="dashboard-panel-header">
+              <div className="dashboard-panel-title">
+                <span className="dashboard-icon-tile">
+                  <Icon name="shield" size={28} />
                 </span>
-                <div className="dashboard-row-copy">
-                  <strong>{f.name}</strong>
-                  <span>Version {f.version}</span>
+                <div>
+                  <h2>Facility controls</h2>
+                  <p>{name} · Administration</p>
                 </div>
-                <Status value={f.active ? f.status : "retired"} />
               </div>
-            ))}
-            {forms.data && !forms.data.items.length && (
-              <EmptyPreview
-                icon="form"
-                title="Create your first journey form"
-                href="/dashboard/templates"
-                action="Open Form Studio"
+            </header>
+            <div className="dashboard-action-list">
+              <Shortcut
+                href="/dashboard/employees"
+                title="Employees"
+                icon="addUser"
+                caption="Invitations & access"
               />
+              <Shortcut
+                href="/dashboard/workforce"
+                title="Departments & teams"
+                icon="team"
+                caption="Care roles & responsibilities"
+              />
+              <Shortcut
+                href="/dashboard/templates"
+                title="Form Studio"
+                icon="form"
+                caption="Versions & branding"
+              />
+              <Shortcut
+                href="/dashboard/worksite"
+                title="Facility access"
+                icon="location"
+                caption="Sites & trusted networks"
+              />
+            </div>
+            {(forms.error || teams.error) && (
+              <div className="dashboard-control-errors">
+                {forms.error && <QueryState query={forms} />}
+                {teams.error && <QueryState query={teams} />}
+              </div>
             )}
-            {teams.error && <QueryState query={teams} />}
-          </Collection>
+          </section>
         ) : platform ? (
           <section className="dashboard-panel dashboard-action-panel">
             <header className="dashboard-panel-header">
@@ -713,7 +761,7 @@ export function OverviewPage() {
           </Collection>
         )}
       </div>
-      {!platform && (
+      {clinical && (
         <section className="dashboard-quick-access" aria-label="Quick access">
           <Shortcut
             href={`/dashboard/${admin ? "employees" : "patients"}`}

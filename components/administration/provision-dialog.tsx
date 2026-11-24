@@ -1,7 +1,6 @@
 "use client";
 import { buttonClasses } from "@/lib/presentation";
 import { useState, type FormEvent } from "react";
-import { Dialog } from "@/components/ui/dialog";
 import { SideDrawer } from "@/components/ui/side-drawer";
 import { Icon } from "@/components/ui/icon";
 import { ButtonHeartbeat } from "@/components/ui/ccu-loader";
@@ -16,14 +15,13 @@ export function ProvisionDialog({
   const mutation = useProvision(kind);
   const [copied, setCopied] = useState(false);
   const facility = kind === "facilities";
-  const Surface = facility ? SideDrawer : Dialog;
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const values = Object.fromEntries(new FormData(e.currentTarget));
     mutation.mutate(values);
   }
   return (
-    <Surface
+    <SideDrawer
       title={
         mutation.isSuccess
           ? "Workspace access is ready"
@@ -38,6 +36,8 @@ export function ProvisionDialog({
             ? "Create a separate workspace and appoint its first administrator."
             : "Give a team member the right role within your facility."
       }
+      eyebrow={`CCU360 / ${facility ? "FACILITIES" : "EMPLOYEES"}`}
+      closeLabel={`Close ${facility ? "facility onboarding" : "employee account"} form`}
       onClose={onClose}
     >
       {mutation.isSuccess ? (
@@ -215,7 +215,7 @@ export function ProvisionDialog({
           </footer>
         </form>
       )}
-    </Surface>
+    </SideDrawer>
   );
 }
 function Field({

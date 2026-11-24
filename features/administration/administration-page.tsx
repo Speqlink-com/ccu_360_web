@@ -13,11 +13,14 @@ import {
 import { Badge, Empty } from "@/components/ui/primitives";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { Dialog } from "@/components/ui/dialog";
+import { SideDrawer } from "@/components/ui/side-drawer";
+import { ButtonHeartbeat } from "@/components/ui/ccu-loader";
 import { LoadingState } from "@/components/ui/feedback";
 import { ProvisionDialog } from "@/components/administration/provision-dialog";
 export type AdminSection =
   "overview" | "facilities" | "employees" | "team" | "units" | "access";
 const facilityPageSize = 7;
+const employeePageSize = 7;
 export function AdministrationPage({ section }: { section: AdminSection }) {
   const session = useSession();
   const query = useDirectory();
@@ -598,10 +601,19 @@ function EmployeeTable({
 }) {
   const update = useUpdateAccess();
   const [target, setTarget] = useState<User | null>(null);
+  const [offset, setOffset] = useState(0);
   const canManage = current.role === "facility_admin";
+  const visibleOffset = Math.min(
+    offset,
+    Math.max(0, Math.ceil(employees.length / employeePageSize) - 1) * employeePageSize,
+  );
+  const visibleEmployees = employees.slice(
+    visibleOffset,
+    visibleOffset + employeePageSize,
+  );
   return (
     <>
-      <section className="panel admin-table-panel">
+      <section className="panel admin-table-panel demo-facilities-panel">
         <div className="panel-heading">
           <div>
             <h2>
@@ -616,13 +628,19 @@ function EmployeeTable({
           </div>
           <Search
             value={search}
-            onChange={onSearch}
+            onChange={(next) => {
+              onSearch(next);
+              setOffset(0);
+            }}
             placeholder="Search name, email or role"
           />
         </div>
         <Filters
           value={filter}
-          onChange={onFilter}
+          onChange={(next) => {
+            onFilter(next);
+            setOffset(0);
+          }}
           values={["All", "Active", "Suspended"]}
           label="Employee status"
         />
@@ -639,7 +657,7 @@ function EmployeeTable({
               </tr>
             </thead>
             <tbody>
-              {employees.map((u) => (
+              {visibleEmployees.map((u) => (
                 <tr key={u.id}>
                   <td>
                     <span className="patient-cell">
@@ -682,13 +700,13 @@ function EmployeeTable({
                   {canManage && (
                     <td>
                       <button
-                        className={buttonClasses.secondarySmall}
+                        className="icon-button"
                         disabled={u.id === current.id}
+                        aria-label={`${u.status === "Active" ? "Suspend" : "Restore"} access for ${u.name}`}
+                        title={`${u.status === "Active" ? "Suspend" : "Restore"} access for ${u.name}`}
                         onClick={() => setTarget(u)}
                       >
-                        {u.status === "Active"
-                          ? "Suspend access"
-                          : "Restore access"}
+                        <Icon name={u.status === "Active" ? "suspend" : "reactivate"} size={18} outline />
                       </button>
                     </td>
                   )}
@@ -700,15 +718,40 @@ function EmployeeTable({
             <Empty title="No team members match this view." />
           )}
         </div>
+        <div className="facility-pager">
+          <span>
+            {employees.length
+              ? `Showing ${visibleOffset + 1}–${visibleOffset + visibleEmployees.length} of ${employees.length}`
+              : "No employees in this view"}
+          </span>
+          <div>
+            <button
+              type="button"
+              disabled={visibleOffset === 0}
+              onClick={() => setOffset(Math.max(0, visibleOffset - employeePageSize))}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              disabled={visibleOffset + employeePageSize >= employees.length}
+              onClick={() => setOffset(visibleOffset + employeePageSize)}
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </section>
       {target && (
-        <Dialog
+        <SideDrawer
           title={
             target.status === "Active"
               ? "Suspend employee access?"
               : "Restore employee access?"
           }
           subtitle={target.name}
+          eyebrow="CCU360 / EMPLOYEES"
+          closeLabel="Close employee access"
           onClose={() => setTarget(null)}
         >
           <div className="dialog-body px-7 py-[26px] max-[760px]:p-[22px]">
@@ -732,6 +775,7 @@ function EmployeeTable({
               <button
                 className={buttonClasses.primary}
                 disabled={update.isPending}
+                aria-busy={update.isPending}
                 onClick={() =>
                   update.mutate(
                     {
@@ -744,12 +788,13 @@ function EmployeeTable({
                   )
                 }
               >
-                Confirm{" "}
-                {target.status === "Active" ? "suspension" : "restoration"}
+                <ButtonHeartbeat loading={update.isPending}>
+                  Confirm {target.status === "Active" ? "suspension" : "restoration"}
+                </ButtonHeartbeat>
               </button>
             </div>
           </div>
-        </Dialog>
+        </SideDrawer>
       )}
     </>
   );

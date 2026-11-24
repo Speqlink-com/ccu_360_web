@@ -967,6 +967,30 @@
   border-radius: 6px;
   box-shadow: 0 7px 16px -9px #006d69a6;
 }
+.workspace .employee-teams-link {
+  min-height: 41px;
+  border-radius: 6px;
+  box-shadow: none;
+  font-size: 12px;
+}
+.workspace .workspace-directory-page .employee-manage-button {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #b9d8d2;
+  border-radius: 2px;
+  background: #fff;
+  color: #006d69;
+  box-shadow: none;
+  font-size: 12px;
+}
+.workspace .workspace-directory-page .employee-manage-button:hover {
+  border-color: #79bcb2;
+  background: #e5f5f0;
+}
+.employee-access-none {
+  color: #6f8984;
+  font-size: 12px;
+}
 .workspace-directory-page .live-action button,
 .demo-facilities-panel .icon-button {
   display: inline-flex;
@@ -1161,14 +1185,14 @@
   font-size: 13px;
   font-weight: 650;
 }
-.side-drawer .live-form input:not([type=checkbox]) {
+.side-drawer .live-form :is(input:not([type=checkbox]), select) {
   min-height: 46px;
   border-color: #c9ddd8;
   border-radius: 6px;
   background: #fbfdfc;
   font-size: 14px;
 }
-.side-drawer .live-form input:focus {
+.side-drawer .live-form :is(input, select):focus {
   border-color: #008f87;
   outline: 2px solid #008f8730;
   outline-offset: 1px;
@@ -1753,6 +1777,28 @@
   font-size: clamp(21px, 1.7vw, 27px);
   font-weight: 650;
   letter-spacing: -0.025em;
+}
+.facility-workspace-label {
+  display: block;
+  max-width: min(38vw, 420px);
+  background: linear-gradient(100deg, #005e5a, #008f87 55%, #39b8aa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: .085em;
+  line-height: 1.45;
+  text-align: right;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .facility-workspace-label {
+    max-width: 100%;
+    text-align: left;
+  }
 }
 .dashboard-refresh {
   padding: 10px 14px;
@@ -2378,6 +2424,9 @@
   border-radius: 4px;
   box-shadow: 0 9px 20px -16px #005e5960;
 }
+.facility-admin-overview .dashboard-collections > .dashboard-panel {
+  height: 486px;
+}
 .platform-overview .dashboard-panel-header {
   flex: 0 0 auto;
   background: linear-gradient(105deg, #dff2ee, #f4fbf9);
@@ -2409,10 +2458,48 @@
   padding-inline: 18px;
   scrollbar-color: #73b7af #eef8f5;
 }
+.dashboard-collection-pager {
+  flex: 0 0 auto;
+  border-top: 1px solid #d3eae5;
+  background: #fff;
+}
+.dashboard-collection-pager .live-pager {
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 9px 18px;
+}
+.dashboard-collection-pager .live-pager > span {
+  margin-right: auto;
+  color: #5e817d;
+  font-size: 11px;
+}
+.dashboard-collection-pager .live-pager button {
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid #bfd7d1;
+  border-radius: 2px;
+  background: #fff;
+  color: #205e57;
+  box-shadow: none;
+  font-size: 11px;
+}
+.dashboard-collection-pager .live-pager button:hover:not(:disabled) {
+  border-color: #82b9b0;
+  background: #eef8f5;
+}
 .platform-overview .dashboard-list-row {
   min-height: 60px;
   padding: 8px 2px;
   border-bottom-color: #d3eae5;
+}
+.facility-admin-overview .dashboard-person-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 4px;
+  background: #e9f6f3;
+  color: #006d69;
+  box-shadow: none;
 }
 .platform-overview .dashboard-row-icon {
   border: 0;
@@ -2455,6 +2542,13 @@
 }
 .platform-overview .dashboard-action-list .dashboard-shortcut:is(:hover, :focus-visible) strong {
   color: #006d69;
+}
+.dashboard-control-errors {
+  max-height: 120px;
+  overflow: auto;
+  padding: 9px 18px;
+  border-top: 1px solid #d3eae5;
+  background: #fff;
 }
 .dashboard-quick-access {
   display: grid;
