@@ -37,12 +37,15 @@ function focusControl(control: Control) {
 export function RequestError({
   error,
   formRef,
+  compact = false,
 }: {
   error: Error | null;
   formRef?: RefObject<HTMLFormElement | null>;
+  compact?: boolean;
 }) {
   const id = useId();
   const summary = useRef<HTMLDivElement>(null);
+  const compactSummary = useRef<HTMLParagraphElement>(null);
   const [copiedReference, setCopiedReference] = useState<string | undefined>();
   useEffect(() => {
     const form = formRef?.current;
@@ -72,6 +75,7 @@ export function RequestError({
       }
     });
     if (first) focusControl(first);
+    else if (compact) compactSummary.current?.focus();
     else summary.current?.focus();
     return () => {
       for (const [control, attributes] of previous) {
@@ -83,9 +87,15 @@ export function RequestError({
           else control.setAttribute(name, value);
       }
     };
-  }, [error, formRef, id]);
+  }, [compact, error, formRef, id]);
   if (!error) return null;
   const problem = error instanceof ApiError ? error : null;
+  if (compact) {
+    const message = problem?.issues[0]
+      ? issueMessage(problem.issues[0], problem.path)
+      : error.message;
+    return <p ref={compactSummary} tabIndex={-1} role="alert" className="request-error-compact" title={message}>{message}</p>;
+  }
   return (
     <div
       ref={summary}

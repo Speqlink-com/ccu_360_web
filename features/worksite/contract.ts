@@ -52,6 +52,7 @@ export const grant = z.object({
 });
 export type WorksiteStatus = z.infer<typeof worksiteStatus>;
 export type Site = z.infer<typeof site>;
+export type Network = z.infer<typeof network>;
 export type NetworkObservation = z.infer<typeof observation>;
 export function connectionNotice(network?: NetworkObservation) {
   if (

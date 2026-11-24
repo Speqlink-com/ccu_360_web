@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "@fontsource-variable/inter";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 import "./collaboration.css";
 import "./workspace.css";

@@ -132,11 +132,13 @@ function InfoTooltip({
 export function Notice({
   error,
   formRef,
+  compact = false,
 }: {
   error: Error | null;
   formRef?: RefObject<HTMLFormElement | null>;
+  compact?: boolean;
 }) {
-  return <RequestError error={error} formRef={formRef} />;
+  return <RequestError error={error} formRef={formRef} compact={compact} />;
 }
 export function QueryState({
   query,
@@ -292,6 +294,7 @@ export function ActionForm({
   successMessage = "Saved successfully.",
   reset = true,
   disabled = false,
+  compactError = false,
 }: {
   scope: string | null;
   path: string;
@@ -304,6 +307,7 @@ export function ActionForm({
   successMessage?: string;
   reset?: boolean;
   disabled?: boolean;
+  compactError?: boolean;
 }) {
   const client = useQueryClient();
   const form = useRef<HTMLFormElement>(null);
@@ -333,7 +337,7 @@ export function ActionForm({
       }}
     >
       <fieldset disabled={mutation.isPending || disabled}>
-        <Notice error={mutation.error} formRef={form} />
+        <Notice error={mutation.error} formRef={form} compact={compactError} />
         {children}
         {mutation.isSuccess && (
           <FeedbackMessage tone="success">{successMessage}</FeedbackMessage>

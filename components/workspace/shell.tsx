@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Brand } from "@/components/ui/brand";
 import { Icon } from "@/components/ui/icon";
 import { useWorkspaceUI } from "@/providers/app-provider";
@@ -14,7 +14,12 @@ import { finishSignOut } from "@/features/identity/queries";
 import { useSession } from "@/providers/session-provider";
 import { roleLabels } from "@/lib/domain/identity";
 import { FeedbackProvider } from "@/components/ui/feedback";
-import { useState } from "react";
+import {
+  defaultWorkspaceAccent,
+  readableWorkspaceAccent,
+  validWorkspaceFontScale,
+  workspaceAppearanceKey,
+} from "@/lib/workspace-appearance";
 export function WorkspaceShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -66,6 +71,41 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   const setMobile = useWorkspaceUI((s) => s.setMobileOpen);
   const unit = useWorkspaceUI((s) => s.unit);
   const setUnit = useWorkspaceUI((s) => s.setUnit);
+  const accent = useWorkspaceUI((s) => s.accent);
+  const fontScale = useWorkspaceUI((s) => s.fontScale);
+  const setAccent = useWorkspaceUI((s) => s.setAccent);
+  const setFontScale = useWorkspaceUI((s) => s.setFontScale);
+  const appearanceLoadedFor = useRef<string | null>(null);
+  const skipInitialAppearanceSave = useRef<string | null>(null);
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (!userId) return;
+    skipInitialAppearanceSave.current = userId;
+    try {
+      const stored = JSON.parse(localStorage.getItem(workspaceAppearanceKey(userId)) ?? "null");
+      setAccent(readableWorkspaceAccent(stored?.accent ?? defaultWorkspaceAccent));
+      setFontScale(validWorkspaceFontScale(stored?.fontScale) ? stored.fontScale : 100);
+    } catch {
+      setAccent(defaultWorkspaceAccent);
+      setFontScale(100);
+    }
+    appearanceLoadedFor.current = userId;
+  }, [userId, setAccent, setFontScale]);
+  useEffect(() => {
+    if (!userId || appearanceLoadedFor.current !== userId) return;
+    if (skipInitialAppearanceSave.current === userId) {
+      skipInitialAppearanceSave.current = null;
+      return;
+    }
+    try {
+      localStorage.setItem(
+        workspaceAppearanceKey(userId),
+        JSON.stringify({ accent, fontScale }),
+      );
+    } catch {
+      // The preference remains active for this session when storage is unavailable.
+    }
+  }, [accent, fontScale, userId]);
   const sidebarRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!mobile) return;
@@ -111,7 +151,9 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   return (
     <FeedbackProvider>
       <div
-        className={`workspace teal-workspace grid min-h-dvh w-full bg-background max-[760px]:block ${collapsed ? "is-collapsed [grid-template-columns:78px_minmax(0,1fr)] min-[1800px]:[grid-template-columns:82px_minmax(0,1fr)] max-[1250px]:[grid-template-columns:76px_minmax(0,1fr)]" : "[grid-template-columns:252px_minmax(0,1fr)] min-[1800px]:[grid-template-columns:272px_minmax(0,1fr)] max-[1250px]:[grid-template-columns:224px_minmax(0,1fr)]"}`}
+        data-custom-accent={accent.toLowerCase() === defaultWorkspaceAccent ? undefined : ""}
+        style={{ "--teal": accent, "--workspace-content-zoom": fontScale / 100 } as CSSProperties}
+        className={`workspace teal-workspace grid min-h-dvh w-full bg-background max-[760px]:block ${collapsed ? "is-collapsed [grid-template-columns:78px_minmax(0,1fr)] min-[1800px]:[grid-template-columns:82px_minmax(0,1fr)] max-[1250px]:[grid-template-columns:76px_minmax(0,1fr)]" : "[grid-template-columns:290px_minmax(0,1fr)] min-[1800px]:[grid-template-columns:306px_minmax(0,1fr)] max-[1250px]:[grid-template-columns:274px_minmax(0,1fr)]"}`}
       >
         <a className="skip-link" href="#workspace-main">
           Skip to workspace
@@ -129,7 +171,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           role={mobile ? "dialog" : undefined}
           aria-modal={mobile || undefined}
           aria-label="Workspace navigation"
-          className={`sidebar sticky top-0 z-40 flex h-dvh flex-col overflow-hidden border-r border-border px-4 pt-[23px] pb-3.5 max-[1000px]:px-[9px] max-[760px]:fixed max-[760px]:invisible max-[760px]:left-0 max-[760px]:w-[260px] max-[760px]:translate-x-[-100%] max-[760px]:px-4 max-[760px]:pt-[23px] max-[760px]:pb-3.5 teal-sidebar ${mobile ? "sidebar-open max-[760px]:visible max-[760px]:translate-x-0" : ""}`}
+          className={`sidebar sticky top-0 z-40 flex h-dvh flex-col overflow-hidden border-r border-border px-4 pt-[23px] pb-3.5 max-[1000px]:px-[9px] max-[760px]:fixed max-[760px]:invisible max-[760px]:left-0 max-[760px]:w-[292px] max-[760px]:translate-x-[-100%] max-[760px]:px-4 max-[760px]:pt-[23px] max-[760px]:pb-3.5 teal-sidebar ${mobile ? "sidebar-open max-[760px]:visible max-[760px]:translate-x-0" : ""}`}
         >
           <svg
             className="platform-logo-curve"

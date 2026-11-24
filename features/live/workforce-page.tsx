@@ -1,6 +1,9 @@
 "use client";
 import { useState } from "react";
 import { z } from "zod";
+import { Icon } from "@/components/ui/icon";
+import { SideDrawer } from "@/components/ui/side-drawer";
+import { useToast } from "@/components/ui/feedback";
 import { useIdentity, useLiveQuery } from "@/features/identity/queries";
 import {
   pageOf,
@@ -26,6 +29,7 @@ import {
   AttributeChoices,
   workforceAttribute,
 } from "./workforce-vocabulary";
+import { SearchSelect } from "./search-select";
 const localInputTime = (stamp: string) => {
   const date = new Date(stamp);
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
@@ -60,6 +64,47 @@ const capabilityLabels = {
   correct: "Amend records",
   export: "Export ledger",
 };
+const workforcePageSize = 5;
+const departmentCodeCharacters = "0123456789ABCEFGHJKLMNPQRSTUVWXYZ";
+const departmentDisplayCode = (code: string) =>
+  /^ccu_d[0-9abcefghjklmnpqrstuvwxyz]{4}$/i.test(code)
+    ? code.toUpperCase().replace("_", "-")
+    : code;
+function generateDepartmentCode(existing: Set<string>) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const bytes = crypto.getRandomValues(new Uint8Array(4));
+    const suffix = Array.from(bytes, (byte) =>
+      departmentCodeCharacters[byte % departmentCodeCharacters.length],
+    ).join("");
+    const code = `ccu_d${suffix.toLowerCase()}`;
+    if (!existing.has(code)) return code;
+  }
+  return "";
+}
+function EditSurface({
+  label,
+  subtitle,
+  children,
+}: {
+  label: string;
+  subtitle: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="workforce-row-action" aria-label={`${label} for ${subtitle}`} onClick={() => setOpen(true)}>
+        <Icon name="settings" size={16} outline />
+        {label}
+      </button>
+      {open && (
+        <SideDrawer title={label} subtitle={subtitle} eyebrow="CCU360 / CARE TEAMS" closeLabel={`Close ${label.toLowerCase()}`} onClose={() => setOpen(false)}>
+          {children}
+        </SideDrawer>
+      )}
+    </>
+  );
+}
 export function WorkforcePage() {
   const user = useIdentity().data!;
   const org = user.organization_id!;
@@ -67,24 +112,29 @@ export function WorkforcePage() {
   const [assignmentOffset, setAssignmentOffset] = useState(0);
   const [departmentOffset, setDepartmentOffset] = useState(0);
   const [staffOffset, setStaffOffset] = useState(0);
+  const [creatingDepartment, setCreatingDepartment] = useState(false);
+  const [departmentCode, setDepartmentCode] = useState("");
+  const [creatingRole, setCreatingRole] = useState(false);
+  const [creatingAssignment, setCreatingAssignment] = useState(false);
+  const toast = useToast();
   const departments = useLiveQuery(
     org,
-    `workforce/departments?offset=${departmentOffset}&limit=20`,
+    `workforce/departments?offset=${departmentOffset}&limit=${workforcePageSize + 1}`,
     pageOf(department),
   );
   const roles = useLiveQuery(
     org,
-    `workforce/roles?offset=${roleOffset}&limit=20`,
+    `workforce/roles?offset=${roleOffset}&limit=${workforcePageSize + 1}`,
     pageOf(teamRole),
   );
   const assignments = useLiveQuery(
     org,
-    `workforce/assignments?offset=${assignmentOffset}&limit=20`,
+    `workforce/assignments?offset=${assignmentOffset}&limit=${workforcePageSize + 1}`,
     pageOf(assignment),
   );
   const staff = useLiveQuery(
     org,
-    `workforce/staff?offset=${staffOffset}&limit=20`,
+    `workforce/staff?offset=${staffOffset}&limit=${workforcePageSize + 1}`,
     pageOf(
       z.object({
         membership_id: z.string(),
@@ -117,29 +167,36 @@ export function WorkforcePage() {
     responsibilities.data?.pages.flatMap((p) => p.items) ?? [];
   const allRoles = roleChoices.data?.pages.flatMap((page) => page.items) ?? [];
   const allPeople = people.data?.pages.flatMap((page) => page.items) ?? [];
+  const allDepartments = deptChoices.data?.pages.flatMap((page) => page.items) ?? [];
+  const randomizeDepartmentCode = () => {
+    const existing = new Set(allDepartments.map((item) => item.code.toLowerCase()));
+    if (departmentCode) existing.add(departmentCode);
+    setDepartmentCode(generateDepartmentCode(existing));
+  };
   return (
-    <>
+    <div className="workforce-page workspace-directory-page">
       <Heading
+        eyebrow=""
         title="Departments & care teams"
         detail="Responsibility belongs to a shared team role. Enroll matching professions once or assign employees individually; each person’s work retains its own audit trail."
+        actions={<>
+          <button type="button" className="workforce-secondary-action" onClick={() => { randomizeDepartmentCode(); setCreatingDepartment(true); }}><Icon name="facilities" size={18} outline /> New department</button>
+          <button type="button" className="workforce-secondary-action" onClick={() => setCreatingAssignment(true)}><Icon name="addUser" size={18} outline /> Assign employee</button>
+          <button type="button" className="workforce-primary-action" onClick={() => setCreatingRole(true)}><Icon name="plus" size={18} outline /> Create care-team role</button>
+        </>}
       />
-      <VocabularyPanel org={org} />
+      <div className="workforce-intro" aria-label="How care teams are organized">
+        <div><span>01 / STRUCTURE</span><strong>Departments</strong><p>Where clinical work belongs</p></div>
+        <div><span>02 / RESPONSIBILITY</span><strong>Care-team roles</strong><p>What each team can do</p></div>
+        <div><span>03 / COVERAGE</span><strong>Assignments</strong><p>Who is on the team, and when</p></div>
+        <div><span>04 / READINESS</span><strong>Availability</strong><p>Who can provide care today</p></div>
+      </div>
       <ChoiceLoader query={professions} />
       <ChoiceLoader query={responsibilities} />
-      <details className="workforce-membership-guide">
-        <summary>Shared role membership</summary>
-        <p>
-          Configure a shared role for all employees with its compatible
-          profession. New matching employees inherit that role automatically.
-          Use individual dated assignments for restricted teams or
-          department-specific coverage. Reception roles need Register patients
-          and inclusion as an intake team on the published form.
-        </p>
-      </details>
-      <div className="live-grid grid grid-cols-2 items-start gap-6 max-[760px]:grid-cols-1 max-[760px]:gap-0">
-        <Panel title="Departments">
+      <div className="workforce-grid workforce-top-grid">
+        <Panel title="Departments" icon="facilities" detail="Departments group care teams. Archiving one removes employee access through it while retaining the history.">
           <QueryState query={departments} />
-          {departments.data?.items.map((item) => (
+          {departments.data?.items.slice(0, workforcePageSize).map((item) => (
             <div
               className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4"
               key={item.id}
@@ -147,12 +204,11 @@ export function WorkforcePage() {
               <div>
                 <strong>{item.name}</strong>
                 <small>
-                  {item.code} ·{" "}
+                  {departmentDisplayCode(item.code)} ·{" "}
                   <Status value={item.active ? "active" : "suspended"} />
                 </small>
               </div>
-              <details>
-                <summary>Edit department</summary>
+              <EditSurface label="Edit department" subtitle={item.name}>
                 <ActionForm
                   scope={org}
                   path={`workforce/departments/${item.id}`}
@@ -163,7 +219,7 @@ export function WorkforcePage() {
                     active: item.active,
                     expected_version: item.version,
                     name: value(data, "name"),
-                    code: value(data, "code"),
+                    code: item.code,
                     reason: value(data, "reason"),
                   })}
                 >
@@ -174,13 +230,7 @@ export function WorkforcePage() {
                     minLength={2}
                     maxLength={120}
                   />
-                  <Field
-                    name="code"
-                    label="Department code"
-                    defaultValue={item.code}
-                    pattern="[a-z][a-z0-9_]{1,39}"
-                    maxLength={40}
-                  />
+                  <p className="workforce-code-note">Department ID <strong>{departmentDisplayCode(item.code)}</strong></p>
                   <Field
                     name="reason"
                     label="Change reason"
@@ -212,23 +262,54 @@ export function WorkforcePage() {
                     maxLength={500}
                   />
                 </ActionForm>
-              </details>
+              </EditSurface>
             </div>
           ))}
+          {departments.data && !departments.data.items.length && <p className="workforce-empty">Create a department to give care teams a home.</p>}
           <Pager
             offset={departmentOffset}
-            count={departments.data?.items.length ?? 0}
+            count={Math.min(departments.data?.items.length ?? 0, workforcePageSize)}
+            size={workforcePageSize}
+            hasMore={departments.data ? departments.data.items.length > workforcePageSize : undefined}
             change={setDepartmentOffset}
           />
-          <details>
-            <summary>Add a department</summary>
+        </Panel>
+        <Panel title="Shared team roles" icon="team" detail="Shared roles include matching professions automatically. Individual roles use dated assignments." scroll>
+          <QueryState query={roles} />
+          {roles.data?.items.slice(0, workforcePageSize).map((role) => (
+            <div className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4" key={role.id}>
+              <div><strong>{role.name}</strong><p className="text-sm text-teal-dark">{role.membership_mode === "profession" ? "Applies to all matching employees" : "Uses individual dated assignments"}</p><p>{role.identity_roles.map((item) => memberLabels[item as MemberRole]).join(" · ")}</p><small>{role.capabilities.map((item) => capabilityLabels[item as keyof typeof capabilityLabels]).join(" · ")}</small></div>
+              <Status value={role.active ? "active" : "suspended"} />
+              <EditSurface label="Edit role" subtitle={role.name}>
+                <ActionForm key={`${role.id}:${role.version}`} scope={org} path={`workforce/roles/${role.id}`} method="PATCH" label="Save care-team role" reset={false} body={(data) => ({ active: role.active, expected_version: role.version, name: value(data, "name"), code: value(data, "code"), capabilities: data.getAll("capabilities"), profession_ids: data.getAll("profession_ids"), responsibility_ids: data.getAll("responsibility_ids"), reason: value(data, "reason"), membership_mode: value(data, "membership_mode") })}>
+                  <Field name="membership_mode" label="Role membership" defaultValue={role.membership_mode}><option value="profession">All matching employees (shared profession role)</option><option value="individual">Individually assigned employees only</option></Field>
+                  <p className="mb-4 text-sm text-muted">Changing this applies immediately to matching employees and existing patient journeys using this role. Individual assignment history remains intact.</p>
+                  <Field name="name" label="Team role name" defaultValue={role.name} minLength={2} maxLength={120} />
+                  <Field name="code" label="Role code" defaultValue={role.code} pattern="[a-z][a-z0-9_]{1,39}" maxLength={40} />
+                  <AttributeChoices items={allProfessions} name="profession_ids" selected={role.profession_ids} />
+                  <AttributeChoices items={allResponsibilities} name="responsibility_ids" selected={role.responsibility_ids} />
+                  <fieldset className="option-grid"><legend>Responsibilities</legend>{capabilities.map((capability) => <label className="check-label" key={capability}><input type="checkbox" name="capabilities" value={capability} defaultChecked={role.capabilities.includes(capability)} />{capabilityLabels[capability]}</label>)}</fieldset>
+                  <Field name="reason" label="Change reason" minLength={3} maxLength={500} />
+                </ActionForm>
+                <p className="mt-5 text-sm text-muted">Archive unused roles to preserve their assignments and documentation history.</p>
+                <ActionForm scope={org} path={`workforce/roles/${role.id}`} method="PATCH" label={role.active ? "Archive role" : "Restore role"} body={(data) => ({ active: !role.active, expected_version: role.version, reason: value(data, "reason") })}><Field name="reason" label="Reason" minLength={3} maxLength={500} /></ActionForm>
+              </EditSurface>
+            </div>
+          ))}
+          {roles.data && !roles.data.items.length && <p className="workforce-empty">Create a care-team role to define shared responsibilities.</p>}
+          <Pager offset={roleOffset} count={Math.min(roles.data?.items.length ?? 0, workforcePageSize)} size={workforcePageSize} hasMore={roles.data ? roles.data.items.length > workforcePageSize : undefined} change={setRoleOffset} />
+        </Panel>
+      </div>
+      {creatingDepartment && <SideDrawer title="New department" subtitle="Create a home for a care team." eyebrow="CCU360 / DEPARTMENTS" closeLabel="Close department form" onClose={() => setCreatingDepartment(false)}>
             <ActionForm
               scope={org}
               path="workforce/departments"
               label="Create department"
+              onSuccess={() => { toast?.("Department created."); setCreatingDepartment(false); }}
+              disabled={!departmentCode}
               body={(data) => ({
                 name: value(data, "name"),
-                code: value(data, "code"),
+                code: departmentCode,
               })}
             >
               <Field
@@ -237,23 +318,22 @@ export function WorkforcePage() {
                 minLength={2}
                 maxLength={120}
               />
-              <Field
-                name="code"
-                label="Code (lowercase, numbers, underscores)"
-                pattern="[a-z][a-z0-9_]{1,39}"
-                maxLength={40}
-              />
+              <div className="workforce-code-picker">
+                <span>Department ID</span>
+                <div>
+                  <output aria-live="polite">{departmentCode ? departmentDisplayCode(departmentCode) : "Unavailable"}</output>
+                  <button type="button" className="workforce-secondary-action" onClick={randomizeDepartmentCode}><Icon name="refresh" size={16} outline /> Randomize</button>
+                </div>
+                <small>Keep this ID or generate another before creating the department.</small>
+              </div>
             </ActionForm>
-          </details>
-        </Panel>
-        <Panel
-          title="Create a care-team role"
-          detail="Create a shared responsibility once for all matching employees, or use individual dated assignments for a restricted care team."
-        >
+      </SideDrawer>}
+      {creatingRole && <SideDrawer title="Create a care-team role" subtitle="Define a shared responsibility for matching employees or an individual care team." eyebrow="CCU360 / CARE TEAMS" closeLabel="Close care-team form" onClose={() => setCreatingRole(false)}>
           <ActionForm
             scope={org}
             path="workforce/roles"
             label="Create team role"
+            onSuccess={() => { toast?.("Care-team role created."); setCreatingRole(false); }}
             body={(data) => ({
               department_id: value(data, "department_id"),
               name: value(data, "name"),
@@ -265,17 +345,14 @@ export function WorkforcePage() {
               membership_mode: value(data, "membership_mode"),
             })}
           >
-            <Field name="department_id" label="Department">
-              <option value="">Select department</option>
-              {deptChoices.data?.pages
-                .flatMap((page) => page.items)
+            <SearchSelect
+              name="department_id"
+              label="Department"
+              placeholder="Search departments"
+              options={(deptChoices.data?.pages.flatMap((page) => page.items) ?? [])
                 .filter((item) => item.active)
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-            </Field>
+                .map((item) => ({ value: item.id, label: item.name, detail: departmentDisplayCode(item.code) }))}
+            />
             <ChoiceLoader query={deptChoices} />
             <Field
               name="name"
@@ -343,160 +420,14 @@ export function WorkforcePage() {
               ))}
             </fieldset>
           </ActionForm>
-        </Panel>
-      </div>
-      <Panel title="Shared team roles" scroll>
-        <QueryState query={roles} />
-        {roles.data?.items.map((role) => (
-          <div
-            className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4"
-            key={role.id}
-          >
-            <div>
-              <strong>{role.name}</strong>
-              <p className="text-sm text-teal-dark">
-                {role.membership_mode === "profession"
-                  ? "Applies to all matching employees"
-                  : "Uses individual dated assignments"}
-              </p>
-              <p>
-                {role.identity_roles
-                  .map((item) => memberLabels[item as MemberRole])
-                  .join(" · ")}
-              </p>
-              <small>
-                {role.capabilities
-                  .map(
-                    (item) =>
-                      capabilityLabels[item as keyof typeof capabilityLabels],
-                  )
-                  .join(" · ")}
-              </small>
-            </div>
-            <Status value={role.active ? "active" : "suspended"} />
-            <details>
-              <summary>Edit care-team role</summary>
-              <ActionForm
-                key={`${role.id}:${role.version}`}
-                scope={org}
-                path={`workforce/roles/${role.id}`}
-                method="PATCH"
-                label="Save care-team role"
-                reset={false}
-                body={(data) => ({
-                  active: role.active,
-                  expected_version: role.version,
-                  name: value(data, "name"),
-                  code: value(data, "code"),
-                  capabilities: data.getAll("capabilities"),
-                  profession_ids: data.getAll("profession_ids"),
-                  responsibility_ids: data.getAll("responsibility_ids"),
-                  reason: value(data, "reason"),
-                  membership_mode: value(data, "membership_mode"),
-                })}
-              >
-                <Field
-                  name="membership_mode"
-                  label="Role membership"
-                  defaultValue={role.membership_mode}
-                >
-                  <option value="profession">
-                    All matching employees (shared profession role)
-                  </option>
-                  <option value="individual">
-                    Individually assigned employees only
-                  </option>
-                </Field>
-                <p className="mb-4 text-sm text-muted">
-                  Changing this applies immediately to matching employees and
-                  existing patient journeys using this role. Individual
-                  assignment history remains intact.
-                </p>
-                <Field
-                  name="name"
-                  label="Team role name"
-                  defaultValue={role.name}
-                  minLength={2}
-                  maxLength={120}
-                />
-                <Field
-                  name="code"
-                  label="Role code"
-                  defaultValue={role.code}
-                  pattern="[a-z][a-z0-9_]{1,39}"
-                  maxLength={40}
-                />
-                <AttributeChoices
-                  items={allProfessions}
-                  name="profession_ids"
-                  selected={role.profession_ids}
-                />
-                <AttributeChoices
-                  items={allResponsibilities}
-                  name="responsibility_ids"
-                  selected={role.responsibility_ids}
-                />
-                <fieldset className="option-grid">
-                  <legend>Responsibilities</legend>
-                  {capabilities.map((capability) => (
-                    <label className="check-label" key={capability}>
-                      <input
-                        type="checkbox"
-                        name="capabilities"
-                        value={capability}
-                        defaultChecked={role.capabilities.includes(capability)}
-                      />
-                      {capabilityLabels[capability]}
-                    </label>
-                  ))}
-                </fieldset>
-                <Field
-                  name="reason"
-                  label="Change reason"
-                  minLength={3}
-                  maxLength={500}
-                />
-              </ActionForm>
-              <p className="mt-5 text-sm text-muted">
-                Archive unused roles to preserve their assignments and
-                documentation history.
-              </p>
-              <ActionForm
-                scope={org}
-                path={`workforce/roles/${role.id}`}
-                method="PATCH"
-                label={role.active ? "Archive role" : "Restore role"}
-                body={(data) => ({
-                  active: !role.active,
-                  expected_version: role.version,
-                  reason: value(data, "reason"),
-                })}
-              >
-                <Field
-                  name="reason"
-                  label="Reason"
-                  minLength={3}
-                  maxLength={500}
-                />
-              </ActionForm>
-            </details>
-          </div>
-        ))}
-        <Pager
-          offset={roleOffset}
-          count={roles.data?.items.length ?? 0}
-          change={setRoleOffset}
-        />
-      </Panel>
-      <div className="live-grid grid grid-cols-2 items-start gap-6 max-[760px]:grid-cols-1 max-[760px]:gap-0">
-        <Panel
-          title="Assign an employee"
-          detail="Use local date/time; timestamps are stored with a time zone. Leave the end blank for an ongoing assignment."
-        >
+      </SideDrawer>}
+      {creatingAssignment && <SideDrawer title="Assign an employee" subtitle="Choose a care-team role and the dates of individual coverage." eyebrow="CCU360 / COVERAGE" closeLabel="Close assignment form" onClose={() => setCreatingAssignment(false)}>
+          <p className="facility-drawer-note">Use local date and time. Leave the end blank for ongoing coverage.</p>
           <ActionForm
             scope={org}
             path="workforce/assignments"
             label="Create assignment"
+            onSuccess={() => { toast?.("Employee assigned to care team."); setCreatingAssignment(false); }}
             body={(data) => ({
               membership_id: value(data, "membership_id"),
               role_id: value(data, "role_id"),
@@ -506,30 +437,23 @@ export function WorkforcePage() {
                 : null,
             })}
           >
-            <Field name="membership_id" label="Employee">
-              <option value="">Select active employee</option>
-              {allPeople
-                .filter(
-                  (item) =>
-                    item.status === "active" && item.role !== "provider_admin",
-                )
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.display_name} · {memberLabels[item.role]}
-                  </option>
-                ))}
-            </Field>
+            <SearchSelect
+              name="membership_id"
+              label="Employee"
+              placeholder="Search active employees"
+              options={allPeople
+                .filter((item) => item.status === "active" && item.role !== "provider_admin")
+                .map((item) => ({ value: item.id, label: item.display_name, detail: memberLabels[item.role] }))}
+            />
             <ChoiceLoader query={people} />
-            <Field name="role_id" label="Care-team role">
-              <option value="">Select compatible role</option>
-              {allRoles
+            <SearchSelect
+              name="role_id"
+              label="Care-team role"
+              placeholder="Search care-team roles"
+              options={allRoles
                 .filter((item) => item.active)
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-            </Field>
+                .map((item) => ({ value: item.id, label: item.name, detail: item.code }))}
+            />
             <ChoiceLoader query={roleChoices} />
             <Field name="starts_at" label="Starts at" type="datetime-local" />
             <Field
@@ -539,10 +463,11 @@ export function WorkforcePage() {
               required={false}
             />
           </ActionForm>
-        </Panel>
-        <Panel title="Dated assignments">
+      </SideDrawer>}
+      <div className="workforce-grid workforce-bottom-grid">
+        <Panel title="Dated assignments" icon="clock" detail="Individual assignments have a start date and optional end date. Shared profession eligibility is separate.">
           <QueryState query={assignments} />
-          {assignments.data?.items.map((item) => (
+          {assignments.data?.items.slice(0, workforcePageSize).map((item) => (
             <div
               className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4"
               key={item.id}
@@ -562,8 +487,7 @@ export function WorkforcePage() {
                   <Status value={item.active ? "active" : "suspended"} />
                 </small>
               </div>
-              <details>
-                <summary>Edit assignment</summary>
+              <EditSurface label="Edit assignment" subtitle="Adjust this person’s coverage window.">
                 <ActionForm
                   scope={org}
                   path={`workforce/assignments/${item.id}`}
@@ -629,22 +553,25 @@ export function WorkforcePage() {
                     maxLength={500}
                   />
                 </ActionForm>
-              </details>
+              </EditSurface>
             </div>
           ))}
+          {assignments.data && !assignments.data.items.length && <p className="workforce-empty">No individual assignments yet. Shared roles may still cover matching professions.</p>}
           <Pager
             offset={assignmentOffset}
-            count={assignments.data?.items.length ?? 0}
+            count={Math.min(assignments.data?.items.length ?? 0, workforcePageSize)}
+            size={workforcePageSize}
+            hasMore={assignments.data ? assignments.data.items.length > workforcePageSize : undefined}
             change={setAssignmentOffset}
           />
         </Panel>
-      </div>
       <Panel
         title="Staff availability"
+        icon="profile"
         detail="Absence or retirement removes effective coverage immediately. Existing notes retain the original author and duty evidence."
       >
         <QueryState query={staff} />
-        {staff.data?.items.map((item) => (
+        {staff.data?.items.slice(0, workforcePageSize).map((item) => (
           <div
             className="live-list-row flex flex-wrap items-center justify-between gap-4 border-b border-border py-4"
             key={item.membership_id}
@@ -658,8 +585,7 @@ export function WorkforcePage() {
               <Status value={item.availability} />
             </div>
             {item.role !== "provider_admin" && (
-              <details>
-                <summary>Profession & team assignment</summary>
+              <EditSurface label="Profession & team" subtitle={item.display_name}>
                 <ActionForm
                   scope={org}
                   path={`workforce/staff/${item.membership_id}/profession`}
@@ -671,20 +597,15 @@ export function WorkforcePage() {
                     reason: value(data, "reason"),
                   })}
                 >
-                  <Field
+                  <SearchSelect
                     name="profession_id"
                     label="Facility profession"
+                    placeholder="Search professions"
                     defaultValue={item.profession_id ?? ""}
-                  >
-                    <option value="">Select profession</option>
-                    {allProfessions
+                    options={allProfessions
                       .filter((p) => p.active && p.base_role === item.role)
-                      .map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                  </Field>
+                      .map((p) => ({ value: p.id, label: p.name, detail: p.code }))}
+                  />
                   <Field
                     name="reason"
                     label="Designation reason"
@@ -705,9 +626,11 @@ export function WorkforcePage() {
                       : null,
                   })}
                 >
-                  <Field name="role_id" label="Compatible care-team role">
-                    <option value="">Select shared team</option>
-                    {allRoles
+                  <SearchSelect
+                    name="role_id"
+                    label="Compatible care-team role"
+                    placeholder="Search compatible roles"
+                    options={allRoles
                       .filter(
                         (r) =>
                           r.active &&
@@ -721,12 +644,8 @@ export function WorkforcePage() {
                                     r.profession_ids.includes(p.id),
                                 ))),
                       )
-                      .map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}
-                        </option>
-                      ))}
-                  </Field>
+                      .map((r) => ({ value: r.id, label: r.name, detail: r.code }))}
+                  />
                   <Field
                     name="starts_at"
                     label="Assignment starts"
@@ -740,10 +659,9 @@ export function WorkforcePage() {
                     required={false}
                   />
                 </ActionForm>
-              </details>
+              </EditSurface>
             )}
-            <details>
-              <summary>Update availability</summary>
+            <EditSurface label="Availability" subtitle={item.display_name}>
               <ActionForm
                 scope={org}
                 path={`workforce/staff/${item.membership_id}/availability`}
@@ -771,15 +689,20 @@ export function WorkforcePage() {
                   maxLength={500}
                 />
               </ActionForm>
-            </details>
+            </EditSurface>
           </div>
         ))}
+        {staff.data && !staff.data.items.length && <p className="workforce-empty">Employees appear here after they join the facility.</p>}
         <Pager
           offset={staffOffset}
-          count={staff.data?.items.length ?? 0}
+          count={Math.min(staff.data?.items.length ?? 0, workforcePageSize)}
+          size={workforcePageSize}
+          hasMore={staff.data ? staff.data.items.length > workforcePageSize : undefined}
           change={setStaffOffset}
         />
       </Panel>
-    </>
+      </div>
+      <VocabularyPanel org={org} />
+    </div>
   );
 }

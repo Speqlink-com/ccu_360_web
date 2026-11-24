@@ -197,7 +197,7 @@ Object.assign(descriptions, {
   invalid_or_ambiguous_json:
     "This form could not be read. Reload the page, then enter your changes again.",
   department_code_exists:
-    "A department already uses this code. Choose another code or edit the existing department.",
+    "A department already uses this ID. Randomize a new ID and try again.",
   team_role_code_exists:
     "A care-team role already uses this code. Choose another code or edit the existing role.",
   configuration_version_conflict:

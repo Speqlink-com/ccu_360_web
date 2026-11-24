@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import {
@@ -21,9 +21,19 @@ import {
 } from "./shared";
 import { MfaSettings } from "./mfa-settings";
 import { Icon } from "@/components/ui/icon";
+import { useWorkspaceUI } from "@/providers/app-provider";
+import {
+  defaultWorkspaceAccent,
+  readableWorkspaceAccent,
+  workspaceAccentPresets,
+} from "@/lib/workspace-appearance";
 export function SecurityPage() {
   const user = useIdentity().data!;
   const client = useQueryClient();
+  const accent = useWorkspaceUI((state) => state.accent);
+  const fontScale = useWorkspaceUI((state) => state.fontScale);
+  const setAccent = useWorkspaceUI((state) => state.setAccent);
+  const setFontScale = useWorkspaceUI((state) => state.setFontScale);
   const [sessionOffset, setSessionOffset] = useState(0);
   const initials = user.display_name
     .trim()
@@ -62,7 +72,7 @@ export function SecurityPage() {
       <Heading
         eyebrow=""
         title="Account settings"
-        detail="Manage your identity, password and signed-in devices. Times shown in East Africa Time."
+        detail="Manage your identity, password, signed-in devices and workspace appearance. Times shown in East Africa Time."
       />
       <section className="account-identity" aria-label="Your account">
         <span className="account-avatar" aria-hidden="true">
@@ -245,6 +255,75 @@ export function SecurityPage() {
           </section>
         </div>
       </div>
+      <section className="account-appearance" id="account-appearance">
+        <Panel
+          title="Workspace appearance"
+          icon="settings"
+          detail="Color and text size are saved in this browser for your account. They do not change clinical records or other users’ workspaces."
+        >
+          <div className="account-appearance-grid">
+            <div className="account-appearance-section">
+              <h3>Primary color</h3>
+              <p>Choose a workspace color. Teal is the CCU360 default.</p>
+              <div className="account-accent-presets" role="group" aria-label="Primary color presets">
+                {workspaceAccentPresets.map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    aria-pressed={accent.toLowerCase() === preset.color}
+                    className={accent.toLowerCase() === preset.color ? "is-selected" : ""}
+                    onClick={() => setAccent(preset.color)}
+                  >
+                    <span className="account-accent-swatch" style={{ "--swatch-color": preset.color } as CSSProperties} aria-hidden="true" />
+                    {preset.name}
+                    {accent.toLowerCase() === preset.color && <Icon name="check" size={16} outline />}
+                  </button>
+                ))}
+              </div>
+              <div className="account-custom-color">
+                <label htmlFor="workspace-custom-color">Custom color</label>
+                <input
+                  id="workspace-custom-color"
+                  type="color"
+                  value={accent}
+                  onChange={(event) => setAccent(readableWorkspaceAccent(event.target.value))}
+                />
+                <output htmlFor="workspace-custom-color">{accent.toUpperCase()}</output>
+              </div>
+              <button type="button" className="account-appearance-reset" disabled={accent === defaultWorkspaceAccent} onClick={() => setAccent(defaultWorkspaceAccent)}>
+                <Icon name="refresh" size={15} outline /> Return to teal
+              </button>
+            </div>
+            <div className="account-appearance-section">
+              <h3>Dashboard text size</h3>
+              <p>Make workspace content easier to read. The sidebar keeps its current size.</p>
+              <div className="account-font-control">
+                <button type="button" aria-label="Decrease dashboard text size" disabled={fontScale <= 100} onClick={() => setFontScale(Math.max(100, fontScale - 5))}>A−</button>
+                <input
+                  id="workspace-font-size"
+                  type="range"
+                  min="100"
+                  max="130"
+                  step="5"
+                  value={fontScale}
+                  aria-label="Dashboard text size"
+                  onChange={(event) => setFontScale(Number(event.target.value))}
+                />
+                <button type="button" aria-label="Increase dashboard text size" disabled={fontScale >= 130} onClick={() => setFontScale(Math.min(130, fontScale + 5))}>A+</button>
+                <output htmlFor="workspace-font-size">{fontScale}%</output>
+              </div>
+              <div className="account-type-preview" aria-hidden="true">
+                <span>CONTENT PREVIEW</span>
+                <strong>Care that stays connected.</strong>
+                <p>Patient context, team responsibilities and clinical actions in one place.</p>
+              </div>
+              <button type="button" className="account-appearance-reset" disabled={fontScale === 100} onClick={() => setFontScale(100)}>
+                <Icon name="refresh" size={15} outline /> Reset text size
+              </button>
+            </div>
+          </div>
+        </Panel>
+      </section>
     </div>
   );
 }

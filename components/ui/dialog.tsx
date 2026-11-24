@@ -4,11 +4,13 @@ import { Icon } from "./icon";
 export function Dialog({
   title,
   subtitle,
+  className = "",
   onClose,
   children,
 }: {
   title: string;
   subtitle?: string;
+  className?: string;
   onClose: () => void;
   children: ReactNode;
 }) {
@@ -21,7 +23,7 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
-      className="app-dialog m-auto max-h-[calc(100dvh-40px)] w-[min(720px,calc(100vw-32px))] overflow-y-auto rounded-2xl border border-[#dbe7eb] bg-surface p-0 text-ink shadow-[0_25px_100px_#0a284944]"
+      className={`app-dialog m-auto max-h-[calc(100dvh-40px)] w-[min(720px,calc(100vw-32px))] overflow-y-auto rounded-2xl border border-[#dbe7eb] bg-surface p-0 text-ink shadow-[0_25px_100px_#0a284944] ${className}`}
       aria-labelledby="dialog-title"
       onCancel={onClose}
       onClick={(e) => {
