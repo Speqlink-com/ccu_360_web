@@ -224,11 +224,8 @@ export function FormCanvas({
       </aside>
       <div className="studio-canvas-area">
         <div className="studio-canvas-toolbar">
-          <span>{stage.label}</span>
-          <span>
-            {stage.sections.length} sections · A4 document layout available in
-            PDF pages
-          </span>
+          <span>Document canvas / {stage.label}</span>
+          <span>{stage.sections.length} sections · Final page layout in PDF pages</span>
         </div>
         <article
           className="studio-paper"
@@ -240,6 +237,10 @@ export function FormCanvas({
             } as React.CSSProperties
           }
         >
+          <div className="studio-paper-meta">
+            <span>CCU360 / DIGITAL CLINICAL FORM</span>
+            <span>STAGE {String(draft.definition.stages.findIndex((item) => item.key === stage.key) + 1).padStart(2, "0")} OF {String(draft.definition.stages.length).padStart(2, "0")}</span>
+          </div>
           <header className="studio-paper-header">
             <div>
               <p className="studio-kicker">PATIENT JOURNEY RECORD</p>
@@ -454,8 +455,8 @@ export function FormCanvas({
             </small>
           </button>
           <footer className="studio-paper-footer">
-            CCU360 · Shared across linked care teams · Changes are recorded in
-            the patient ledger
+            <span>CCU360 · Shared across linked care teams</span>
+            <span>Digital draft · All changes recorded in the patient ledger</span>
           </footer>
         </article>
       </div>

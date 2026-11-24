@@ -13,6 +13,8 @@ import {
   type Definition,
 } from "@/features/live/journey-contract";
 import { Notice } from "@/features/live/shared";
+import { WebSelect } from "@/components/ui/web-select";
+import { ButtonHeartbeat } from "@/components/ui/ccu-loader";
 import { buttonClasses } from "@/lib/presentation";
 import {
   storedLayout,
@@ -345,7 +347,7 @@ export function FormStudio({
             }
             onClick={() => save.mutate()}
           >
-            {save.isPending ? "Saving…" : "Save draft changes"}
+            <ButtonHeartbeat loading={save.isPending}>Save draft</ButtonHeartbeat>
           </button>
           <button
             type="button"
@@ -489,27 +491,19 @@ export function FormStudio({
                     }
                   />
                 </label>
-                <label className="live-field">
-                  Facility branding
-                  <select
-                    aria-label="Facility branding"
+                <WebSelect
+                    label="Facility branding"
                     value={draft.brandId}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       edit((d) => {
-                        d.brandId = e.target.value;
+                        d.brandId = value;
                       }, false)
                     }
-                  >
-                    {brands
+                    options={brands
                       .filter((b) => b.active || b.id === draft.brandId)
-                      .map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.title} · v{b.version}
-                          {b.active ? "" : " · Archived"}
-                        </option>
-                      ))}
-                  </select>
-                </label>
+                      .map((b) => ({ value: b.id, label: `${b.title} · v${b.version}${b.active ? "" : " · Archived"}` }))}
+                    searchable={brands.length > 6}
+                  />
               </div>
               {brandingLoader}
               <p className="studio-helper">
@@ -597,7 +591,7 @@ export function FormStudio({
                   disabled={dirty || canvasPending || busy}
                   onClick={() => validate.mutate()}
                 >
-                  Validate for publication
+                  <ButtonHeartbeat loading={validate.isPending}>Validate for publication</ButtonHeartbeat>
                 </button>
                 <button
                   type="button"
@@ -625,7 +619,7 @@ export function FormStudio({
                       reload.mutate();
                   }}
                 >
-                  Reload saved draft
+                  <ButtonHeartbeat loading={reload.isPending}>Reload saved draft</ButtonHeartbeat>
                 </button>
               </div>
               {publicationReady && (
@@ -681,7 +675,7 @@ export function FormStudio({
               className={buttonClasses.primary}
               disabled={publish.isPending}
             >
-              {publish.isPending ? "Publishing…" : "Publish approved version"}
+              <ButtonHeartbeat loading={publish.isPending}>Publish approved version</ButtonHeartbeat>
             </button>
           </div>
         </form>
