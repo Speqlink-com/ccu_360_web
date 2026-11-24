@@ -2,6 +2,8 @@
 import { buttonClasses } from "@/lib/presentation";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import dynamic from "next/dynamic";
 import {
   useMutation,
   useQueryClient,
@@ -13,6 +15,7 @@ import { pageOf } from "@/lib/api/identity-contract";
 import { Dialog } from "@/components/ui/dialog";
 import { Empty } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icon";
+import { ButtonHeartbeat } from "@/components/ui/ccu-loader";
 import {
   Field,
   Notice,
@@ -34,6 +37,8 @@ import {
   useHistory,
 } from "./queries";
 import { ParticipantsDialog } from "./participants";
+
+const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
 export function ConversationThread({
   id,
@@ -57,10 +62,28 @@ export function ConversationThread({
     item: Message;
   } | null>(null);
   const [text, setText] = useState("");
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const emojiArea = useRef<HTMLDivElement>(null);
+  const draft = useRef<HTMLTextAreaElement>(null);
   const [atBottom, setAtBottom] = useState(true);
   const scroll = useRef<HTMLDivElement>(null);
   const pending = useRef<{ body: string; id: string } | null>(null);
   const lastRead = useRef(0);
+  useEffect(() => {
+    if (!emojiOpen) return;
+    const dismissOutside = (event: PointerEvent) => {
+      if (!emojiArea.current?.contains(event.target as Node)) setEmojiOpen(false);
+    };
+    const dismissEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setEmojiOpen(false);
+    };
+    document.addEventListener("pointerdown", dismissOutside);
+    document.addEventListener("keydown", dismissEscape);
+    return () => {
+      document.removeEventListener("pointerdown", dismissOutside);
+      document.removeEventListener("keydown", dismissEscape);
+    };
+  }, [emojiOpen]);
   const refresh = async () => {
     await client.invalidateQueries({
       queryKey: key,
@@ -155,20 +178,21 @@ export function ConversationThread({
       .join(", ") ||
       "Direct conversation");
   return (
-    <section className="conversation-thread relative flex min-h-0 min-w-0 flex-col bg-[#fafcfc]" aria-label="Open conversation">
+    <section className="conversation-thread relative flex min-h-0 min-w-0 flex-col" aria-label="Open conversation">
       <header className="thread-heading flex items-center gap-3.5 border-b border-border bg-surface px-6 py-5 max-[1100px]:gap-2.5 max-[1100px]:p-4">
         <button
           className="thread-back hidden border-0 bg-transparent max-[760px]:block"
           onClick={back}
           aria-label="Back to conversations"
         >
-          <Icon name="left" />
+          <Icon name="left" size={19} outline />
         </button>
-        <span className="conversation-avatar grid h-[46px] w-[46px] shrink-0 place-items-center rounded-[14px] bg-[#edf2f7] text-navy">
-          <Icon
-            name={meta.data?.kind === "group" ? "connect" : "profile"}
-            size={24}
-          />
+        <span className="conversation-avatar thread-avatar-art" data-kind={meta.data?.kind === "group" ? "group" : "direct"} aria-hidden="true">
+          {meta.data?.kind === "group" ? <>
+            <Image unoptimized className="thread-avatar-person thread-avatar-left" src="/icons/profile-icon.webp" alt="" width={32} height={32} />
+            <Image unoptimized className="thread-avatar-person thread-avatar-right" src="/icons/profile-icon.webp" alt="" width={32} height={32} />
+            <Image unoptimized className="thread-avatar-person thread-avatar-front" src="/icons/profile-icon.webp" alt="" width={35} height={35} />
+          </> : <Image unoptimized className="thread-avatar-single" src="/icons/profile-icon.webp" alt="" width={38} height={38} />}
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="mb-[5px] wrap-anywhere text-[19px] text-navy max-[760px]:text-[17px]">{title}</h2>
@@ -179,11 +203,11 @@ export function ConversationThread({
           </p>
         </div>
         <button
-          className={`${buttonClasses.secondary} px-3 py-[9px] text-xs`}
+          className={`${buttonClasses.secondary} thread-participants px-3 py-[9px] text-xs`}
           disabled={!meta.data}
           onClick={() => setMembersOpen(true)}
         >
-          Participants
+          <Icon name="team" size={16} outline /> Participants
         </button>
       </header>
       <QueryState query={meta} />
@@ -257,7 +281,7 @@ export function ConversationThread({
               return (
                 <article
                   key={item.id}
-                  className={`chat-message mb-6 w-fit max-w-[min(85%,680px)] max-[1100px]:max-w-[95%] ${mine ? "mine ml-auto" : ""}`}
+                  className={`chat-message mb-6 w-fit max-w-[min(82%,650px)] max-[1100px]:max-w-[95%] ${mine ? "mine ml-auto" : ""}`}
                 >
                   <div className="message-byline mb-2 flex flex-wrap items-baseline gap-3">
                     <strong className="text-[13px] text-navy">{mine ? "You" : item.sender_name}</strong>
@@ -266,7 +290,7 @@ export function ConversationThread({
                     </time>
                   </div>
                   <div
-                    className={`message-body wrap-anywhere whitespace-pre-wrap border px-[19px] py-4 leading-[1.7] ${item.redacted ? "redacted rounded-[0_14px_14px_14px] border-dashed border-[#e1e8eb] bg-transparent text-sm italic text-muted" : mine ? "rounded-[14px_0_14px_14px] border-[#cde7dc] bg-[#e5f4ee] text-base text-[#21384e]" : "rounded-[0_14px_14px_14px] border-[#e1e8eb] bg-surface text-base text-[#21384e]"}`}
+                    className={`message-body wrap-anywhere whitespace-pre-wrap leading-[1.65] ${item.redacted ? "redacted text-sm italic" : "text-[15px]"}`}
                   >
                     {item.redacted
                       ? "Message removed · revision record retained"
@@ -310,42 +334,80 @@ export function ConversationThread({
             })}
           </div>
           {!atBottom && (
-            <button className="new-messages absolute bottom-[240px] left-1/2 -translate-x-1/2 rounded-[30px] border-0 bg-navy px-[15px] py-2.5 text-xs text-white shadow-[0_3px_10px_#06234c22]" onClick={() => setAtBottom(true)}>
+            <button className="new-messages absolute bottom-[150px] left-1/2 -translate-x-1/2 rounded-[5px] border-0 bg-navy px-[15px] py-2.5 text-xs text-white shadow-[0_3px_10px_#06234c22]" onClick={() => setAtBottom(true)}>
               Jump to latest messages ↓
             </button>
           )}
           <form
-            className="message-composer border-t border-border bg-surface px-6 py-5 max-[760px]:p-4"
+            className="message-composer border-t border-border bg-surface px-6 py-4 max-[760px]:p-4"
             onSubmit={(event) => {
               event.preventDefault();
               send.mutate();
             }}
           >
-            <label className="mb-2.5 block text-xs font-semibold text-navy" htmlFor="message-draft">Message this conversation</label>
-            <textarea
-              className="max-h-[200px] min-h-[85px] w-full resize-y rounded-[10px] border border-[#d6e1e5] bg-[#fafcfc] p-3.5 text-base leading-[1.6]"
-              id="message-draft"
-              value={text}
-              maxLength={8000}
-              rows={3}
-              placeholder="Write a message to your colleagues…"
-              disabled={send.isPending}
-              onChange={(event) => setText(event.target.value)}
-            />
-            <Notice error={send.error} />
-            <div className="mt-3 flex items-center justify-between gap-4 max-[760px]:items-end">
-              <small className="text-[11px] leading-[1.6] text-muted max-[760px]:max-w-[150px]">
-                {text.length.toLocaleString()} / 8,000 · Clinical sign-offs stay
-                in the journey.
-              </small>
+            <label className="sr-only" htmlFor="message-draft">Message this conversation</label>
+            <div className="message-composer-row">
+              <div className="emoji-control" ref={emojiArea}>
               <button
-                className={`${buttonClasses.primary} min-w-[155px] max-[760px]:min-w-[125px] max-[760px]:text-[13px]`}
-                disabled={!text.trim() || send.isPending}
+                type="button"
+                className="emoji-trigger"
+                aria-label="Choose emoji"
+                aria-expanded={emojiOpen}
+                aria-controls="connect-emoji-picker"
+                onClick={() => setEmojiOpen((open) => !open)}
               >
-                {send.isPending ? "Sending…" : "Send message"}
-                <Icon name="arrow" />
+                <Icon name="emoji" size={22} outline />
+              </button>
+              {emojiOpen && (
+                <div className="connect-emoji-popover" id="connect-emoji-picker">
+                  <EmojiPicker
+                    colorScheme="light"
+                    width="min(350px, calc(100vw - 30px))"
+                    height="min(390px, 48dvh)"
+                    previewConfig={{ showPreview: false }}
+                    skinTonesDisabled
+                    onEmojiClick={({ emoji }) => {
+                      const field = draft.current;
+                      const start = field?.selectionStart ?? text.length;
+                      const end = field?.selectionEnd ?? start;
+                      if (text.length - (end - start) + emoji.length > 8000) return;
+                      setText((current) => current.slice(0, start) + emoji + current.slice(end));
+                      requestAnimationFrame(() => {
+                        field?.focus();
+                        field?.setSelectionRange(start + emoji.length, start + emoji.length);
+                      });
+                    }}
+                  />
+                </div>
+              )}
+              </div>
+              <textarea
+                id="message-draft"
+                ref={draft}
+                value={text}
+                maxLength={8000}
+                rows={2}
+                placeholder="Write a message…"
+                disabled={send.isPending}
+                onChange={(event) => setText(event.target.value)}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" &&
+                    !event.shiftKey &&
+                    !event.nativeEvent.isComposing &&
+                    !event.repeat
+                  ) {
+                    event.preventDefault();
+                    if (text.trim() && !send.isPending) send.mutate();
+                  }
+                }}
+              />
+              <button className={buttonClasses.primary} disabled={!text.trim() || send.isPending} aria-busy={send.isPending} aria-label="Send message">
+                <ButtonHeartbeat loading={send.isPending}><span className="send-label">Send</span><Icon name="arrow" size={17} outline /></ButtonHeartbeat>
               </button>
             </div>
+            <Notice error={send.error} compact />
+            <small className="message-composer-note">Enter to send · Shift+Enter for a new line · {text.length.toLocaleString()} / 8,000</small>
           </form>
         </>
       )}
@@ -432,6 +494,7 @@ function MessageDialog({
   });
   return (
     <Dialog
+      className="connect-message-dialog"
       title={
         action.kind === "history"
           ? "Message revision record"
@@ -448,6 +511,7 @@ function MessageDialog({
       }
       onClose={close}
     >
+      <div className="connect-message-dialog-body">
       {action.kind === "history" ? (
         <>
           <QueryState query={paged} />
@@ -501,17 +565,16 @@ function MessageDialog({
               minLength={3}
               maxLength={500}
             />
-            <Notice error={mutation.error} />
+            <Notice error={mutation.error} compact />
             <button className={buttonClasses.primary}>
-              {mutation.isPending
-                ? "Saving…"
-                : action.kind === "redact"
-                  ? "Remove message"
-                  : "Save revision"}
+              <ButtonHeartbeat loading={mutation.isPending}>
+                {action.kind === "redact" ? "Remove message" : "Save revision"}
+              </ButtonHeartbeat>
             </button>
           </fieldset>
         </form>
       )}
+      </div>
     </Dialog>
   );
 }

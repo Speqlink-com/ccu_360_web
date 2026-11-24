@@ -5,7 +5,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { apiRequest } from "@/lib/api/client";
 import { pageOf } from "@/lib/api/identity-contract";
-import { Dialog } from "@/components/ui/dialog";
+import { SideDrawer } from "@/components/ui/side-drawer";
+import { Icon } from "@/components/ui/icon";
+import { ButtonHeartbeat } from "@/components/ui/ccu-loader";
+import { SearchSelect } from "@/features/live/search-select";
 import {
   Field,
   Notice,
@@ -13,7 +16,6 @@ import {
   QueryState,
   value,
 } from "@/features/live/shared";
-import { Badge } from "@/components/ui/primitives";
 import {
   colleague,
   participant,
@@ -28,11 +30,12 @@ export function ParticipantsDialog({
   conversation: Conversation;
   close: () => void;
 }) {
-  const { key } = useCommunicationScope();
+  const { key, member } = useCommunicationScope();
   const client = useQueryClient();
   const [offset, setOffset] = useState(0);
   const [colleagueOffset, setColleagueOffset] = useState(0);
   const [target, setTarget] = useState<Participant | null>(null);
+  const [formVersion, setFormVersion] = useState(0);
   const members = useCommunicationQuery(
     `conversations/${conversation.id}/members?offset=${offset}&limit=20`,
     pageOf(participant),
@@ -60,6 +63,7 @@ export function ParticipantsDialog({
       ),
     onSuccess: async () => {
       setTarget(null);
+      setFormVersion((version) => version + 1);
       await client.invalidateQueries({ queryKey: key });
     },
     onError: () => {
@@ -79,34 +83,38 @@ export function ParticipantsDialog({
     },
   });
   return (
-    <Dialog
+    <SideDrawer
       title="Conversation participants"
-      subtitle="Participants belong to this facility. New or returning members see only messages from their joining point."
+      subtitle="Manage who can take part in this conversation."
+      eyebrow="CONNECT 360 / PEOPLE"
+      closeLabel="Close participants"
+      className="connect-participants-drawer"
       onClose={close}
     >
+      <div className="connect-participants">
+      <div className="connect-participants-section"><h3>People in this conversation</h3><span>{members.data?.items.length ?? 0} shown</span></div>
       <QueryState query={members} />
+      <div className="connect-participant-list">
       {members.data?.items.map((person) => (
-        <article className="participant-item flex items-center justify-between gap-4 border-b border-border py-4.5" key={person.membership_id}>
-          <div className="flex flex-col gap-[7px]">
-            <strong className="text-[15px] text-navy">{person.display_name}</strong>
-            <small className="text-xs text-muted">
-              {person.role} · {person.membership_status}
-            </small>
-            <Badge tone={person.active ? "teal" : "neutral"}>
-              {person.active ? "In conversation" : "Removed"}
-            </Badge>
+        <article className="participant-item" key={person.membership_id}>
+          <span className="participant-avatar" aria-hidden="true">{person.display_name.slice(0, 1).toUpperCase()}</span>
+          <div className="participant-identity">
+            <strong>{person.display_name}</strong>
+            <span>{person.role === "owner" ? "Owner" : "Member"} · {person.active ? "Active" : "Removed"}</span>
           </div>
           {conversation.kind === "group" && conversation.role === "owner" && (
             <button
-              className={buttonClasses.secondary}
+              className="participant-manage"
+              type="button"
               onClick={() => setTarget(person)}
             >
-              Manage
+              Manage <Icon name="arrow" size={14} outline />
             </button>
           )}
         </article>
       ))}
-      {members.data && (
+      </div>
+      {members.data && (offset > 0 || members.data.items.length >= 20) && (
         <Pager
           offset={offset}
           count={members.data.items.length}
@@ -115,32 +123,27 @@ export function ParticipantsDialog({
       )}
       {conversation.kind === "group" && conversation.role === "owner" && (
         <form
-          key={target?.membership_id ?? "add"}
-          className="live-form participant-form mt-6 border-t border-border pt-6"
+          key={`${target?.membership_id ?? "add"}:${formVersion}`}
+          className="live-form participant-form"
           onSubmit={(event) => {
             event.preventDefault();
             mutation.mutate(new FormData(event.currentTarget));
           }}
         >
-          <h3>
-            {target ? `Manage ${target.display_name}` : "Add a colleague"}
-          </h3>
+          <div className="connect-participants-section"><h3>{target ? `Manage ${target.display_name}` : "Add a colleague"}</h3>{target && <button type="button" className="participant-cancel" onClick={() => setTarget(null)}>Cancel</button>}</div>
           <fieldset disabled={mutation.isPending}>
             {!target && (
               <>
                 <QueryState query={peers} />
-                <Field name="membership_id" label="Colleague">
-                  <option value="">Choose an active colleague</option>
-                  {peers.data?.items.map((person) => (
-                    <option
-                      key={person.membership_id}
-                      value={person.membership_id}
-                    >
-                      {person.display_name} · {person.profession}
-                    </option>
-                  ))}
-                </Field>
-                {peers.data && (
+                <SearchSelect
+                  name="membership_id"
+                  label="Search colleague"
+                  placeholder="Type a name or email"
+                  options={(peers.data?.items ?? [])
+                    .filter((person) => person.membership_id !== member?.id && !members.data?.items.some((existing) => existing.membership_id === person.membership_id && existing.active))
+                    .map((person) => ({ value: person.membership_id, label: person.display_name, detail: `${person.profession} · ${person.email}` }))}
+                />
+                {peers.data && (colleagueOffset > 0 || peers.data.items.length >= 50) && (
                   <Pager
                     offset={colleagueOffset}
                     count={peers.data.items.length}
@@ -150,36 +153,21 @@ export function ParticipantsDialog({
                 )}
               </>
             )}
-            <Field
-              name="active"
-              label="Participation"
-              defaultValue={String(target?.active ?? true)}
-            >
-              <option value="true">Active participant</option>
-              <option value="false">Remove participant</option>
-            </Field>
-            <Field
-              name="role"
-              label="Conversation role"
-              defaultValue={target?.role ?? "member"}
-            >
-              <option value="member">Member</option>
-              <option value="owner">Owner — can manage this group</option>
-            </Field>
-            <Field name="reason" label="Reason" minLength={3} maxLength={500} />
-            <Notice error={mutation.error} />
-            <button className={buttonClasses.primary}>
-              {mutation.isPending ? "Saving…" : "Save participant"}
-            </button>
-            {target && (
-              <button
-                type="button"
-                className={buttonClasses.secondary}
-                onClick={() => setTarget(null)}
-              >
-                Add someone else
-              </button>
-            )}
+            {target ? <>
+              <div className="participant-form-grid">
+                <Field name="active" label="Participation" defaultValue={String(target.active)}>
+                  <option value="true">Active</option>
+                  <option value="false">Remove</option>
+                </Field>
+                <Field name="role" label="Role" defaultValue={target.role}>
+                  <option value="member">Member</option>
+                  <option value="owner">Owner</option>
+                </Field>
+              </div>
+            </> : <><input type="hidden" name="active" value="true" /><input type="hidden" name="role" value="member" /></>}
+            <Field name="reason" label="Reason for change" minLength={3} maxLength={500} />
+            <Notice error={mutation.error} compact />
+            <div className="participant-actions"><button className={buttonClasses.primary} disabled={!target && !peers.data}><ButtonHeartbeat loading={mutation.isPending}>{target ? "Save changes" : "Add colleague"}</ButtonHeartbeat></button></div>
           </fieldset>
         </form>
       )}
@@ -203,13 +191,14 @@ export function ParticipantsDialog({
               minLength={3}
               maxLength={500}
             />
-            <Notice error={claim.error} />
+            <Notice error={claim.error} compact />
             <button className={buttonClasses.secondary} disabled={claim.isPending}>
-              Request ownership recovery
+              <ButtonHeartbeat loading={claim.isPending}>Request ownership recovery</ButtonHeartbeat>
             </button>
           </form>
         </details>
       )}
-    </Dialog>
+      </div>
+    </SideDrawer>
   );
 }

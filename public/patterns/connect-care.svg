@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="320" viewBox="0 0 400 320" fill="none">
+  <g stroke="#8bbeb4" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" opacity=".42">
+    <!-- Syringe -->
+    <g transform="translate(39 47) rotate(-34 42 25)">
+      <path d="M4 24h12m-6-9v18m6-13h7m0-7v22m0-20h46a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H23V15Zm51 10h11m0-5v10m0-5h27"/>
+      <path d="M34 15v7m9-7v7m9-7v7m9-7v7"/>
+      <path d="M69 20h5m-5 10h5"/>
+    </g>
+    <!-- Pulse trace -->
+    <path d="M203 57h19l8-11 12 29 13-40 11 27 8-10h31"/>
+    <path d="M211 85h56" opacity=".55"/>
+    <!-- Thermometer -->
+    <g transform="translate(164 100)">
+      <path d="M14 26V6a7 7 0 0 1 14 0v20a14 14 0 1 1-14 0Z"/>
+      <path d="M21 13v28m0-28h7m-7 8h7"/>
+      <circle cx="21" cy="40" r="5"/>
+    </g>
+    <!-- Medical cross -->
+    <path d="M334 39v10h-10v12h10v10h12V61h10V49h-10V39h-12Z"/>
+    <!-- Heart -->
+    <path d="M321 126c-12-10-17-18-17-25a13 13 0 0 1 22-9 13 13 0 0 1 22 9c0 7-5 15-17 25l-5 4-5-4Z"/>
+    <path d="M311 103h9l4-7 5 14 4-7h9"/>
+    <!-- Clinical mask -->
+    <g transform="translate(76 137)">
+      <path d="M8 9c15 6 30 6 45 0v19c-5 9-12 14-22 17-10-3-18-8-23-17V9Z"/>
+      <path d="M8 18c-9 0-10 16-1 18m46-18c9 0 10 16 1 18M18 21h26m-24 8h22"/>
+    </g>
+    <!-- Stethoscope -->
+    <g transform="translate(45 193)">
+      <path d="M12 5v39a29 29 0 0 0 58 0V23m-58 18c0 12 11 22 24 22s24-10 24-22V23"/>
+      <path d="M5 4h14m44 0h14M70 4v19M64 23h12"/>
+      <path d="M36 63v15a19 19 0 0 0 38 0V67"/>
+      <circle cx="74" cy="59" r="9"/>
+      <circle cx="74" cy="59" r="3"/>
+    </g>
+    <!-- Capsule -->
+    <g transform="translate(186 162) rotate(31 38 20)">
+      <rect x="2" y="2" width="75" height="36" rx="18"/>
+      <path d="M40 3v34M18 12h11M18 20h9"/>
+    </g>
+    <!-- IV bag -->
+    <g transform="translate(312 189)">
+      <path d="M18 4h22m-16 0v10h-9a7 7 0 0 0-7 7v49a7 7 0 0 0 7 7h28a7 7 0 0 0 7-7V21a7 7 0 0 0-7-7h-9V4"/>
+      <path d="M29 30v25m-12-12h24M29 77v12c0 10 7 13 7 21"/>
+    </g>
+    <!-- Care record -->
+    <g transform="translate(156 262)">
+      <path d="M8 7h39v49H8V7Zm11-6h17v11H19V1Zm-2 26h21m-21 10h21m-21 10h13"/>
+    </g>
+    <!-- Droplet -->
+    <path d="M276 253c-10 13-15 21-15 29a15 15 0 0 0 30 0c0-8-5-16-15-29Z"/>
+  </g>
+  <g fill="#8bbeb4" opacity=".32">
+    <circle cx="163" cy="46" r="2"/><circle cx="174" cy="46" r="2"/><circle cx="185" cy="46" r="2"/>
+    <circle cx="300" cy="138" r="2"/><circle cx="311" cy="138" r="2"/><circle cx="322" cy="138" r="2"/>
+    <circle cx="162" cy="259" r="2"/><circle cx="173" cy="259" r="2"/><circle cx="184" cy="259" r="2"/>
+  </g>
+</svg>

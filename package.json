@@ -26,6 +26,7 @@
     "@pdfme/schemas": "6.2.8",
     "@pdfme/ui": "6.2.8",
     "@tanstack/react-query": "5.106.1",
+    "emoji-picker-react": "^5.1.4",
     "lucide-react": "1.69.0",
     "maplibre-gl": "^6.19.0",
     "next": "16.4.5",

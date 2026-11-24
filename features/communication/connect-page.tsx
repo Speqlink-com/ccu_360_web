@@ -8,9 +8,10 @@ import { apiRequest } from "@/lib/api/client";
 import { pageOf, memberLabels, memberRole } from "@/lib/api/identity-contract";
 import { useCommunicationUI } from "@/providers/app-provider";
 import { useFacilityAccess } from "@/features/worksite/access-provider";
-import { Dialog } from "@/components/ui/dialog";
+import { SideDrawer } from "@/components/ui/side-drawer";
 import { Empty } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/icon";
+import { ButtonHeartbeat } from "@/components/ui/ccu-loader";
 import {
   Heading,
   Notice,
@@ -62,10 +63,10 @@ export function ConnectPage() {
     <>
       <Heading
         title="Connect 360"
-        detail="A shared conversation. A clearer next step. Stay connected with the people in your facility."
+        detail="Private conversations with colleagues across your facility."
         actions={
           <div
-            className={`connection-indicator whitespace-nowrap rounded-[24px] border border-border bg-surface px-3.5 py-2.5 text-[13px] text-muted connection-${connection}`}
+            className={`connection-indicator connection-${connection}`}
             role="status"
           >
             <i />
@@ -89,27 +90,28 @@ export function ConnectPage() {
       )}
       <div className={`connect-workspace grid min-h-[650px] overflow-hidden rounded-2xl border border-[#dce5e8] bg-surface shadow-[0_5px_24px_#06234c05] [grid-template-columns:340px_minmax(0,1fr)] [height:min(800px,calc(100dvh-230px))] max-[1100px]:[grid-template-columns:290px_minmax(0,1fr)] max-[760px]:block max-[760px]:min-h-[610px] max-[760px]:[height:calc(100dvh-180px)] ${selected ? "has-thread" : ""}`}>
         <section className="connect-inbox flex min-h-0 flex-col border-r border-border max-[760px]:h-full max-[760px]:border-r-0" aria-label="Conversation inbox">
-          <header className="flex items-center justify-between px-5.5 pt-[26px] pb-3">
+          <header className="connect-inbox-header flex items-center justify-between px-5.5 pt-[26px] pb-3">
             <div>
-              <p className="eyebrow text-[10px]">YOUR FACILITY</p>
               <h2 className="my-1.5 text-[22px] tracking-[-.03em] text-navy">Conversations</h2>
+              <p>Messages within your facility</p>
             </div>
             <button
               className="connect-new grid h-10 w-10 place-items-center rounded-[11px] border border-[#b6dcd4] bg-mint text-teal-dark"
               aria-label="New conversation"
+              title="New conversation"
               onClick={() => setCreating(true)}
             >
-              <Icon name="plus" size={23} />
+              <Icon name="plus" size={21} outline />
             </button>
           </header>
           <label className="connect-search mx-5 mt-3 mb-[18px] flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-[10px] text-muted focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-teal">
-            <Icon name="search" />
+            <Icon name="search" size={17} outline />
             <input
               className="w-full min-w-0 border-0 bg-transparent text-[13px] outline-none"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Filter conversation titles"
-              aria-label="Filter conversation titles"
+              placeholder="Search conversation titles"
+              aria-label="Search conversation titles"
             />
           </label>
           <QueryState query={inbox} />
@@ -135,15 +137,15 @@ export function ConnectPage() {
               group.
             </Empty>
           )}
-          {inbox.data && (
+          {inbox.data && (offset > 0 || inbox.data.scanned >= 20) && (
             <Pager
               offset={offset}
               count={inbox.data.scanned}
               change={setOffset}
             />
           )}
-          <footer className="flex items-center gap-2 border-t border-border px-5.5 py-4.5 text-xs text-muted">
-            <Icon name="shield" size={16} />
+          <footer className="connect-inbox-footer flex items-center gap-2 border-t border-border px-5.5 py-4.5 text-xs text-muted">
+            <Icon name="shield" size={16} outline />
             <span>Private to invited participants</span>
           </footer>
         </section>
@@ -154,25 +156,22 @@ export function ConnectPage() {
             back={() => select(null)}
           />
         ) : (
-          <section className="conversation-placeholder flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_center,#eef8f5_0%,#fff_65%)] p-10 text-center">
-            <div className="connect-emblem mb-7 grid h-[115px] w-[115px] -rotate-5 place-items-center rounded-[32px] border border-[#d0e4df] bg-surface text-teal">
-              <Icon name="connect" size={48} className="rotate-[5deg]" />
+          <section className="conversation-placeholder flex flex-col items-center justify-center p-10 text-center">
+            <div className="connect-emblem mb-7 grid h-[88px] w-[88px] place-items-center text-teal">
+              <Icon name="connect" size={44} outline />
             </div>
-            <p className="eyebrow text-[10px] tracking-[.15em]">CONNECTED PEOPLE. COORDINATED CARE.</p>
-            <h2 className="my-4.5 max-w-[440px] text-[30px] leading-[1.2] tracking-[-.04em] text-navy">Make room for a conversation.</h2>
-            <p className="mb-6 max-w-[420px] text-base leading-[1.7] text-muted">
-              Reach a colleague, coordinate your department, or start a
-              discussion around a patient journey.
+            <h2 className="my-4.5 max-w-[440px] text-[27px] leading-[1.2] tracking-[-.04em] text-navy">Select a conversation</h2>
+            <p className="mb-6 max-w-[420px] text-[14px] leading-[1.7] text-muted">
+              Choose a chat from the list, or start a new one with a colleague.
             </p>
             <button
               className={buttonClasses.primary}
               onClick={() => setCreating(true)}
             >
-              Start a conversation <Icon name="arrow" />
+              New conversation <Icon name="arrow" size={16} outline />
             </button>
             <small className="mt-7 max-w-[380px] leading-[1.8] text-muted">
-              Read receipts show a message was viewed. Clinical sign-offs stay
-              in the patient journey.
+              Clinical sign-offs remain in the patient journey.
             </small>
           </section>
         )}
@@ -229,27 +228,23 @@ function ConversationRow({
       aria-current={active ? "true" : undefined}
     >
       <span className={`conversation-avatar grid h-[46px] w-[46px] shrink-0 place-items-center rounded-[14px] ${item.kind === "group" ? "group bg-[#e6f4ee] text-teal-dark" : "direct bg-[#edf2f7] text-navy"}`}>
-        <Icon name={item.kind === "group" ? "connect" : "profile"} size={24} />
+        <Icon name={item.kind === "group" ? "connect" : "profile"} size={22} outline />
       </span>
       <span className="conversation-summary flex min-w-0 flex-1 flex-col gap-[6px]">
-        <strong className="truncate text-[15px] text-navy">{label}</strong>
-        <span className="text-xs text-muted">
+        <span className="conversation-row-top"><strong className="truncate text-[15px] text-navy">{label}</strong><small>{stamp(item.updated_at)}</small></span>
+        <span className="conversation-row-bottom"><span className="text-xs text-muted">
           {item.encounter_id
             ? "Patient journey discussion"
             : item.kind === "group"
               ? "Facility group"
               : "Private conversation"}
         </span>
-        <small className="text-[11px] text-[#7d8b97]">{stamp(item.updated_at)}</small>
+        {!!item.unread_count && (
+          <span className="unread-count grid h-[22px] min-w-[22px] place-items-center rounded-[20px] bg-teal px-[5px] text-[11px] font-bold text-white" aria-label={`${item.unread_count} unread messages`}>
+            {item.unread_count > 99 ? "99+" : item.unread_count}
+          </span>
+        )}</span>
       </span>
-      {!!item.unread_count && (
-        <span
-          className="unread-count grid h-[22px] min-w-[22px] place-items-center rounded-[20px] bg-teal px-[5px] text-[11px] font-bold text-white"
-          aria-label={`${item.unread_count} unread messages`}
-        >
-          {item.unread_count > 99 ? "99+" : item.unread_count}
-        </span>
-      )}
     </button>
   );
 }
@@ -296,8 +291,11 @@ function NewConversation({
   });
   const chosen = Object.keys(selected).length;
   return (
-    <Dialog
+    <SideDrawer
       title="Start a conversation"
+      eyebrow="CONNECT 360 / NEW"
+      closeLabel="Close new conversation"
+      className="connect-new-drawer"
       subtitle={
         encounterId
           ? "Linked discussion · only colleagues with access to this journey can join."
@@ -433,16 +431,16 @@ function NewConversation({
               change={setOffset}
             />
           )}
-          <Notice error={mutation.error} />
+          <Notice error={mutation.error} compact />
           <button
             className={buttonClasses.primary}
             type="submit"
             disabled={!chosen || (kind === "direct" && chosen !== 1)}
           >
-            {mutation.isPending ? "Creating…" : "Open conversation"}
+            <ButtonHeartbeat loading={mutation.isPending}>Open conversation</ButtonHeartbeat>
           </button>
         </fieldset>
       </form>
-    </Dialog>
+    </SideDrawer>
   );
 }

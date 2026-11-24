@@ -8,6 +8,7 @@ export function SideDrawer({
   subtitle,
   eyebrow = "CCU360 / FACILITIES",
   closeLabel = "Close onboarding form",
+  className = "",
   onClose,
   children,
 }: {
@@ -15,6 +16,7 @@ export function SideDrawer({
   subtitle?: string;
   eyebrow?: string;
   closeLabel?: string;
+  className?: string;
   onClose: () => void;
   children: ReactNode;
 }) {
@@ -42,7 +44,7 @@ export function SideDrawer({
   return (
     <dialog
       ref={ref}
-      className="side-drawer"
+      className={`side-drawer ${className}`}
       data-closing={closing || undefined}
       aria-labelledby={titleId}
       aria-describedby={subtitle ? subtitleId : undefined}
